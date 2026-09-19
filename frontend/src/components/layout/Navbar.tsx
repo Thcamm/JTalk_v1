@@ -2,10 +2,13 @@ import {
   Bell,
   Search,
   Flame,
-  ChevronDown,
 } from "lucide-react";
+import { useAuthStore } from "@/stores/useAuthStore";
+import Logout from "../auth/Logout";
 
 export default function Navbar() {
+  const { user } = useAuthStore();
+
   return (
     <header
       className="sticky top-0 z-50 h-20 px-8 flex items-center justify-between bg-card border-b border-border shadow-soft"
@@ -102,7 +105,7 @@ export default function Navbar() {
 
         {/* USER */}
 
-        <button
+        <div
           className="
             flex
             items-center
@@ -110,7 +113,6 @@ export default function Navbar() {
             rounded-2xl
             px-2
             py-1
-            hover:bg-muted/50
           "
         >
           <div
@@ -136,19 +138,16 @@ export default function Navbar() {
 
           <div className="text-left">
             <p className="text-sm font-semibold">
-              Minh Trịnh
+              {user?.displayName || user?.username || "Người dùng"}
             </p>
 
             <p className="text-xs text-muted-foreground">
-              N5 Learner
+              {user?.email || "Learner"}
             </p>
           </div>
 
-          <ChevronDown
-            size={16}
-            className="text-muted-foreground"
-          />
-        </button>
+          <Logout />
+        </div>
       </div>
     </header>
   );

@@ -3,29 +3,36 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router";
 
 const ProtectedRoute = () => {
-  const { accessToken, user, loading, refresh, fetchMe } = useAuthStore();
+  const { accessToken, refresh } = useAuthStore();
   const [starting, setStarting] = useState(true);
 
-  const init = async () => {
-    // có thể xảy ra khi refresh trang
-    if (!accessToken) {
-      await refresh();
-    }
-
-    if (accessToken && !user) {
-      await fetchMe();
-    }
-
-    setStarting(false);
-  };
-
   useEffect(() => {
-    init();
-  }, []);
+    let isMounted = true;
 
-  if (starting || loading) {
+    const init = async () => {
+      const state = useAuthStore.getState();
+      if (!state.accessToken) {
+        try {
+          await refresh();
+        } catch {
+          // session unavailable
+        }
+      }
+      if (isMounted) {
+        setStarting(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [refresh]);
+
+  if (starting) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center text-muted-foreground font-medium">
         Đang tải trang...
       </div>
     );
@@ -40,7 +47,7 @@ const ProtectedRoute = () => {
     );
   }
 
-  return <Outlet></Outlet>;
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

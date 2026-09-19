@@ -19,8 +19,11 @@ import {
   weeklyStudy,
 } from "@/data/progress";
 
+import { useAuthStore } from "@/stores/useAuthStore";
+
 const DashboardPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
 
   const tasks = [
     {
@@ -67,7 +70,7 @@ const DashboardPage = () => {
           </span>
 
           <h1 className="mt-4 text-4xl font-bold">
-            Xin chào Minh 👋
+            Xin chào {user?.displayName || user?.username || "bạn"} 👋
           </h1>
 
           <p className="mt-2 text-muted-foreground">

@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 
 export const connectDB = async () => {
   try {
-    console.log("URI =", process.env.MONGODB_CONNECTIONSTRING);
     // @ts-ignore
     await mongoose.connect(process.env.MONGODB_CONNECTIONSTRING);
     console.log("Liên kết CSDL thành công!");

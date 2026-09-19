@@ -24,19 +24,20 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // những api không cần check
+    // những api không cần retry
     if (
-      originalRequest.url.includes("/auth/signin") ||
-      originalRequest.url.includes("/auth/signup") ||
-      originalRequest.url.includes("/auth/refresh")
+      !originalRequest ||
+      originalRequest.url?.includes("/auth/signin") ||
+      originalRequest.url?.includes("/auth/signup") ||
+      originalRequest.url?.includes("/auth/refresh")
     ) {
       return Promise.reject(error);
     }
 
-    originalRequest._retryCount = originalRequest._retryCount || 0;
+    const status = error.response?.status;
 
-    if (error.response?.status === 403 && originalRequest._retryCount < 4) {
-      originalRequest._retryCount += 1;
+    if ((status === 401 || status === 403) && !originalRequest._retry) {
+      originalRequest._retry = true;
 
       try {
         const res = await api.post("/auth/refresh", { withCredentials: true });

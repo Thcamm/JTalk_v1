@@ -89,11 +89,15 @@ export const signIn = async (req, res) => {
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL),
     });
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    };
+
     // trả refresh token về trong cookie
     res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none", //backend, frontend deploy riêng
+      ...cookieOptions,
       maxAge: REFRESH_TOKEN_TTL,
     });
 
@@ -109,6 +113,12 @@ export const signIn = async (req, res) => {
 
 export const signOut = async (req, res) => {
   try {
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    };
+
     // lấy refresh token từ cookie
     const token = req.cookies?.refreshToken;
 
@@ -117,7 +127,7 @@ export const signOut = async (req, res) => {
       await Session.deleteOne({ refreshToken: token });
 
       // xoá cookie
-      res.clearCookie("refreshToken");
+      res.clearCookie("refreshToken", cookieOptions);
     }
 
     return res.sendStatus(204);
