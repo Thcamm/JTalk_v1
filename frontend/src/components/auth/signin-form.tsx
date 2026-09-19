@@ -22,7 +22,7 @@ export function SigninForm({ className, ...props }: React.ComponentProps<"div">)
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
   });
