@@ -11,7 +11,7 @@ export const Waveform = ({
 }: WaveformProps) => {
   return (
     <div
-      className={`flex items-center justify-center gap-1 sm:gap-1.5 h-16 px-4 bg-slate-50/80 border border-slate-100 rounded-2xl overflow-hidden ${className}`}
+      className={`flex items-center justify-center gap-1 sm:gap-1.5 h-16 px-4 bg-slate-50/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/80 rounded-2xl overflow-hidden transition-colors ${className}`}
     >
       {waveformData.slice(0, 28).map((val, idx) => {
         // Calculate height scaled from 12% to 100%
@@ -24,8 +24,8 @@ export const Waveform = ({
             key={idx}
             className={`w-1 sm:w-1.5 rounded-full transition-all duration-75 ${
               isRecording
-                ? "bg-gradient-to-t from-emerald-500 to-teal-400 shadow-xs shadow-emerald-200"
-                : "bg-slate-200"
+                ? "bg-gradient-to-t from-emerald-500 to-teal-400 shadow-xs shadow-emerald-200 dark:shadow-emerald-950/50"
+                : "bg-slate-200 dark:bg-slate-700"
             }`}
             style={{
               height: `${normalizedHeight}%`,

@@ -31,6 +31,25 @@ export const getPastNDaysDates = (n = 7) => {
 };
 
 /**
+ * Determines whether the user's current streak is still active or expired.
+ * Streak is active if:
+ * 1. User already practiced today (lastActiveStr === todayStr)
+ * 2. User practiced yesterday, so today's practice is pending before midnight (lastActiveStr === yesterdayStr)
+ * Otherwise, streak is broken and returns 0.
+ */
+export const getActiveStreak = (lastActiveDate, currentStreak = 0) => {
+  if (!lastActiveDate || currentStreak <= 0) return 0;
+  const todayStr = getTodayDateString();
+  const yesterdayStr = getYesterdayDateString();
+  const lastActiveStr = formatDateToString(new Date(lastActiveDate));
+
+  if (lastActiveStr === todayStr || lastActiveStr === yesterdayStr) {
+    return currentStreak;
+  }
+  return 0;
+};
+
+/**
  * Calculates new streak status based on user's lastActiveDate
  */
 export const calculateNewStreak = (lastActiveDate, currentStreak = 0, currentLongestStreak = 0) => {

@@ -7,17 +7,19 @@ export default function MainLayout() {
   const { isCollapsed } = useSidebarStore();
 
   return (
-    <div className="h-screen overflow-hidden bg-[#F9FAFB]">
+    <div className="h-screen overflow-hidden bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 transition-colors duration-200 flex">
+      {/* Sidebar with responsive behavior */}
       <Sidebar />
 
+      {/* Main Content Area */}
       <div
-        className={`h-screen flex flex-col transition-all duration-300 ${
-          isCollapsed ? "ml-20" : "ml-64"
+        className={`h-screen flex-1 flex flex-col transition-all duration-300 min-w-0 ${
+          isCollapsed ? "lg:ml-20" : "lg:ml-64"
         }`}
       >
         <Navbar />
 
-        <main className="flex-1 overflow-auto bg-[#F9FAFB]">
+        <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-[#0b0f17] transition-colors duration-200">
           <Outlet />
         </main>
       </div>

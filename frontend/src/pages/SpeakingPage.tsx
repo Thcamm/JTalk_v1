@@ -199,15 +199,19 @@ export const SpeakingPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] p-4 sm:p-6 lg:p-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* 1. Header (Title, Subtitle & Action button like Image 3) */}
+    <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden transition-colors duration-200">
+      {/* Ambient Lighting Orbs */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/3 left-10 w-96 h-96 bg-gradient-to-tr from-teal-500/5 via-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
+        {/* 1. Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               Luyện nói
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
               Luyện nói trong các tình huống thực tế với JTalk AI
             </p>
           </div>
@@ -215,15 +219,15 @@ export const SpeakingPage = () => {
           <button
             onClick={handleRandomQuickPractice}
             type="button"
-            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-105 active:translate-y-0.5 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg hover:shadow-emerald-500/20 transition-all cursor-pointer self-start sm:self-auto"
           >
             <Zap size={15} className="fill-amber-300 text-amber-300" />
             <span>Thử thách ngẫu nhiên</span>
           </button>
         </div>
 
-        {/* 2. Secondary Navigation Tabs & Level Filter (Identical to Image 3) */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+        {/* 2. Secondary Navigation Tabs & Level Filter */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-4">
           {/* Left Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
             <button
@@ -231,8 +235,8 @@ export const SpeakingPage = () => {
               type="button"
               className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
                 activeTab === "scenarios"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80"
+                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
               <Mic size={14} />
@@ -244,8 +248,8 @@ export const SpeakingPage = () => {
               type="button"
               className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                 activeTab === "learning"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80"
+                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
               <Clock size={14} />
@@ -257,8 +261,8 @@ export const SpeakingPage = () => {
               type="button"
               className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                 activeTab === "history"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80"
+                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
               <History size={14} />
@@ -270,8 +274,8 @@ export const SpeakingPage = () => {
               type="button"
               className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                 activeTab === "leaderboard"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80"
+                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
               <Trophy size={14} />
@@ -288,8 +292,8 @@ export const SpeakingPage = () => {
                 type="button"
                 className={`px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer shrink-0 ${
                   selectedLevel === lvl
-                    ? "bg-emerald-600 text-white font-bold shadow-2xs"
-                    : "bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80"
+                    ? "bg-emerald-600 dark:bg-emerald-500 text-white font-bold shadow-2xs"
+                    : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 font-semibold"
                 }`}
               >
                 {lvl}
@@ -301,35 +305,35 @@ export const SpeakingPage = () => {
         {/* 3. Section Title with Badge */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-black text-slate-900">Tất cả kịch bản</h2>
-            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-2xs font-bold">
-              <CheckCircle2 size={12} className="text-emerald-600" />
+            <h2 className="text-lg font-black text-slate-900 dark:text-white">Tất cả kịch bản</h2>
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-2xs font-extrabold">
+              <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />
               <span>JTalk biên soạn</span>
             </div>
           </div>
 
           {/* Search box */}
           <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Tìm kịch bản..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-full text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400 shadow-2xs transition-all"
             />
           </div>
         </div>
 
-        {/* 4. 4-Column Cards Grid (Identical to Image 3) */}
+        {/* 4. 4-Column Cards Grid */}
         {loading ? (
           <div className="py-20 flex justify-center">
             <LoadingSpinner size="lg" label="Đang tải kịch bản..." />
           </div>
         ) : filteredScenarios.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-slate-200 rounded-3xl p-8 space-y-2">
-            <p className="text-sm font-bold text-slate-700">Không tìm thấy kịch bản phù hợp</p>
-            <p className="text-xs text-slate-400">Vui lòng chọn trình độ khác hoặc xóa từ khóa tìm kiếm</p>
+          <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 space-y-2 shadow-2xs">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Không tìm thấy kịch bản phù hợp</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Vui lòng chọn trình độ khác hoặc xóa từ khóa tìm kiếm</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -340,11 +344,11 @@ export const SpeakingPage = () => {
                 <div
                   key={scenario.id}
                   onClick={() => handleScenarioClick(scenario)}
-                  className="group bg-white border border-slate-200/90 hover:border-emerald-400 rounded-3xl overflow-hidden shadow-2xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-200 flex flex-col justify-between cursor-pointer"
+                  className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 rounded-3xl overflow-hidden shadow-2xs hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1.5 transition-all duration-200 flex flex-col justify-between cursor-pointer"
                 >
                   {/* Thumbnail Image with Level badge */}
                   <div>
-                    <div className="relative h-40 w-full overflow-hidden bg-slate-100">
+                    <div className="relative h-40 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
                       <img
                         src={scenario.imageUrl}
                         alt={scenario.title}
@@ -352,8 +356,8 @@ export const SpeakingPage = () => {
                         loading="lazy"
                       />
 
-                      {/* Level badge at top left (green like Image 3) */}
-                      <div className="absolute left-3 top-3 px-2 py-0.5 bg-emerald-100/90 text-emerald-800 backdrop-blur-2xs rounded-md text-2xs font-extrabold uppercase shadow-xs">
+                      {/* Level badge at top left */}
+                      <div className="absolute left-3 top-3 px-2 py-0.5 bg-emerald-100/90 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 backdrop-blur-2xs rounded-md text-2xs font-extrabold uppercase shadow-xs border border-emerald-200/50 dark:border-emerald-800/60">
                         {scenario.level}
                       </div>
 
@@ -361,11 +365,11 @@ export const SpeakingPage = () => {
                       {scenario.isPremium && (
                         <div className="absolute right-3 top-3">
                           {isLocked ? (
-                            <span className="w-7 h-7 rounded-full bg-slate-900/60 backdrop-blur-xs text-amber-300 flex items-center justify-center">
+                            <span className="w-7 h-7 rounded-full bg-slate-900/70 backdrop-blur-xs text-amber-300 flex items-center justify-center shadow-xs">
                               <Lock size={13} />
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 bg-amber-400/90 text-amber-950 font-bold text-3xs rounded-md">
+                            <span className="px-2 py-0.5 bg-amber-400/90 text-amber-950 font-bold text-3xs rounded-md shadow-xs">
                               PRO
                             </span>
                           )}
@@ -375,24 +379,24 @@ export const SpeakingPage = () => {
 
                     {/* Card Content */}
                     <div className="p-4 space-y-1.5">
-                      <h3 className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1 font-sans">
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1 font-sans">
                         {scenario.japaneseTitle}
                       </h3>
 
-                      <p className="text-xs text-slate-600 font-medium line-clamp-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 font-medium line-clamp-1">
                         {scenario.title}
                       </p>
 
-                      <p className="text-2xs text-slate-400 line-clamp-2 leading-relaxed">
+                      <p className="text-2xs text-slate-400 dark:text-slate-400 line-clamp-2 leading-relaxed">
                         {scenario.description}
                       </p>
                     </div>
                   </div>
 
                   {/* Card Footer */}
-                  <div className="px-4 pb-4 pt-1 flex items-center justify-between text-3xs text-slate-400 font-semibold border-t border-slate-100/80">
+                  <div className="px-4 pb-4 pt-2.5 flex items-center justify-between text-3xs text-slate-400 dark:text-slate-500 font-semibold border-t border-slate-100 dark:border-slate-800/80">
                     <span>{scenario.durationMinutes} phút • {scenario.reflexTurns} câu</span>
-                    <span className="text-emerald-600 font-bold group-hover:underline">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold group-hover:underline">
                       Vào luyện ›
                     </span>
                   </div>

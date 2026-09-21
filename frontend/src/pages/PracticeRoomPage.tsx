@@ -645,16 +645,20 @@ export const PracticeRoomPage = () => {
 
   if (loadingLesson) {
     return (
-      <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] flex items-center justify-center">
         <LoadingSpinner size="lg" label="Đang chuẩn bị phòng luyện nói AI..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-slate-800 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 flex flex-col font-sans relative overflow-hidden transition-colors duration-200">
+      {/* Ambient Lighting Orbs */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-to-tr from-teal-500/5 via-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+
       {/* 1. Header Bar */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between transition-colors">
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
@@ -662,7 +666,7 @@ export const PracticeRoomPage = () => {
               navigate(-1);
             }}
             type="button"
-            className="p-2 -ml-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+            className="p-2 -ml-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
             title="Quay lại"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -670,14 +674,14 @@ export const PracticeRoomPage = () => {
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-slate-900 line-clamp-1">
+              <h1 className="text-base font-bold text-slate-900 dark:text-white line-clamp-1">
                 {session.currentLesson?.title || "Phòng luyện phản xạ AI"}
               </h1>
               <Badge variant="success" size="sm">
                 {session.currentLesson?.level || "N5"}
               </Badge>
             </div>
-            <p className="text-xs text-slate-500 hidden sm:block">
+            <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
               Hội thoại {session.currentDialogueIndex + 1} / {session.dialogues.length}
             </p>
           </div>
@@ -686,7 +690,7 @@ export const PracticeRoomPage = () => {
         {/* Right stats & Quota badge */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Streak indicator */}
-          <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-full text-xs font-bold">
+          <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 rounded-full text-xs font-bold">
             <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
             <span>{streak} ngày</span>
           </div>
@@ -702,8 +706,8 @@ export const PracticeRoomPage = () => {
               type="button"
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer border ${
                 remainingFreePractices > 0
-                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"
-                  : "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300 font-bold animate-pulse"
+                  ? "bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                  : "bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 font-bold animate-pulse"
               }`}
             >
               <span>
@@ -713,7 +717,7 @@ export const PracticeRoomPage = () => {
               </span>
               <span
                 className={`${
-                  remainingFreePractices > 0 ? "text-emerald-600" : "text-rose-600"
+                  remainingFreePractices > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                 } font-bold underline ml-0.5`}
               >
                 Nâng cấp
@@ -724,8 +728,8 @@ export const PracticeRoomPage = () => {
       </header>
 
       {/* Mode Selector Navigation */}
-      <div className="bg-slate-100/80 border-b border-slate-200/80 py-2.5 px-4 flex items-center justify-center">
-        <div className="inline-flex p-1 bg-white/90 border border-slate-200 rounded-2xl shadow-2xs">
+      <div className="bg-slate-100/80 dark:bg-slate-950/50 border-b border-slate-200/80 dark:border-slate-800 py-2.5 px-4 flex items-center justify-center transition-colors">
+        <div className="inline-flex p-1 bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs">
           <button
             onClick={() => {
               session.stopAudio();
@@ -734,8 +738,8 @@ export const PracticeRoomPage = () => {
             type="button"
             className={`flex items-center gap-2 px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               practiceMode === "script"
-                ? "bg-slate-900 text-white shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-slate-900 dark:bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             <span>🎯 Luyện theo câu mẫu</span>
@@ -751,7 +755,7 @@ export const PracticeRoomPage = () => {
             className={`flex items-center gap-2 px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               practiceMode === "roleplay"
                 ? "bg-emerald-600 text-white shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
@@ -764,7 +768,7 @@ export const PracticeRoomPage = () => {
       </div>
 
       {/* 2. Main Practice Workspace */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col gap-6 justify-between">
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col gap-6 justify-between relative z-10">
         {practiceMode === "roleplay" ? (
           <FreeRoleplayChat
             lessonId={lessonId}
@@ -790,7 +794,7 @@ export const PracticeRoomPage = () => {
         ) : (
           <>
             {/* Progress bar across current dialogue items */}
-            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
               <div
                 className="bg-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
                 style={{
@@ -800,232 +804,232 @@ export const PracticeRoomPage = () => {
             </div>
 
             {/* Central Dialogue Card */}
-            <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
-          {/* Speaker label & Audio TTS button */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-3 h-3 rounded-full ${
-                  currentDialogue?.speaker === "ai" ? "bg-blue-500" : "bg-emerald-500"
-                }`}
-              />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                {currentDialogue?.speaker === "ai" ? "GIA SƯ AI" : "BẠN HÃY PHẢN XẠ CÂU NÀY"}
-              </span>
-            </div>
-
-            <AudioPlayer
-              textToSpeak={currentDialogue?.japanese}
-              onNativeTts={() => session.playNativeAudio(currentDialogue?.japanese)}
-              label="Nghe giọng chuẩn"
-            />
-          </div>
-
-          {/* Target Japanese Sentence Display */}
-          <div className="text-center py-4 sm:py-6 space-y-3.5">
-            {/* 1. Kanji Primary Text */}
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-wide font-sans leading-relaxed">
-              {currentDialogue?.japanese}
-            </h2>
-
-            {/* 2. Hiragana / Katakana Phonetic Subtitle (Phiên âm Hiragana/Katakana cho chữ Hán) */}
-            {showFurigana && currentDialogue && (currentDialogue.furigana || hasKanji(currentDialogue.japanese)) && (
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-50/90 border border-emerald-200/90 rounded-2xl shadow-2xs">
-                <span className="text-2xs font-extrabold text-emerald-700 uppercase tracking-wider">
-                  Hiragana:
-                </span>
-                <p className="text-sm sm:text-base md:text-lg font-bold text-emerald-900 tracking-wider font-sans">
-                  {currentDialogue.furigana || currentDialogue.japanese}
-                </p>
-              </div>
-            )}
-
-            {/* 3. Romaji Latin line */}
-            {showRomaji && currentDialogue?.romaji && (
-              <p className="text-xs sm:text-sm font-medium text-slate-500 tracking-wide font-mono">
-                {currentDialogue.romaji}
-              </p>
-            )}
-
-            {/* 4. Vietnamese Meaning */}
-            {showTranslation && currentDialogue?.translation && (
-              <p className="text-sm sm:text-base text-slate-700 font-medium">
-                {currentDialogue.translation}
-              </p>
-            )}
-          </div>
-
-          {/* Toggle buttons for Hiragana, Romaji and Translation */}
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2 border-t border-slate-100 text-xs text-slate-500">
-            <button
-              onClick={() => setShowFurigana(!showFurigana)}
-              type="button"
-              className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
-                showFurigana
-                  ? "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-2xs"
-                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              {showFurigana ? "Ẩn Hiragana" : "Hiện Hiragana"}
-            </button>
-            <button
-              onClick={() => setShowRomaji(!showRomaji)}
-              type="button"
-              className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
-                showRomaji
-                  ? "bg-slate-100 border-slate-300 text-slate-800 shadow-2xs"
-                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              {showRomaji ? "Ẩn Romaji" : "Hiện Romaji"}
-            </button>
-            <button
-              onClick={() => setShowTranslation(!showTranslation)}
-              type="button"
-              className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
-                showTranslation
-                  ? "bg-slate-100 border-slate-300 text-slate-800 shadow-2xs"
-                  : "border-slate-200 text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              {showTranslation ? "Ẩn Bản dịch" : "Hiện Bản dịch"}
-            </button>
-          </div>
-        </div>
-
-        {/* Real-time Web Speech Transcript & Waveform during recording */}
-        {session.isRecording && (
-          <div className="space-y-3 animate-in fade-in duration-150">
-            <Waveform isRecording={session.isRecording} waveformData={session.recorder.audioWaveformData} />
-
-            {session.clientTranscript ? (
-              <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-2xl text-center">
-                <span className="text-xs text-emerald-600 font-semibold block mb-1">
-                  Nhận diện trực tiếp (Web Speech API):
-                </span>
-                <p className="text-lg font-bold text-emerald-950 font-sans">
-                  {session.clientTranscript}
-                </p>
-              </div>
-            ) : (
-              <p className="text-center text-xs text-slate-400 animate-pulse">
-                Đang lắng nghe giọng nói tiếng Nhật của bạn...
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* 3. Evaluation Result Display */}
-        {session.currentEvaluation && (
-          <div className="space-y-6">
-            {/* Audio Transcript & Target Sentence Verification Card */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 transition-colors">
+              {/* Speaker label & Audio TTS button */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <h4 className="text-sm font-bold text-slate-900">
-                    Đối chiếu câu luyện tập & Giọng đọc của bạn
-                  </h4>
-                </div>
-                <Badge variant="success" size="sm">
-                  Đã ghi âm thành công
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {/* User spoken transcript */}
-                <div className="p-4 bg-emerald-50/70 border border-emerald-200/90 rounded-2xl space-y-1.5">
-                  <span className="text-2xs font-extrabold uppercase tracking-wider text-emerald-800">
-                    🎤 Bạn đã nói (Nhận diện thực tế):
+                  <span
+                    className={`w-3 h-3 rounded-full ${
+                      currentDialogue?.speaker === "ai" ? "bg-blue-500" : "bg-emerald-500"
+                    }`}
+                  />
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {currentDialogue?.speaker === "ai" ? "GIA SƯ AI" : "BẠN HÃY PHẢN XẠ CÂU NÀY"}
                   </span>
-                  <p className="text-base sm:text-lg font-bold text-emerald-950 font-sans">
-                    {session.currentEvaluation.transcript || session.clientTranscript || currentDialogue?.japanese}
-                  </p>
                 </div>
 
-                {/* Target Japanese sentence */}
-                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5">
-                  <span className="text-2xs font-extrabold uppercase tracking-wider text-slate-500">
-                    🎯 Câu mẫu cần phản xạ:
-                  </span>
-                  <p className="text-base sm:text-lg font-bold text-slate-800 font-sans">
-                    {session.currentEvaluation.targetSentence || currentDialogue?.japanese}
-                  </p>
-                </div>
-              </div>
-
-              {/* Word-by-word green/red breakdown */}
-              <div className="pt-2 border-t border-slate-100 space-y-2">
-                <span className="text-xs font-bold text-slate-700 block">
-                  Phân tích phát âm chi tiết từng từ:
-                </span>
-                <WordHighlight
-                  wordFeedback={session.currentEvaluation.wordFeedback}
-                  fallbackText={session.currentEvaluation.transcript}
+                <AudioPlayer
+                  textToSpeak={currentDialogue?.japanese}
+                  onNativeTts={() => session.playNativeAudio(currentDialogue?.japanese)}
+                  label="Nghe giọng chuẩn"
                 />
               </div>
+
+              {/* Target Japanese Sentence Display */}
+              <div className="text-center py-4 sm:py-6 space-y-3.5">
+                {/* 1. Kanji Primary Text */}
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-wide font-sans leading-relaxed">
+                  {currentDialogue?.japanese}
+                </h2>
+
+                {/* 2. Hiragana / Katakana Phonetic Subtitle (Phiên âm Hiragana/Katakana cho chữ Hán) */}
+                {showFurigana && currentDialogue && (currentDialogue.furigana || hasKanji(currentDialogue.japanese)) && (
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-50/90 dark:bg-emerald-950/60 border border-emerald-200/90 dark:border-emerald-800 rounded-2xl shadow-2xs">
+                    <span className="text-2xs font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                      Hiragana:
+                    </span>
+                    <p className="text-sm sm:text-base md:text-lg font-bold text-emerald-900 dark:text-emerald-200 tracking-wider font-sans">
+                      {currentDialogue.furigana || currentDialogue.japanese}
+                    </p>
+                  </div>
+                )}
+
+                {/* 3. Romaji Latin line */}
+                {showRomaji && currentDialogue?.romaji && (
+                  <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 tracking-wide font-mono">
+                    {currentDialogue.romaji}
+                  </p>
+                )}
+
+                {/* 4. Vietnamese Meaning */}
+                {showTranslation && currentDialogue?.translation && (
+                  <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 font-medium">
+                    {currentDialogue.translation}
+                  </p>
+                )}
+              </div>
+
+              {/* Toggle buttons for Hiragana, Romaji and Translation */}
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                <button
+                  onClick={() => setShowFurigana(!showFurigana)}
+                  type="button"
+                  className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                    showFurigana
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 shadow-2xs"
+                      : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {showFurigana ? "Ẩn Hiragana" : "Hiện Hiragana"}
+                </button>
+                <button
+                  onClick={() => setShowRomaji(!showRomaji)}
+                  type="button"
+                  className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                    showRomaji
+                      ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
+                      : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {showRomaji ? "Ẩn Romaji" : "Hiện Romaji"}
+                </button>
+                <button
+                  onClick={() => setShowTranslation(!showTranslation)}
+                  type="button"
+                  className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                    showTranslation
+                      ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
+                      : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {showTranslation ? "Ẩn Bản dịch" : "Hiện Bản dịch"}
+                </button>
+              </div>
             </div>
 
-            {/* 4 criteria breakdown & AI score */}
-            <FeedbackCard
-              evaluation={session.currentEvaluation}
-              onRetry={handleRetryCurrent}
-              onNext={handleNextDialogue}
-              hasNext={!isLastDialogue}
-            />
-          </div>
-        )}
+            {/* Real-time Web Speech Transcript & Waveform during recording */}
+            {session.isRecording && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <Waveform isRecording={session.isRecording} waveformData={session.recorder.audioWaveformData} />
 
-        {/* 4. Controls / Bottom Zone */}
-        {!session.currentEvaluation && (
-          <div className="py-4 flex flex-col items-center justify-center gap-3">
-            {currentDialogue?.speaker === "ai" ? (
-              <div className="flex flex-col items-center gap-3">
-                <button
-                  onClick={handleNextDialogue}
-                  type="button"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer group"
-                >
-                  <span>Đến lượt bạn phản xạ câu trả lời</span>
-                  <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                </button>
-                <span className="text-2xs text-slate-400 font-medium">
-                  Nghe xong câu hỏi của AI, bấm nút để bắt đầu luyện phản xạ
-                </span>
-              </div>
-            ) : !isPremium && remainingFreePractices <= 0 ? (
-              <div className="flex flex-col items-center gap-2.5 p-5 bg-gradient-to-br from-rose-50 to-orange-50 border border-rose-200 rounded-3xl text-center max-w-md shadow-xs animate-in fade-in duration-200">
-                <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-black text-sm">
-                  0/2
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-slate-900">
-                    Bạn đã hoàn thành hết 2 lượt luyện nói miễn phí hôm nay
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Nâng cấp tài khoản JTalk Premium (chỉ 99k/tháng) để luyện phản xạ AI không giới hạn, mở khóa toàn bộ kịch bản chuyên sâu!
+                {session.clientTranscript ? (
+                  <div className="p-4 bg-emerald-50/80 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-center">
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold block mb-1">
+                      Nhận diện trực tiếp (Web Speech API):
+                    </span>
+                    <p className="text-lg font-bold text-emerald-950 dark:text-emerald-100 font-sans">
+                      {session.clientTranscript}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-center text-xs text-slate-400 dark:text-slate-500 animate-pulse">
+                    Đang lắng nghe giọng nói tiếng Nhật của bạn...
                   </p>
-                </div>
-                <button
-                  onClick={() => setShowPremiumModal(true)}
-                  type="button"
-                  className="mt-1 inline-flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer"
-                >
-                  <Sparkles size={14} className="fill-amber-300 text-amber-300" />
-                  <span>Nâng cấp Premium ngay</span>
-                </button>
+                )}
               </div>
-            ) : (
-              <MicRecorder
-                isRecording={session.isRecording}
-                isEvaluating={session.isEvaluating}
-                durationSeconds={session.recorder.recordingDuration}
-                onStart={session.startSpeaking}
-                onStop={session.stopAndEvaluate}
-              />
             )}
-          </div>
-        )}
+
+            {/* 3. Evaluation Result Display */}
+            {session.currentEvaluation && (
+              <div className="space-y-6">
+                {/* Audio Transcript & Target Sentence Verification Card */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Đối chiếu câu luyện tập & Giọng đọc của bạn
+                      </h4>
+                    </div>
+                    <Badge variant="success" size="sm">
+                      Đã ghi âm thành công
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {/* User spoken transcript */}
+                    <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/60 border border-emerald-200/90 dark:border-emerald-800 rounded-2xl space-y-1.5">
+                      <span className="text-2xs font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                        🎤 Bạn đã nói (Nhận diện thực tế):
+                      </span>
+                      <p className="text-base sm:text-lg font-bold text-emerald-950 dark:text-emerald-100 font-sans">
+                        {session.currentEvaluation.transcript || session.clientTranscript || currentDialogue?.japanese}
+                      </p>
+                    </div>
+
+                    {/* Target Japanese sentence */}
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 rounded-2xl space-y-1.5">
+                      <span className="text-2xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        🎯 Câu mẫu cần phản xạ:
+                      </span>
+                      <p className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-200 font-sans">
+                        {session.currentEvaluation.targetSentence || currentDialogue?.japanese}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Word-by-word green/red breakdown */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                      Phân tích phát âm chi tiết từng từ:
+                    </span>
+                    <WordHighlight
+                      wordFeedback={session.currentEvaluation.wordFeedback}
+                      fallbackText={session.currentEvaluation.transcript}
+                    />
+                  </div>
+                </div>
+
+                {/* 4 criteria breakdown & AI score */}
+                <FeedbackCard
+                  evaluation={session.currentEvaluation}
+                  onRetry={handleRetryCurrent}
+                  onNext={handleNextDialogue}
+                  hasNext={!isLastDialogue}
+                />
+              </div>
+            )}
+
+            {/* 4. Controls / Bottom Zone */}
+            {!session.currentEvaluation && (
+              <div className="py-4 flex flex-col items-center justify-center gap-3">
+                {currentDialogue?.speaker === "ai" ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <button
+                      onClick={handleNextDialogue}
+                      type="button"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer group"
+                    >
+                      <span>Đến lượt bạn phản xạ câu trả lời</span>
+                      <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                    <span className="text-2xs text-slate-400 dark:text-slate-500 font-medium">
+                      Nghe xong câu hỏi của AI, bấm nút để bắt đầu luyện phản xạ
+                    </span>
+                  </div>
+                ) : !isPremium && remainingFreePractices <= 0 ? (
+                  <div className="flex flex-col items-center gap-2.5 p-5 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/30 border border-rose-200 dark:border-rose-800 rounded-3xl text-center max-w-md shadow-xs animate-in fade-in duration-200">
+                    <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black text-sm">
+                      0/2
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                        Bạn đã hoàn thành hết 2 lượt luyện nói miễn phí hôm nay
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Nâng cấp tài khoản JTalk Premium (chỉ 99k/tháng) để luyện phản xạ AI không giới hạn, mở khóa toàn bộ kịch bản chuyên sâu!
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowPremiumModal(true)}
+                      type="button"
+                      className="mt-1 inline-flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer"
+                    >
+                      <Sparkles size={14} className="fill-amber-300 text-amber-300" />
+                      <span>Nâng cấp Premium ngay</span>
+                    </button>
+                  </div>
+                ) : (
+                  <MicRecorder
+                    isRecording={session.isRecording}
+                    isEvaluating={session.isEvaluating}
+                    durationSeconds={session.recorder.recordingDuration}
+                    onStart={session.startSpeaking}
+                    onStop={session.stopAndEvaluate}
+                  />
+                )}
+              </div>
+            )}
           </>
         )}
       </main>
