@@ -70,18 +70,6 @@ export const DashboardPage = () => {
           <Compass size={15} />
           <span>TRANG CHỦ</span>
         </button>
-
-        <button
-          onClick={() => setActiveTab("community")}
-          type="button"
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === "community"
-              ? "bg-emerald-600 text-white shadow-xs"
-              : "bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80"
-          }`}
-        >
-          <span>👥 CỘNG ĐỒNG & THỬ THÁCH</span>
-        </button>
       </div>
 
       {/* 2. Welcome Banner (Mascot & Pastel Green Card style like Corodomo) */}
