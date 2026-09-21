@@ -9,6 +9,7 @@ import {
   createPractice,
   updatePractice,
   deletePractice,
+  aiRoleplayChat,
 } from "../controllers/practice.controller.js";
 import { protectedRoute } from "../middleware/auth.middleware.js";
 import { checkPracticeQuota } from "../middleware/quota.middleware.js";
@@ -28,6 +29,12 @@ router.use(protectedRoute);
  * 4. processVoice (Upload cloud -> STT Azure/Whisper -> LLM 4 criteria assessment)
  */
 router.post("/process-voice", checkPracticeQuota, handleAudioUpload("audio"), processVoice);
+
+/**
+ * POST /api/v1/practices/roleplay-chat
+ * Real-time freeform roleplay conversational AI partner
+ */
+router.post("/roleplay-chat", aiRoleplayChat);
 
 /**
  * POST /api/v1/practices/text-to-speech

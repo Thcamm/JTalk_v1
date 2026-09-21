@@ -48,6 +48,12 @@ export interface User {
   gamification?: UserGamification;
   subscription?: UserSubscription;
   dailyUsage?: UserDailyUsage;
+  quota?: {
+    isUnlimited?: boolean;
+    limit?: number | string;
+    usedToday?: number;
+    remaining?: number | string;
+  };
   referral?: UserReferral;
   createdAt?: string;
   updatedAt?: string;
@@ -71,6 +77,11 @@ export interface AuthState {
   signOut: () => Promise<void>;
   fetchMe: () => Promise<void>;
   refresh: () => Promise<void>;
+  dailyPracticeCount: number;
+  incrementDailyPracticeCount: () => void;
+  updateUserGamification: (gamification: Partial<UserGamification>) => void;
+  updateUserDailyUsage: (usage: Partial<UserDailyUsage>) => void;
+  updateUserSubscription: (subscription: Partial<UserSubscription>) => void;
 }
 
 export type PracticeStatus = "pending" | "processing" | "completed" | "failed";
@@ -119,13 +130,32 @@ export interface Course {
   title: string;
   description?: string;
   level: string;
-  category: "kaiwa" | "grammar" | "business" | "interview" | "daily";
+  category?: string;
   thumbnail?: string;
+  channelName?: string;
+  totalLessons?: number;
   isPublished: boolean;
   isPremiumOnly: boolean;
   orderIndex: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface SubtitleWord {
+  kanji: string;
+  furigana?: string;
+  romaji?: string;
+  meaning?: string;
+}
+
+export interface VideoSubtitle {
+  startTime: number; // in seconds
+  endTime: number;   // in seconds
+  japanese: string;
+  furigana?: string;
+  romaji?: string;
+  translation: string;
+  words?: SubtitleWord[];
 }
 
 export interface Topic {
@@ -173,6 +203,10 @@ export interface Lesson {
   sampleSentence?: string;
   translation?: string;
   image?: string;
+  youtubeId?: string;
+  videoUrl?: string;
+  channelName?: string;
+  subtitles?: VideoSubtitle[];
   duration?: string;
   durationMinutes?: number;
   isPremiumOnly?: boolean;
@@ -221,3 +255,76 @@ export interface StudyLog {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ProcessVoiceResponse {
+  audioUrl?: string;
+  transcript: string;
+  targetSentence: string;
+  scores: PracticeScores;
+  overallScore: number;
+  wordFeedback: WordFeedback[];
+  feedback: PracticeFeedback;
+}
+
+export interface SavePracticeResponse {
+  practice: Practice;
+  gamification: {
+    streak: number;
+    longestStreak: number;
+    xpEarned: number;
+    isStreakIncremented: boolean;
+  };
+  quota?: {
+    remaining?: number;
+    usedToday?: number;
+  };
+}
+
+export interface CreatePaymentResponse {
+  order: Order;
+  payUrl?: string;
+  qrCodeUrl?: string;
+  message?: string;
+}
+
+export interface RoleplaySuggestedAnswer {
+  japanese: string;
+  furigana?: string;
+  romaji?: string;
+  translation?: string;
+}
+
+export interface RoleplayMessage {
+  id: string;
+  sender: "ai" | "user";
+  japanese: string;
+  furigana?: string;
+  romaji?: string;
+  translation?: string;
+  timestamp?: string;
+  evaluation?: {
+    naturalnessScore?: number;
+    grammarAdvice?: string;
+    betterExpression?: string;
+    betterExpressionFurigana?: string;
+  };
+  suggestedAnswers?: (string | RoleplaySuggestedAnswer)[];
+}
+
+export interface RoleplayChatResponse {
+  aiReply: {
+    japanese: string;
+    furigana?: string;
+    romaji?: string;
+    translation?: string;
+  };
+  userEvaluation?: {
+    naturalnessScore?: number;
+    grammarAdvice?: string;
+    betterExpression?: string;
+    betterExpressionFurigana?: string;
+  };
+  suggestedAnswers?: (string | RoleplaySuggestedAnswer)[];
+}
+
+

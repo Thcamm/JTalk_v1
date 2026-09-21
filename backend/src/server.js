@@ -4,6 +4,9 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import fs from "fs";
 import config from "./config/index.js";
+import { connectDB } from "./config/db.js";
+import apiRouter from "./routes/index.js";
+import { errorHandler } from "./middleware/errorHandler.middleware.js";
 
 const app = express();
 const PORT = config.port;
