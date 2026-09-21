@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router";
 
 interface Props {
-  lessonId: number;
+  lessonId: string | number;
   onClose: () => void;
 }
 

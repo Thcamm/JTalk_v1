@@ -1,77 +1,97 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 
 import LessonCard from "@/components/speaking/LessonCard";
 import LessonIntroModal from "@/components/speaking/LessonIntroModal";
+import { lessonService } from "@/services/lesson.service";
+import type { Lesson } from "@/types";
 
-const lessons = [
+const fallbackLessons = [
   {
-    id: 1,
+    _id: "1",
     title: "Gặp gỡ và chào hỏi",
-    japanese: "あいさつ",
+    sampleSentence: "こんにちは",
+    translation: "Xin chào",
   },
   {
-    id: 2,
+    _id: "2",
     title: "Tự giới thiệu",
-    japanese: "自己紹介",
-  },
-  {
-    id: 3,
-    title: "Giới thiệu người khác",
-    japanese: "他人紹介",
-  },
-  {
-    id: 4,
-    title: "Tạm biệt",
-    japanese: "さようなら",
-  },
-  {
-    id: 5,
-    title: "Cái gì? Ở đâu?",
-    japanese: "何？どこ？",
-  },
-  {
-    id: 6,
-    title: "Khi nào? Ai?",
-    japanese: "いつ？だれ？",
+    sampleSentence: "はじめまして、わたしはマリアです。",
+    translation: "Rất vui được gặp bạn, tôi là Maria.",
   },
 ];
 
 export default function LessonListPage() {
-  const { topicId } = useParams();
+  const { topicId } = useParams<{ topicId?: string }>();
+  const [lessons, setLessons] = useState<Array<{ id: string; title: string; japanese: string }>>([]);
+  const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [selectedLesson, setSelectedLesson] =
-    useState<number | null>(null);
+  useEffect(() => {
+    const fetchLessons = async () => {
+      try {
+        setLoading(true);
+        const data: Lesson[] = await lessonService.getLessons(topicId);
+
+        if (data && data.length > 0) {
+          setLessons(
+            data.map((l) => ({
+              id: l._id,
+              title: l.title,
+              japanese: l.sampleSentence,
+            }))
+          );
+        } else {
+          setLessons(
+            fallbackLessons.map((l) => ({
+              id: l._id,
+              title: l.title,
+              japanese: l.sampleSentence,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải bài học:", err);
+        setLessons(
+          fallbackLessons.map((l) => ({
+            id: l._id,
+            title: l.title,
+            japanese: l.sampleSentence,
+          }))
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLessons();
+  }, [topicId]);
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold">
-        Daily Conversation
-      </h1>
+      <h1 className="text-3xl font-bold">Danh sách bài học (Daily Conversation)</h1>
 
-      <p className="text-muted-foreground mt-2">
-        Topic ID: {topicId}
-      </p>
+      <p className="text-muted-foreground mt-2">Topic ID: {topicId}</p>
 
-      <div className="mt-8 space-y-4">
-        {lessons.map((lesson) => (
-          <LessonCard
-            key={lesson.id}
-            title={lesson.title}
-            japanese={lesson.japanese}
-            onClick={() =>
-              setSelectedLesson(lesson.id)
-            }
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="py-12 text-center text-muted-foreground">Đang tải danh sách bài học...</div>
+      ) : (
+        <div className="mt-8 space-y-4">
+          {lessons.map((lesson) => (
+            <LessonCard
+              key={lesson.id}
+              title={lesson.title}
+              japanese={lesson.japanese}
+              onClick={() => setSelectedLesson(lesson.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {selectedLesson && (
         <LessonIntroModal
           lessonId={selectedLesson}
-          onClose={() =>
-            setSelectedLesson(null)
-          }
+          onClose={() => setSelectedLesson(null)}
         />
       )}
     </div>

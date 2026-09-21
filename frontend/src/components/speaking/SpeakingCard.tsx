@@ -5,7 +5,7 @@ import {
 import { useNavigate } from "react-router";
 
 interface SpeakingCardProps {
-  id: number;
+  id: string | number;
   title: string;
   description: string;
   image?: string;

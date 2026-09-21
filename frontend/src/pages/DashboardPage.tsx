@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Flame,
   Clock3,
@@ -20,10 +21,29 @@ import {
 } from "@/data/progress";
 
 import { useAuthStore } from "@/stores/useAuthStore";
+import { practiceService } from "@/services/practice.service";
+import type { Practice } from "@/types";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const [practices, setPractices] = useState<Practice[]>([]);
+  const [loadingPractices, setLoadingPractices] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const data = await practiceService.getPractices();
+        setPractices(data);
+      } catch (err) {
+        console.error("Lỗi khi tải lịch sử luyện tập:", err);
+      } finally {
+        setLoadingPractices(false);
+      }
+    };
+
+    fetchHistory();
+  }, []);
 
   const tasks = [
     {
@@ -154,6 +174,48 @@ const DashboardPage = () => {
 
       </div>
 
+      {/* Recent Practice History (Real Backend Data) */}
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold">Lịch sử bài luyện tập gần đây</h2>
+            <span className="text-sm text-muted-foreground">
+              {practices.length} bài đã tạo
+            </span>
+          </div>
+
+          {loadingPractices ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Đang tải lịch sử...</p>
+          ) : practices.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              Chưa có bài luyện tập nào. Bắt đầu ngay trong mục Speaking!
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {practices.slice(0, 5).map((item) => (
+                <div
+                  key={item._id}
+                  className="flex items-center justify-between p-4 rounded-xl border bg-card hover:bg-muted/50 transition"
+                >
+                  <div>
+                    <p className="font-semibold text-sm">{item.sampleSentence}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Bài học: {item.lessonId} • {new Date(item.createdAt).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs px-3 py-1 rounded-full font-medium bg-pink-100 text-pink-700 capitalize">
+                      {item.status === "pending" ? "Chờ đánh giá" : item.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Learning History */}
 
       <Card>
@@ -267,7 +329,7 @@ const DashboardPage = () => {
                       <Button
                         className="bg-pink-500 hover:bg-pink-600"
                         onClick={() =>
-                          navigate(`/speaking/${task.id}`)
+                          navigate(`/speaking/practice/${task.id}`)
                         }
                       >
                         Start
