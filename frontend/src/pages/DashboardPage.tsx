@@ -201,7 +201,7 @@ const DashboardPage = () => {
                   <div>
                     <p className="font-semibold text-sm">{item.sampleSentence}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Bài học: {item.lessonId} • {new Date(item.createdAt).toLocaleString("vi-VN")}
+                      Bài học: {typeof item.lessonId === "object" ? item.lessonId.title : item.lessonId} • {new Date(item.createdAt).toLocaleString("vi-VN")}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">

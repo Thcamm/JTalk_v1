@@ -38,7 +38,7 @@ export default function LessonListPage() {
             data.map((l) => ({
               id: l._id,
               title: l.title,
-              japanese: l.sampleSentence,
+              japanese: l.sampleSentence || (l.dialogues && l.dialogues[0]?.japanese) || "",
             }))
           );
         } else {
