@@ -357,21 +357,21 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
   const suggestedReplies = lastAiMessage?.suggestedAnswers || [];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] max-h-[820px] bg-white border border-slate-200/90 rounded-3xl shadow-xs overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-140px)] max-h-[820px] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xs overflow-hidden transition-colors">
       {/* 1. Header Toolbar */}
-      <div className="p-3.5 sm:p-4 bg-slate-50/80 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3.5 sm:p-4 bg-slate-50/80 dark:bg-slate-950/60 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 transition-colors">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 font-bold text-xs">
+          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-300 font-bold text-xs">
             AI
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-bold text-slate-900 line-clamp-1">{scenarioTitle}</h3>
-              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded text-2xs font-bold">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{scenarioTitle}</h3>
+              <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 rounded text-2xs font-bold border border-emerald-200/50 dark:border-emerald-800/60">
                 {level}
               </span>
             </div>
-            <p className="text-2xs text-slate-500">Đối đáp tự do theo ngữ cảnh thời gian thực</p>
+            <p className="text-2xs text-slate-500 dark:text-slate-400">Đối đáp tự do theo ngữ cảnh thời gian thực</p>
           </div>
         </div>
 
@@ -383,12 +383,12 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
             type="button"
             className={`p-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
               autoPlayAudio
-                ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60"
             }`}
             title={autoPlayAudio ? "Tự động phát âm thanh AI: BẬT" : "Tự động phát âm thanh AI: TẮT"}
           >
-            {autoPlayAudio ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
+            {autoPlayAudio ? <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-400 dark:text-slate-500" />}
             <span className="hidden sm:inline">{autoPlayAudio ? "Tự động đọc" : "Tắt đọc"}</span>
           </button>
 
@@ -398,8 +398,8 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
             type="button"
             className={`px-2.5 py-1 rounded-xl border text-2xs font-semibold transition-colors cursor-pointer ${
               showFurigana
-                ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60"
             }`}
           >
             Hiragana
@@ -409,8 +409,8 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
             type="button"
             className={`px-2.5 py-1 rounded-xl border text-2xs font-semibold transition-colors cursor-pointer ${
               showRomaji
-                ? "bg-slate-200 border-slate-300 text-slate-800"
-                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                ? "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60"
             }`}
           >
             Romaji
@@ -420,8 +420,8 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
             type="button"
             className={`px-2.5 py-1 rounded-xl border text-2xs font-semibold transition-colors cursor-pointer ${
               showTranslation
-                ? "bg-slate-200 border-slate-300 text-slate-800"
-                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                ? "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60"
             }`}
           >
             Bản dịch
@@ -431,7 +431,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
           <button
             onClick={initConversation}
             type="button"
-            className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
             title="Làm mới cuộc trò chuyện từ đầu"
           >
             <RotateCcw className="w-4 h-4" />
@@ -440,7 +440,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
       </div>
 
       {/* 2. Messages Chat Stream */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#FAFAFC]">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/50 dark:bg-[#0c121e]/80 transition-colors">
         {messages.map((msg) => {
           const isAi = msg.sender === "ai";
           const isPlaying = playingMessageId === msg.id;
@@ -451,7 +451,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
               key={msg.id}
               className={`flex flex-col ${isAi ? "items-start" : "items-end"} space-y-1.5 animate-in fade-in duration-200`}
             >
-              <div className="flex items-center gap-1.5 text-2xs font-bold text-slate-400 px-1">
+              <div className="flex items-center gap-1.5 text-2xs font-bold text-slate-400 dark:text-slate-500 px-1">
                 <span>{isAi ? "Gia sư AI" : "Bạn"}</span>
                 <span>•</span>
                 <span>{msg.timestamp}</span>
@@ -461,7 +461,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
               <div
                 className={`max-w-[85%] sm:max-w-[75%] rounded-3xl p-4 sm:p-5 shadow-2xs space-y-2 relative ${
                   isAi
-                    ? "bg-white border border-slate-200 text-slate-900 rounded-tl-sm"
+                    ? "bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 text-slate-900 dark:text-white rounded-tl-sm"
                     : "bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-tr-sm"
                 }`}
               >
@@ -472,8 +472,8 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                     type="button"
                     className={`absolute top-3.5 right-3.5 p-1.5 rounded-full transition-colors cursor-pointer ${
                       isPlaying
-                        ? "bg-emerald-100 text-emerald-700 animate-pulse"
-                        : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                        ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 animate-pulse"
+                        : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60"
                     }`}
                     title="Nghe lại phát âm"
                   >
@@ -490,7 +490,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                 {showFurigana && msg.furigana && (
                   <p
                     className={`text-xs sm:text-sm font-semibold tracking-wider font-sans ${
-                      isAi ? "text-emerald-700" : "text-emerald-100"
+                      isAi ? "text-emerald-700 dark:text-emerald-400" : "text-emerald-100"
                     }`}
                   >
                     {msg.furigana}
@@ -501,7 +501,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                 {showRomaji && msg.romaji && (
                   <p
                     className={`text-xs font-mono tracking-wide ${
-                      isAi ? "text-slate-400" : "text-emerald-200"
+                      isAi ? "text-slate-400 dark:text-slate-400" : "text-emerald-200"
                     }`}
                   >
                     {msg.romaji}
@@ -513,7 +513,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                   <p
                     className={`text-xs sm:text-sm font-medium pt-1 border-t ${
                       isAi
-                        ? "border-slate-100 text-slate-600"
+                        ? "border-slate-100 dark:border-slate-700/60 text-slate-600 dark:text-slate-300"
                         : "border-emerald-500/50 text-emerald-50"
                     }`}
                   >
@@ -528,34 +528,34 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                   <button
                     onClick={() => setExpandedFeedbackId(isFeedbackOpen ? null : msg.id)}
                     type="button"
-                    className="flex items-center justify-between w-full px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/90 rounded-xl text-2xs font-bold text-emerald-800 transition-colors cursor-pointer"
+                    className="flex items-center justify-between w-full px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60 border border-emerald-200/90 dark:border-emerald-800 rounded-xl text-2xs font-bold text-emerald-800 dark:text-emerald-300 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <span>Đánh giá phản xạ: {msg.evaluation.naturalnessScore ?? 85}/100</span>
                     </div>
                     {isFeedbackOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
 
                   {isFeedbackOpen && (
-                    <div className="p-3 bg-white border border-emerald-200 rounded-2xl mt-1.5 space-y-2 text-xs shadow-2xs animate-in fade-in duration-150">
+                    <div className="p-3 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl mt-1.5 space-y-2 text-xs shadow-2xs animate-in fade-in duration-150">
                       {msg.evaluation.grammarAdvice && (
                         <div>
-                          <span className="font-bold text-slate-700 block">💡 Nhận xét của AI:</span>
-                          <p className="text-slate-600 leading-relaxed">{msg.evaluation.grammarAdvice}</p>
+                          <span className="font-bold text-slate-700 dark:text-slate-200 block">💡 Nhận xét của AI:</span>
+                          <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{msg.evaluation.grammarAdvice}</p>
                         </div>
                       )}
 
                       {msg.evaluation.betterExpression && (
-                        <div className="pt-1.5 border-t border-slate-100">
-                          <span className="font-bold text-emerald-800 block">
-                            ✨ Cách nói tự nhiên hơn chuẩn bản xứ:
+                        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700">
+                          <span className="font-bold text-emerald-800 dark:text-emerald-300 block">
+                            Cách nói tự nhiên hơn chuẩn bản xứ:
                           </span>
-                          <p className="font-bold text-emerald-950 font-sans mt-0.5 text-sm">
+                          <p className="font-bold text-emerald-950 dark:text-emerald-100 font-sans mt-0.5 text-sm">
                             {msg.evaluation.betterExpression}
                           </p>
                           {showFurigana && msg.evaluation.betterExpressionFurigana && (
-                            <p className="text-2xs font-semibold text-emerald-700 font-sans tracking-wide mt-0.5">
+                            <p className="text-2xs font-semibold text-emerald-700 dark:text-emerald-400 font-sans tracking-wide mt-0.5">
                               {msg.evaluation.betterExpressionFurigana}
                             </p>
                           )}
@@ -572,16 +572,16 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
         {/* Loading Bubble when AI is thinking */}
         {isLoading && (
           <div className="flex items-start gap-2.5 animate-in fade-in duration-150">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 font-bold text-xs shrink-0">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-300 font-bold text-xs shrink-0">
               AI
             </div>
-            <div className="bg-white border border-slate-200 rounded-3xl rounded-tl-sm p-4 shadow-2xs space-y-1.5">
+            <div className="bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 rounded-3xl rounded-tl-sm p-4 shadow-2xs space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" />
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]" />
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]" />
               </div>
-              <p className="text-2xs font-semibold text-slate-400">Gia sư AI đang lắng nghe và suy nghĩ câu đối đáp...</p>
+              <p className="text-2xs font-semibold text-slate-400 dark:text-slate-500">Gia sư AI đang lắng nghe và suy nghĩ câu đối đáp...</p>
             </div>
           </div>
         )}
@@ -590,16 +590,16 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
       </div>
 
       {/* 3. Bottom Control & Interactive Recording Zone */}
-      <div className="p-4 sm:p-5 bg-white border-t border-slate-200/90 space-y-3">
+      <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 space-y-3 transition-colors">
         {/* Suggested Quick Replies (Gợi ý câu trả lời nhanh khi người học bị bí từ) */}
         {suggestedReplies.length > 0 && !isLoading && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-2xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+              <span className="text-2xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1">
                 <Lightbulb className="w-3 h-3 text-amber-500" />
                 Gợi ý câu đối đáp (kèm phiên âm Hiragana / Katakana):
               </span>
-              <span className="text-3xs text-slate-400">Bấm để nghe & chọn phản xạ</span>
+              <span className="text-3xs text-slate-400 dark:text-slate-500">Bấm để nghe & chọn phản xạ</span>
             </div>
             <div className="flex items-stretch gap-2 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin">
               {suggestedReplies.map((item, idx) => {
@@ -615,22 +615,22 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                       setInputVal(jap);
                       speakText(jap);
                     }}
-                    className="group relative flex flex-col justify-between px-3.5 py-2 bg-slate-50 hover:bg-emerald-50/90 border border-slate-200/90 hover:border-emerald-300 rounded-2xl transition-all cursor-pointer text-left shadow-2xs shrink-0 max-w-[280px]"
+                    className="group relative flex flex-col justify-between px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50/90 dark:hover:bg-emerald-950/60 border border-slate-200/90 dark:border-slate-700/80 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-2xl transition-all cursor-pointer text-left shadow-2xs shrink-0 max-w-[280px]"
                     title="Bấm để đưa câu này vào ô nhập và nghe giọng đọc mẫu"
                   >
                     <div className="flex items-center justify-between w-full gap-2 mb-0.5">
-                      <span className="font-bold text-xs sm:text-sm font-sans text-slate-900 group-hover:text-emerald-900">
+                      <span className="font-bold text-xs sm:text-sm font-sans text-slate-900 dark:text-white group-hover:text-emerald-900 dark:group-hover:text-emerald-200">
                         {jap}
                       </span>
-                      <Volume2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 shrink-0" />
+                      <Volume2 className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 shrink-0" />
                     </div>
                     {showFurigana && furi && furi !== jap && (
-                      <span className="text-2xs font-semibold text-emerald-700 font-sans tracking-wide">
+                      <span className="text-2xs font-semibold text-emerald-700 dark:text-emerald-400 font-sans tracking-wide">
                         {furi}
                       </span>
                     )}
                     {showTranslation && trans && (
-                      <span className="text-3xs font-medium text-slate-500 group-hover:text-emerald-800 mt-0.5 line-clamp-1">
+                      <span className="text-3xs font-medium text-slate-500 dark:text-slate-400 group-hover:text-emerald-800 dark:group-hover:text-emerald-200 mt-0.5 line-clamp-1">
                         {trans}
                       </span>
                     )}
@@ -643,20 +643,20 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
 
         {/* Live speech feedback when recording */}
         {isRecording && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between animate-pulse">
+          <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center justify-between animate-pulse">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
-              <span className="text-xs font-bold text-rose-800">
+              <span className="text-xs font-bold text-rose-800 dark:text-rose-300">
                 Đang lắng nghe giọng nói tiếng Nhật của bạn:
               </span>
-              <span className="text-xs font-bold text-rose-950 font-sans">
+              <span className="text-xs font-bold text-rose-950 dark:text-rose-100 font-sans">
                 {liveTranscript || "..."}
               </span>
             </div>
             <button
               onClick={stopRecording}
               type="button"
-              className="text-xs font-bold text-rose-700 hover:underline cursor-pointer"
+              className="text-xs font-bold text-rose-700 dark:text-rose-400 hover:underline cursor-pointer"
             >
               Xong
             </button>
@@ -696,7 +696,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                   ? "Đang nhận diện giọng nói của bạn..."
                   : "Bấm Micro để nói tiếng Nhật hoặc gõ câu trả lời..."
               }
-              className="w-full pl-4 pr-10 py-3 sm:py-3.5 bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:bg-white rounded-2xl text-sm sm:text-base font-sans font-medium text-slate-900 focus:outline-none transition-all"
+              className="w-full pl-4 pr-10 py-3 sm:py-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 focus:border-emerald-500 dark:focus:border-emerald-400 focus:bg-white dark:focus:bg-slate-800 rounded-2xl text-sm sm:text-base font-sans font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden transition-all"
             />
             {inputVal && (
               <button

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { v2 as cloudinary } from "cloudinary";
 import config from "../config/index.js";
 
 /**
@@ -21,7 +22,25 @@ export class StorageService {
     const randomHash = crypto.randomBytes(6).toString("hex");
     const filename = `practice_${userId}_${timestamp}_${randomHash}${ext}`;
 
-    // 1. AWS S3 Provider (if credentials configured)
+    // 1. Cloudinary Provider (Priority Free Cloud Storage)
+    const { cloudName, apiKey, apiSecret } = config.storage.cloudinary;
+    const isCloudinaryConfigured =
+      cloudName &&
+      apiKey &&
+      apiSecret &&
+      cloudName !== "your_cloudinary_cloud_name" &&
+      apiKey !== "your_cloudinary_api_key";
+
+    if (config.storage.provider === "cloudinary" || isCloudinaryConfigured) {
+      try {
+        const cloudUrl = await this.uploadToCloudinary(buffer, filename, mimeType);
+        if (cloudUrl) return cloudUrl;
+      } catch (err) {
+        console.error("Lỗi upload Cloudinary, tự động chuyển lưu tạm ổ đĩa cục bộ:", err.message);
+      }
+    }
+
+    // 2. AWS S3 Provider (if credentials configured)
     if (
       config.storage.provider === "s3" &&
       config.storage.s3.bucket &&
@@ -31,19 +50,6 @@ export class StorageService {
         return await this.uploadToS3(buffer, filename, mimeType);
       } catch (err) {
         console.error("Lỗi upload AWS S3, fallback về local:", err.message);
-      }
-    }
-
-    // 2. Cloudinary Provider (if configured)
-    if (
-      config.storage.provider === "cloudinary" &&
-      config.storage.cloudinary.cloudName &&
-      config.storage.cloudinary.apiKey
-    ) {
-      try {
-        return await this.uploadToCloudinary(buffer, filename);
-      } catch (err) {
-        console.error("Lỗi upload Cloudinary, fallback về local:", err.message);
       }
     }
 
@@ -122,35 +128,43 @@ export class StorageService {
   }
 
   /**
-   * Uploads to Cloudinary using direct REST API
+   * Uploads audio buffer to Cloudinary using official SDK upload_stream
+   * Audio files are stored under resource_type "video" on Cloudinary
    */
-  static async uploadToCloudinary(buffer, filename) {
+  static async uploadToCloudinary(buffer, filename, mimeType = "audio/mpeg") {
     const { cloudName, apiKey, apiSecret } = config.storage.cloudinary;
-    const timestamp = Math.floor(Date.now() / 1000);
-    const publicId = path.parse(filename).name;
-
-    const signatureString = `public_id=${publicId}&resource_type=video&timestamp=${timestamp}${apiSecret}`;
-    const signature = crypto.createHash("sha1").update(signatureString).digest("hex");
-
-    const formData = new FormData();
-    const blob = new Blob([buffer], { type: "audio/mpeg" });
-    formData.append("file", blob, filename);
-    formData.append("api_key", apiKey);
-    formData.append("timestamp", timestamp.toString());
-    formData.append("public_id", publicId);
-    formData.append("signature", signature);
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error?.message || "Cloudinary upload failed");
+    if (!cloudName || !apiKey || !apiSecret) {
+      throw new Error("Chưa cấu hình CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY hoặc CLOUDINARY_API_SECRET");
     }
 
-    return data.secure_url || data.url;
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    });
+
+    const publicId = path.parse(filename).name;
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: "video", // Cloudinary treats audio as resource_type: "video"
+          public_id: publicId,
+          folder: "jtalk_audio",
+          overwrite: true,
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary upload_stream error:", error);
+            return reject(error);
+          }
+          resolve(result?.secure_url || result?.url);
+        }
+      );
+
+      uploadStream.end(buffer);
+    });
   }
 }
 

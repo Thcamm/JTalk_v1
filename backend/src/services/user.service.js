@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import Subscription from "../models/Subscription.js";
 import StudyLog from "../models/StudyLog.js";
-import { getTodayDateString } from "../utils/dateUtils.js";
+import { getTodayDateString, getActiveStreak } from "../utils/dateUtils.js";
 import config from "../config/index.js";
 
 export class UserService {
@@ -44,6 +44,19 @@ export class UserService {
       expires_at: activeSub ? activeSub.endDate : null,
     };
 
+    // Verify if streak is still active or expired (missed yesterday)
+    let currentStreak = user.gamification?.streak || 0;
+    const lastActiveDate = user.gamification?.lastActiveDate;
+    const activeStreak = getActiveStreak(lastActiveDate, currentStreak);
+
+    if (currentStreak > 0 && activeStreak === 0) {
+      user.gamification.streak = 0;
+      await user.save();
+      currentStreak = 0;
+    } else {
+      currentStreak = activeStreak;
+    }
+
     const userObj = user.toObject();
 
     return {
@@ -53,8 +66,12 @@ export class UserService {
         practiceCount: usedToday,
         minutesSpent: todayLog ? todayLog.minutesSpent : (user.dailyUsage?.minutesSpent || 0),
       },
-      streak_count: user.gamification?.streak || 0,
-      streak: user.gamification?.streak || 0,
+      streak_count: currentStreak,
+      streak: currentStreak,
+      gamification: {
+        ...userObj.gamification,
+        streak: currentStreak,
+      },
       subscription: subscriptionInfo,
       quota: {
         isUnlimited: isPremium,
