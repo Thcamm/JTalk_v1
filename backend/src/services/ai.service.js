@@ -373,8 +373,8 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
    * Resilient heuristic fallback scoring algorithm (No external API needed)
    */
   static evaluateHeuristically({ transcript = "", expectedSentence = "" }) {
-    const cleanTrans = transcript.replace(/\s+/g, "").trim();
-    const cleanExpected = expectedSentence.replace(/\s+/g, "").trim();
+    const cleanTrans = transcript.replace(/[、。！？!?,.\s~…-]/g, "").trim().toLowerCase();
+    const cleanExpected = expectedSentence.replace(/[、。！？!?,.\s~…-]/g, "").trim().toLowerCase();
 
     if (!cleanTrans) {
       return {
@@ -396,42 +396,44 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
       };
     }
 
-    // Calculate basic string similarity
-    let matches = 0;
-    const minLen = Math.min(cleanTrans.length, cleanExpected.length);
-    for (let i = 0; i < minLen; i++) {
-      if (cleanTrans[i] === cleanExpected[i]) matches++;
-    }
+    // Segment expected sentence into words, filtering out pure punctuation marks
+    const rawTokens = expectedSentence.split(/([、。！？!?,.\s~…]+|(?<=[はがをにでともへからまで]))/).filter(Boolean);
+    const words = rawTokens
+      .map((w) => w.trim())
+      .filter((w) => w.length > 0 && !/^[、。！？!?,.\s~…-]+$/.test(w));
 
-    const similarity = cleanExpected.length > 0 ? Math.round((matches / cleanExpected.length) * 100) : 75;
-    const baseScore = Math.max(50, Math.min(98, similarity + 20));
+    const wordFeedback = words.map((w, index) => {
+      const cleanWord = w.replace(/[、。！？!?,.\s~…-]/g, "").toLowerCase();
+      const isMatched = cleanTrans.includes(cleanWord);
+      // If the overall transcript is reasonably complete, grant high confidence
+      const isCorrect = isMatched || cleanTrans.length >= cleanExpected.length * 0.7;
+
+      return {
+        word: w,
+        isCorrect,
+        accuracyScore: isCorrect ? 92 + (index % 6) : 48,
+        errorType: isCorrect ? "none" : "mispronunciation",
+        suggestion: isCorrect ? "" : `Chú ý phát âm rõ hơn âm '${w}'`,
+      };
+    });
+
+    const correctCount = wordFeedback.filter((w) => w.isCorrect).length;
+    const ratio = wordFeedback.length > 0 ? correctCount / wordFeedback.length : 0.85;
+    const baseScore = Math.min(98, Math.max(65, Math.round(ratio * 90 + 10)));
 
     const scores = {
       pronunciation: baseScore,
       accuracy: Math.min(100, baseScore + 2),
-      fluency: Math.max(60, baseScore - 5),
-      completeness: Math.min(100, baseScore + 5),
+      fluency: Math.max(60, baseScore - 4),
+      completeness: Math.min(100, baseScore + 3),
     };
 
     const overallScore = Math.round(
-      scores.pronunciation * 0.3 +
-        scores.accuracy * 0.3 +
-        scores.fluency * 0.2 +
-        scores.completeness * 0.2
+      scores.pronunciation * 0.35 +
+        scores.accuracy * 0.35 +
+        scores.fluency * 0.15 +
+        scores.completeness * 0.15
     );
-
-    // Segment into words
-    const words = cleanExpected.split(/([、。!? ]|(?<=[はがをにでと]))/).filter(Boolean);
-    const wordFeedback = words.map((w, index) => {
-      const isCorrect = cleanTrans.includes(w) || index % 4 !== 1;
-      return {
-        word: w,
-        isCorrect,
-        accuracyScore: isCorrect ? 90 + (index % 10) : 45,
-        errorType: isCorrect ? "none" : "mispronunciation",
-        suggestion: isCorrect ? "" : `Chú ý phát âm rõ âm '${w}'`,
-      };
-    });
 
     return {
       scores,
@@ -439,15 +441,344 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
       wordFeedback,
       feedback: {
         grammarSuggestions: [
-          similarity > 80
-            ? "Cấu trúc ngữ pháp đúng chuẩn và tự nhiên."
-            : "Chú ý sử dụng đúng trợ từ và đuôi câu lịch sự です/ます.",
+          overallScore >= 80
+            ? "Cấu trúc ngữ pháp và trợ từ dùng đúng chuẩn tự nhiên."
+            : "Chú ý phát âm rõ các trợ từ (は, が, を, に) và đuôi câu lịch sự です/ます.",
         ],
         generalAdvice:
-          similarity > 80
-            ? "Phản xạ rất tốt! Tiếp tục duy trì luyện tập hàng ngày để tăng độ trôi chảy."
-            : "Hãy nghe lại câu mẫu của Sensei và luyện lặp lại từng cụm từ ngắn.",
+          overallScore >= 80
+            ? "Phản xạ rất xuất sắc! Tốc độ và phát âm tương đối mượt mà."
+            : "Phát âm đã nhận diện được tương đối tốt. Hãy nghe lại câu mẫu và nói to, rõ ràng hơn để cải thiện điểm nhé!",
       },
+    };
+  }
+
+  /**
+   * 3. Freeform AI Interactive Roleplay Conversation
+   * Real-time conversational partner for Japanese learners
+   */
+  static async generateRoleplayTurn({
+    scenarioTitle = "Hội thoại giao tiếp",
+    level = "N5",
+    conversationHistory = [],
+    userMessage = "",
+  }) {
+    // 1. Try Claude (Anthropic)
+    if (config.ai.anthropicApiKey) {
+      try {
+        return await this.roleplayWithClaude({ scenarioTitle, level, conversationHistory, userMessage });
+      } catch (err) {
+        console.warn("Lỗi gọi Claude API cho Roleplay, thử OpenAI/Fallback:", err.message);
+      }
+    }
+
+    // 2. Try OpenAI
+    if (config.ai.openaiApiKey) {
+      try {
+        return await this.roleplayWithOpenAI({ scenarioTitle, level, conversationHistory, userMessage });
+      } catch (err) {
+        console.warn("Lỗi gọi OpenAI API cho Roleplay, dùng Heuristic Fallback:", err.message);
+      }
+    }
+
+    // 3. Fallback Heuristic Conversational Engine
+    return this.roleplayHeuristically({ scenarioTitle, level, conversationHistory, userMessage });
+  }
+
+  /**
+   * Roleplay turn with Claude API
+   */
+  static async roleplayWithClaude({ scenarioTitle, level, conversationHistory, userMessage }) {
+    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage });
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": config.ai.anthropicApiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: config.ai.anthropicModel || "claude-3-5-sonnet-20241022",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Claude Roleplay Error (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    const rawContent = data.content?.[0]?.text || "";
+    return this.parseRoleplayJson(rawContent, scenarioTitle, userMessage);
+  }
+
+  /**
+   * Roleplay turn with OpenAI API
+   */
+  static async roleplayWithOpenAI({ scenarioTitle, level, conversationHistory, userMessage }) {
+    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage });
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.ai.openaiApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: config.ai.openaiModel || "gpt-4o",
+        temperature: 0.7,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a friendly native Japanese tutor roleplaying in conversations with Vietnamese learners. Respond strictly in valid JSON.",
+          },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenAI Roleplay Error (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    const rawContent = data.choices?.[0]?.message?.content || "";
+    return this.parseRoleplayJson(rawContent, scenarioTitle, userMessage);
+  }
+
+  /**
+   * Prompt builder for Roleplay
+   */
+  static buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage }) {
+    const formattedHistory = conversationHistory
+      .slice(-6)
+      .map((msg) => `${msg.sender === "ai" ? "Character (AI)" : "Learner"}: "${msg.japanese}"`)
+      .join("\n");
+
+    return `
+Hãy đóng vai nhân vật bản ngữ tiếng Nhật trong tình huống giao tiếp: "${scenarioTitle}".
+Trình độ người học: JLPT ${level}.
+
+Nhiệm vụ:
+1. Tiếp nối câu chuyện một cách tự nhiên, đúng vai trò và ngữ cảnh. Câu trả lời của bạn nên ngắn gọn (1-2 câu tiếng Nhật), phù hợp trình độ ${level}.
+2. Đánh giá câu người học vừa nói:
+   - naturalnessScore: chấm điểm độ tự nhiên (0-100)
+   - grammarAdvice: nhận xét ngắn gọn bằng tiếng Việt (cách dùng trợ từ は/が/を/に, thể lịch sự です/ます)
+   - betterExpression: gợi ý mẫu câu nói tự nhiên chuẩn người bản xứ hơn (nếu có)
+   - betterExpressionFurigana: phiên âm Hiragana/Katakana cho toàn bộ chữ Hán trong betterExpression
+3. Gợi ý 2-3 câu trả lời ngắn mà người học có thể chọn để đối đáp tiếp (suggestedAnswers).
+   MỖI CÂU GỢI Ý PHẢI CÓ ĐỦ:
+   - japanese: câu tiếng Nhật (có chữ Hán Kanji nếu cần)
+   - furigana: phiên âm toàn bộ chữ Hán sang Hiragana/Katakana để người học dễ đọc
+   - romaji: phiên âm Latin
+   - translation: nghĩa tiếng Việt ngắn gọn
+
+Lịch sử trò chuyện gần nhất:
+${formattedHistory || "(Bắt đầu cuộc trò chuyện)"}
+
+Câu người học vừa nói: "${userMessage}"
+
+Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
+{
+  "aiReply": {
+    "japanese": "Câu tiếng Nhật nhân vật đáp lại",
+    "furigana": "Câu tiếng Nhật phiên âm toàn bộ Kanji sang Hiragana/Katakana",
+    "romaji": "Romaji phiên âm Latin",
+    "translation": "Bản dịch tiếng Việt tự nhiên"
+  },
+  "userEvaluation": {
+    "naturalnessScore": 88,
+    "grammarAdvice": "Nhận xét ngắn bằng tiếng Việt về câu nói của bạn",
+    "betterExpression": "Mẫu câu tự nhiên hơn",
+    "betterExpressionFurigana": "Phiên âm Hiragana/Katakana cho mẫu câu tự nhiên hơn"
+  },
+  "suggestedAnswers": [
+    {
+      "japanese": "店内でお願いします。",
+      "furigana": "てんないでおねがいします。",
+      "romaji": "Tennai de onegaishimasu.",
+      "translation": "Cho tôi dùng tại quán ạ."
+    },
+    {
+      "japanese": "持ち帰りでお願いします。",
+      "furigana": "もちかえりでおねがいします。",
+      "romaji": "Mochikaeri de onegaishimasu.",
+      "translation": "Cho tôi mang về ạ."
+    }
+  ]
+}
+`;
+  }
+
+  /**
+   * Safely parse Roleplay JSON and normalize suggestedAnswers
+   */
+  static parseRoleplayJson(rawText, scenarioTitle, userMessage) {
+    try {
+      const cleaned = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      if (parsed && parsed.suggestedAnswers && Array.isArray(parsed.suggestedAnswers)) {
+        parsed.suggestedAnswers = parsed.suggestedAnswers.map((item) => {
+          if (typeof item === "string") {
+            return {
+              japanese: item,
+              furigana: item,
+              romaji: "",
+              translation: "",
+            };
+          }
+          return {
+            japanese: item.japanese || "",
+            furigana: item.furigana || item.japanese || "",
+            romaji: item.romaji || "",
+            translation: item.translation || "",
+          };
+        });
+      }
+
+      return parsed;
+    } catch {
+      return this.roleplayHeuristically({ scenarioTitle, userMessage });
+    }
+  }
+
+  /**
+   * Dynamic Heuristic Roleplay Fallback (Zero external cost / offline resilient)
+   */
+  static roleplayHeuristically({ scenarioTitle = "", userMessage = "" }) {
+    const cleanMsg = (userMessage || "").toLowerCase();
+
+    // Cafe scenario
+    if (scenarioTitle.includes("カフェ") || scenarioTitle.includes("Cafe") || cleanMsg.includes("コーヒー") || cleanMsg.includes("ラテ")) {
+      return {
+        aiReply: {
+          japanese: "かしこまりました！お持ち帰りですか、それとも店内でお召し上がりになりますか？",
+          furigana: "かしこまりました！おもちかえりですか、それともてんないでおめしあがりになりますか？",
+          romaji: "Kashikomarimashita! Omochikaeri desu ka, soretomo tennai de omeshiagari ni narimasu ka?",
+          translation: "Dạ vâng được chứ ạ! Quý khách muốn mang đi hay dùng tại quán ạ?",
+        },
+        userEvaluation: {
+          naturalnessScore: 88,
+          grammarAdvice: "Bạn đã gọi món rất rõ ràng và chuẩn xác. Có thể thêm お願いします ở cuối câu để tăng tính lịch sự.",
+          betterExpression: `${userMessage}をお願いします。`,
+          betterExpressionFurigana: `${userMessage}をおねがいします。`,
+        },
+        suggestedAnswers: [
+          {
+            japanese: "店内でお願いします。",
+            furigana: "てんないでおねがいします。",
+            romaji: "Tennai de onegaishimasu.",
+            translation: "Dùng tại quán ạ.",
+          },
+          {
+            japanese: "持ち帰りでお願いします。",
+            furigana: "もちかえりでおねがいします。",
+            romaji: "Mochikaeri de onegaishimasu.",
+            translation: "Mang đi ạ.",
+          },
+        ],
+      };
+    }
+
+    // Introducing oneself / New class
+    if (scenarioTitle.includes("自己紹介") || cleanMsg.includes("はじめまして") || cleanMsg.includes("申します") || cleanMsg.includes("名前")) {
+      return {
+        aiReply: {
+          japanese: "初めまして！お会いできて嬉しいです。日本に来てどのくらいになりますか？",
+          furigana: "はじめまして！おあいできてうれしいです。にほんにきてどのくらいになりますか？",
+          romaji: "Hajimemashite! Oai dekite ureshii desu. Nihon ni kite dono kurai ni narimasu ka?",
+          translation: "Rất vui được gặp bạn! Bạn đã sang Nhật được bao lâu rồi?",
+        },
+        userEvaluation: {
+          naturalnessScore: 92,
+          grammarAdvice: "Lời chào hỏi rất tự nhiên và đúng lễ nghi giao tiếp của người Nhật.",
+          betterExpression: "初めまして、どうぞよろしくお願いします。",
+          betterExpressionFurigana: "はじめまして、どうぞよろしくおねがいします。",
+        },
+        suggestedAnswers: [
+          {
+            japanese: "まだ半年くらいです。",
+            furigana: "まだはんとし・はんねんくらいです。",
+            romaji: "Mada hantoshi kurai desu.",
+            translation: "Mới khoảng nửa năm thôi ạ.",
+          },
+          {
+            japanese: "先月日本に来たばかりです。",
+            furigana: "せんげつにほんにきたばかりです。",
+            romaji: "Sengetsu Nihon ni kita bakari desu.",
+            translation: "Tôi vừa sang Nhật hồi tháng trước ạ.",
+          },
+        ],
+      };
+    }
+
+    // Station / Asking directions
+    if (scenarioTitle.includes("駅") || scenarioTitle.includes("道") || cleanMsg.includes("駅") || cleanMsg.includes("電車")) {
+      return {
+        aiReply: {
+          japanese: "新宿駅ですね！ここから山手線で約15分で行けますよ。切符はお持ちですか？",
+          furigana: "しんじゅくえきですね！ここからやまのてせんでやくじゅうごふんでいけますよ。きっぷはおもちですか？",
+          romaji: "Shinjuku-eki desu ne! Koko kara Yamanote-sen de yaku juugofun de ikemasu yo. Kippu wa omochi desu ka?",
+          translation: "Ga Shinjuku đúng không bạn! Từ đây đi tuyến Yamanote khoảng 15 phút là tới. Bạn đã có vé chưa?",
+        },
+        userEvaluation: {
+          naturalnessScore: 86,
+          grammarAdvice: "Dùng すみません để bắt đầu câu hỏi đường rất lịch sự và tự nhiên.",
+          betterExpression: "すみません、新宿駅へはどう行けばいいですか？",
+          betterExpressionFurigana: "すみません、しんじゅくえきへはどういけばいいですか？",
+        },
+        suggestedAnswers: [
+          {
+            japanese: "はい、Suicaを持っています。",
+            furigana: "はい、スイカをもっています。",
+            romaji: "Hai, Suica o motte imasu.",
+            translation: "Vâng, tôi có thẻ Suica rồi.",
+          },
+          {
+            japanese: "切符売り場はどこですか？",
+            furigana: "きっぷうりばはどこですか？",
+            romaji: "Kippu uriba wa doko desu ka?",
+            translation: "Quầy bán vé ở đâu vậy ạ?",
+          },
+        ],
+      };
+    }
+
+    // General conversational fallback
+    return {
+      aiReply: {
+        japanese: "なるほど、よく分かりました！それについてもっと詳しく教えていただけますか？",
+        furigana: "なるほど、よくわかりました！それについてもっとくわしくおしえていただけますか？",
+        romaji: "Naruhodo, yoku wakarimashita! Sore ni tsuite motto kuwashiku oshiete itadakemasu ka?",
+        translation: "Thì ra là vậy, tôi hiểu rồi! Bạn có thể chia sẻ thêm một chút về điều đó không?",
+      },
+      userEvaluation: {
+        naturalnessScore: 85,
+        grammarAdvice: "Câu trả lời đúng ngữ cảnh và phát âm tương đối dễ hiểu. Hãy tự tin tiếp tục trò chuyện nhé!",
+        betterExpression: userMessage ? `${userMessage}と思います。` : "はい、そうです。",
+        betterExpressionFurigana: userMessage ? `${userMessage}とおもいます。` : "はい、そうです。",
+      },
+      suggestedAnswers: [
+        {
+          japanese: "はい、喜んでお話しします。",
+          furigana: "はい、よろこんでおはなしします。",
+          romaji: "Hai, yorokonde ohanashi shimasu.",
+          translation: "Vâng, tôi rất sẵn lòng.",
+        },
+        {
+          japanese: "例えば、休みの日はよく日本語を勉強しています。",
+          furigana: "たとえば、やすみのひはよくにほんごをべんきょうしています。",
+          romaji: "Tatoeba, yasumi no hi wa yoku nihongo o benkyou shite imasu.",
+          translation: "Ví dụ như ngày nghỉ tôi thường chăm chỉ học tiếng Nhật.",
+        },
+      ],
     };
   }
 }

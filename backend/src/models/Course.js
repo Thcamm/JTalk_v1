@@ -19,8 +19,15 @@ const courseSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["kaiwa", "grammar", "business", "interview", "daily"],
       default: "kaiwa",
+    },
+    channelName: {
+      type: String,
+      trim: true,
+    },
+    totalLessons: {
+      type: Number,
+      default: 0,
     },
     thumbnail: {
       type: String,

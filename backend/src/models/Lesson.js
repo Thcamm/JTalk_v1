@@ -77,6 +77,29 @@ const vocabularySchema = new mongoose.Schema(
   { _id: false }
 );
 
+const subtitleWordSchema = new mongoose.Schema(
+  {
+    kanji: { type: String, required: true },
+    furigana: { type: String },
+    romaji: { type: String },
+    meaning: { type: String },
+  },
+  { _id: false }
+);
+
+const subtitleSchema = new mongoose.Schema(
+  {
+    startTime: { type: Number, required: true }, // Giây bắt đầu
+    endTime: { type: Number, required: true },   // Giây kết thúc
+    japanese: { type: String, required: true, trim: true },
+    furigana: { type: String, trim: true },
+    romaji: { type: String, trim: true },
+    translation: { type: String, required: true, trim: true },
+    words: [subtitleWordSchema],
+  },
+  { _id: false }
+);
+
 const lessonSchema = new mongoose.Schema(
   {
     topicId: {
@@ -111,6 +134,20 @@ const lessonSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    // Video YouTube & Khóa học Shadowing
+    youtubeId: {
+      type: String,
+      trim: true,
+    },
+    videoUrl: {
+      type: String,
+      trim: true,
+    },
+    channelName: {
+      type: String,
+      trim: true,
+    },
+    subtitles: [subtitleSchema],
     duration: {
       type: String,
       default: "10 phút",

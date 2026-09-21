@@ -20,15 +20,17 @@ export class PracticeService {
     sampleSentence: clientSentence,
     transcript: clientTranscript,
   }) {
-    let targetSentence = clientSentence || "";
+    let targetSentence = clientSentence ? clientSentence.trim() : "";
     let vocabularyList = [];
     let level = "N5";
 
-    // If lessonId provided, load lesson to get accurate target sentence & vocab
+    // If targetSentence was not provided from client, fallback to lesson data
     if (lessonId && mongoose.Types.ObjectId.isValid(lessonId)) {
       const lesson = await Lesson.findById(lessonId);
       if (lesson) {
-        targetSentence = targetSentence || lesson.sampleSentence || (lesson.dialogues?.[0]?.japanese) || "";
+        if (!targetSentence) {
+          targetSentence = lesson.sampleSentence || (lesson.dialogues?.[0]?.japanese) || "";
+        }
         vocabularyList = lesson.vocabularyList || [];
         level = lesson.level || "N5";
       }
@@ -41,14 +43,14 @@ export class PracticeService {
     }
 
     // Step B: Speech-to-Text
-    // Ưu tiên 1: Dùng trực tiếp transcript từ Web Speech API trên trình duyệt (Tiết kiệm 100% chi phí STT)
-    // Ưu tiên 2: Gọi STT Cloud (Google Cloud / OpenAI Whisper / Azure) nếu có file audio
+    // Ưu tiên 1: Dùng trực tiếp transcript từ Web Speech API trên trình duyệt (Chính xác theo thời gian thực)
+    // Ưu tiên 2: Gọi STT Cloud nếu có file audio mà chưa có transcript
     let transcript = clientTranscript ? clientTranscript.trim() : "";
     if (!transcript && fileBuffer) {
       transcript = await AiService.speechToText(fileBuffer, mimeType, targetSentence);
     }
     if (!transcript) {
-      transcript = targetSentence || "こんにちは";
+      transcript = targetSentence || "";
     }
 
     // Step C: LLM Multi-Criteria Assessment (OpenAI / Claude)
@@ -85,17 +87,23 @@ export class PracticeService {
     durationSeconds = 15,
     audioUrl = "",
   }) {
-    if (!lessonId || !mongoose.Types.ObjectId.isValid(lessonId)) {
-      const error = new Error("lessonId không hợp lệ hoặc bị thiếu.");
-      error.statusCode = 400;
-      throw error;
+    let targetLessonId = lessonId;
+    let lesson = null;
+
+    if (lessonId && mongoose.Types.ObjectId.isValid(lessonId)) {
+      lesson = await Lesson.findById(lessonId);
     }
 
-    const lesson = await Lesson.findById(lessonId);
     if (!lesson) {
-      const error = new Error("Không tìm thấy bài học tương ứng.");
-      error.statusCode = 404;
-      throw error;
+      // Tìm bài học dự phòng trong DB nếu lessonId dạng sc-1 hoặc không phải ObjectId
+      lesson = await Lesson.findOne();
+      if (lesson) {
+        targetLessonId = lesson._id;
+      } else {
+        const error = new Error("Không tìm thấy bài học tương ứng.");
+        error.statusCode = 404;
+        throw error;
+      }
     }
 
     const calculatedOverall =
@@ -113,7 +121,7 @@ export class PracticeService {
     // 1. Lưu kết quả vào collection practices
     const practice = await Practice.create({
       userId,
-      lessonId,
+      lessonId: targetLessonId,
       sampleSentence: sampleSentence || lesson.sampleSentence || "",
       durationSeconds,
       audioUrl,
@@ -144,9 +152,11 @@ export class PracticeService {
       lessonsCompleted: 1,
     });
 
-    // 3. Tính toán và cộng dồn Streak trong collection users
+    // 3. Tính toán và cộng dồn Streak & DailyUsage trong collection users
+    const todayStr = getTodayDateString();
     const user = await User.findById(userId);
     let streakResult = { newStreak: 1, newLongestStreak: 1, isStreakIncremented: false };
+    let userUsedToday = 1;
 
     if (user) {
       const currentStreak = user.gamification?.streak || 0;
@@ -155,12 +165,22 @@ export class PracticeService {
 
       streakResult = calculateNewStreak(lastActive, currentStreak, currentLongest);
 
+      const currentDailyPractices =
+        user.dailyUsage?.date === todayStr ? user.dailyUsage.practiceCount || 0 : 0;
+      userUsedToday = currentDailyPractices + 1;
+
       user.gamification = {
         ...user.gamification,
         streak: streakResult.newStreak,
         longestStreak: streakResult.newLongestStreak,
         lastActiveDate: new Date(),
         totalXp: (user.gamification?.totalXp || 0) + xpEarned,
+      };
+
+      user.dailyUsage = {
+        date: todayStr,
+        practiceCount: userUsedToday,
+        minutesSpent: (user.dailyUsage?.minutesSpent || 0) + minutesSpent,
       };
 
       await user.save();
@@ -171,6 +191,11 @@ export class PracticeService {
       "title sampleSentence translation level duration"
     );
 
+    const todayLog = await StudyLog.findOne({ userId, date: todayStr });
+    const finalUsedToday = todayLog ? todayLog.practiceCount : userUsedToday;
+    const limit = 2;
+    const remaining = Math.max(0, limit - finalUsedToday);
+
     return {
       practice: populatedPractice,
       gamification: {
@@ -178,6 +203,11 @@ export class PracticeService {
         longestStreak: streakResult.newLongestStreak,
         xpEarned,
         isStreakIncremented: streakResult.isStreakIncremented,
+      },
+      quota: {
+        usedToday: finalUsedToday,
+        remaining,
+        limit,
       },
     };
   }
@@ -229,6 +259,44 @@ export class PracticeService {
     }
 
     return practice;
+  }
+
+  /**
+   * 5. Handle Freeform AI Roleplay Chat Turn
+   */
+  static async handleRoleplayChat({
+    userId,
+    lessonId,
+    scenarioTitle,
+    level = "N5",
+    conversationHistory = [],
+    userMessage,
+  }) {
+    if (!userMessage || !userMessage.trim()) {
+      const error = new Error("Vui lòng cung cấp nội dung bạn vừa nói (userMessage).");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    let finalTitle = scenarioTitle || "Luyện nói tự do với AI";
+    let finalLevel = level;
+
+    if (lessonId && mongoose.Types.ObjectId.isValid(lessonId)) {
+      const lesson = await Lesson.findById(lessonId);
+      if (lesson) {
+        finalTitle = lesson.title || finalTitle;
+        finalLevel = lesson.level || finalLevel;
+      }
+    }
+
+    const aiResult = await AiService.generateRoleplayTurn({
+      scenarioTitle: finalTitle,
+      level: finalLevel,
+      conversationHistory,
+      userMessage: userMessage.trim(),
+    });
+
+    return aiResult;
   }
 }
 

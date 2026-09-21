@@ -116,6 +116,7 @@ export const savePractice = async (req, res, next) => {
       data: savedResult,
       practice: savedResult.practice, // Compatibility for frontend
       gamification: savedResult.gamification,
+      quota: savedResult.quota,
     });
   } catch (error) {
     next(error);
@@ -267,3 +268,28 @@ export const deletePractice = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/v1/practices/roleplay-chat
+ * Real-time freeform conversation turn with AI
+ */
+export const aiRoleplayChat = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { lessonId, scenarioTitle, level, conversationHistory, userMessage } = req.body;
+
+    const result = await PracticeService.handleRoleplayChat({
+      userId,
+      lessonId,
+      scenarioTitle,
+      level,
+      conversationHistory,
+      userMessage,
+    });
+
+    return successResponse(res, result, "Nhận phản hồi từ gia sư AI thành công!");
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -48,6 +48,11 @@ export class UserService {
 
     return {
       ...userObj,
+      dailyUsage: {
+        date: todayStr,
+        practiceCount: usedToday,
+        minutesSpent: todayLog ? todayLog.minutesSpent : (user.dailyUsage?.minutesSpent || 0),
+      },
       streak_count: user.gamification?.streak || 0,
       streak: user.gamification?.streak || 0,
       subscription: subscriptionInfo,

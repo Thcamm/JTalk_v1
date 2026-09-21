@@ -1,154 +1,106 @@
-import {
-  Bell,
-  Search,
-  Flame,
-} from "lucide-react";
-import { useAuthStore } from "@/stores/useAuthStore";
+import { useState } from "react";
+import { Link } from "react-router";
+import { Search, Flame, Sparkles, Mic, Gift } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import Logout from "../auth/Logout";
+import { PremiumModal } from "@/components/common/PremiumModal";
+import { Badge } from "@/components/common/Badge";
 
 export default function Navbar() {
-  const { user } = useAuthStore();
+  const { user, isPremium, streak, remainingFreePractices } = useAuth();
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   return (
-    <header
-      className="sticky top-0 z-50 h-20 px-8 flex items-center justify-between bg-card border-b border-border shadow-soft"
-    >
-      {/* SEARCH */}
-
-      <div className="relative w-[420px]">
-        <Search
-          size={18}
-          className="
-            absolute
-            left-4
-            top-1/2
-            -translate-y-1/2
-            text-muted-foreground
-          "
-        />
-
-        <input
-          placeholder="Tìm kiếm bài học..."
-          className="
-            h-12
-            w-full
-            rounded-2xl
-            bg-muted/50
-            pl-11
-            pr-4
-            outline-none
-            border
-            border-border/20
-            transition-all
-            focus:border-primary/40
-            focus:ring-4
-            focus:ring-primary/10
-          "
-        />
-      </div>
-
-      {/* RIGHT */}
-
-      <div className="flex items-center gap-4">
-        {/* STREAK */}
-
-        <div
-          className="
-            flex
-            items-center
-            gap-2
-            rounded-2xl
-            bg-orange-50
-            px-4
-            py-2
-          "
-        >
-          <Flame
-            size={18}
-            className="text-orange-500"
+    <>
+      <header className="sticky top-0 z-30 h-18 px-4 sm:px-8 flex items-center justify-between bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs font-sans">
+        {/* Search input - Rounded full pill */}
+        <div className="relative w-full max-w-md hidden sm:block">
+          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            placeholder="Nhập từ khóa để tìm kiếm bài học, chủ đề..."
+            className="h-10 w-full rounded-full bg-slate-100/80 pl-10 pr-4 text-xs font-medium outline-hidden border border-transparent transition-all focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
           />
-
-          <span className="font-medium">
-            12 ngày
-          </span>
         </div>
 
-        {/* NOTIFICATION */}
-
-        <button
-          className="
-            relative
-            h-11
-            w-11
-            rounded-xl
-            bg-muted/50
-            flex
-            items-center
-            justify-center
-            hover:bg-muted
-          "
-        >
-          <Bell size={20} />
-
-          <span
-            className="
-              absolute
-              top-2
-              right-2
-              h-2.5
-              w-2.5
-              rounded-full
-              bg-red-500
-            "
-          />
-        </button>
-
-        {/* USER */}
-
-        <div
-          className="
-            flex
-            items-center
-            gap-3
-            rounded-2xl
-            px-2
-            py-1
-          "
-        >
-          <div
-            className="
-              h-11
-              w-11
-              rounded-full
-              bg-gradient-primary
-              p-[2px]
-            "
+        {/* Right Section */}
+        <div className="flex items-center gap-3 ml-auto">
+          {/* Quick Action: Start AI Speaking */}
+          <Link
+            to="/speaking"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-bold shadow-2xs transition-all cursor-pointer"
           >
-            <img
-              src="https://i.pravatar.cc/100"
-              alt=""
-              className="
-                h-full
-                w-full
-                rounded-full
-                object-cover
-              "
-            />
+            <Mic size={14} />
+            <span>Luyện phản xạ ngay</span>
+          </Link>
+
+          {/* Daily Streak */}
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs font-bold text-amber-800 shrink-0"
+            title={`Chuỗi ${streak} ngày học liên tiếp`}
+          >
+            <Flame size={15} className="text-amber-500 fill-amber-500 animate-pulse" />
+            <span>{streak} ngày</span>
           </div>
 
-          <div className="text-left">
-            <p className="text-sm font-semibold">
-              {user?.displayName || user?.username || "Người dùng"}
-            </p>
+          {/* Quota / Premium Badge */}
+          {isPremium ? (
+            <Badge variant="premium" size="sm" icon={<Sparkles className="w-3 h-3" />}>
+              Premium Vô Hạn
+            </Badge>
+          ) : (
+            <button
+              onClick={() => setShowPremiumModal(true)}
+              type="button"
+              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer border ${
+                remainingFreePractices > 0
+                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"
+                  : "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300 font-bold"
+              }`}
+            >
+              <Gift
+                size={13}
+                className={remainingFreePractices > 0 ? "text-emerald-600" : "text-rose-600"}
+              />
+              <span>
+                {remainingFreePractices > 0
+                  ? `Còn ${remainingFreePractices}/2 lượt`
+                  : "Hết lượt (0/2)"}
+              </span>
+              <span
+                className={`${
+                  remainingFreePractices > 0 ? "text-emerald-600" : "text-rose-600"
+                } font-bold underline ml-0.5`}
+              >
+                Nâng cấp
+              </span>
+            </button>
+          )}
 
-            <p className="text-xs text-muted-foreground">
-              {user?.email || "Learner"}
-            </p>
+          {/* Language selector pill */}
+          <div className="hidden lg:flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs font-bold text-slate-700">
+            <span>🇻🇳</span>
+            <span>VI</span>
           </div>
+
+          {/* User Profile Avatar */}
+          <Link
+            to="/profile"
+            className="flex items-center gap-2 rounded-full p-1 hover:bg-slate-100 transition-colors"
+          >
+            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 text-white font-bold text-sm flex items-center justify-center shadow-xs">
+              {user?.displayName ? user.displayName.charAt(0).toUpperCase() : "T"}
+            </div>
+          </Link>
 
           <Logout />
         </div>
-      </div>
-    </header>
+      </header>
+
+      <PremiumModal
+        isOpen={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        reason="quota_exceeded"
+      />
+    </>
   );
 }
