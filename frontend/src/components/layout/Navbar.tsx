@@ -76,12 +76,6 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* Language selector pill */}
-          <div className="hidden lg:flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 rounded-full text-xs font-bold text-slate-700">
-            <span>🇻🇳</span>
-            <span>VI</span>
-          </div>
-
           {/* User Profile Avatar */}
           <Link
             to="/profile"

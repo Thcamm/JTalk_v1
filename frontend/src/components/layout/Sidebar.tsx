@@ -101,37 +101,6 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* Languages selector (Only shown when expanded) */}
-        {!isCollapsed && (
-          <div className="px-4 py-2.5 border-b border-slate-100">
-            <div className="text-3xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Ngôn ngữ luyện tập
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-400 text-emerald-800 text-xs font-bold shadow-2xs cursor-pointer"
-              >
-                <span>🇯🇵</span>
-                <span>JA</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-medium transition-colors cursor-pointer"
-              >
-                <span>🇻🇳</span>
-                <span>VI</span>
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-medium transition-colors cursor-pointer"
-              >
-                <span>🇺🇸</span>
-                <span>EN</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Navigation Menu */}
         <nav className="p-3 space-y-1">
