@@ -2,8 +2,9 @@ import {
   Home,
   Mic,
   GraduationCap,
-  Settings,
-  ChartNoAxesColumn
+  ChartNoAxesColumn,
+  User,
+  Sparkles,
 } from "lucide-react";
 
 export const sidebarItems = [
@@ -13,23 +14,29 @@ export const sidebarItems = [
     to: "/",
   },
   {
-    icon: Mic,
-    text: "Luyện nói",
-    to: "/speaking",
-  },
-  {
     icon: GraduationCap,
     text: "Khóa học",
     to: "/courses",
   },
   {
-    icon: Settings,
-    text: "Cài đặt",
-    to: "/settings",
+    icon: Mic,
+    text: "Luyện nói AI",
+    to: "/speaking",
   },
   {
-  icon: ChartNoAxesColumn,
-  text: "Tiến trình",
-  to: "/progress",
-},
+    icon: ChartNoAxesColumn,
+    text: "Tiến trình & Thống kê",
+    to: "/progress",
+  },
+  {
+    icon: User,
+    text: "Trang cá nhân",
+    to: "/profile",
+  },
+  {
+    icon: Sparkles,
+    text: "Gói Premium 99k",
+    to: "/checkout",
+    highlight: true,
+  },
 ];

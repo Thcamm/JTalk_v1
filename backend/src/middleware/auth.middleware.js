@@ -1,39 +1,71 @@
-// @ts-nocheck
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import config from "../config/index.js";
+import { errorResponse } from "../utils/apiResponse.js";
 
-// authorization - xác minh user là ai
-export const protectedRoute = (req, res, next) => {
+/**
+ * Middleware strictly requiring a valid JWT Access Token
+ */
+export const protectedRoute = async (req, res, next) => {
   try {
-    // lấy token từ header
-    const authHeader = req.headers["authorization"];
+    const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(" ")[1]; // Bearer <token>
 
     if (!token) {
-      return res.status(401).json({ message: "Không tìm thấy access token" });
+      return errorResponse(res, "Không tìm thấy Access Token. Vui lòng đăng nhập.", 401);
     }
 
-    // xác nhận token hợp lệ
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, decodedUser) => {
+    jwt.verify(token, config.jwt.accessTokenSecret, async (err, decoded) => {
       if (err) {
-        return res
-          .status(401)
-          .json({ message: "Access token hết hạn hoặc không đúng" });
+        if (err.name === "TokenExpiredError") {
+          return errorResponse(res, "Access Token đã hết hạn. Vui lòng làm mới token.", 401, {
+            code: "TOKEN_EXPIRED",
+          });
+        }
+        return errorResponse(res, "Access Token không hợp lệ.", 401, {
+          code: "INVALID_TOKEN",
+        });
       }
 
-      // tìm user
-      const user = await User.findById(decodedUser.userId).select("-hashedPassword");
+      const user = await User.findById(decoded.userId).select("-hashedPassword");
 
       if (!user) {
-        return res.status(404).json({ message: "người dùng không tồn tại." });
+        return errorResponse(res, "Tài khoản người dùng không tồn tại.", 404);
       }
 
-      // trả user về trong req
       req.user = user;
       next();
     });
   } catch (error) {
-    console.error("Lỗi khi xác minh JWT trong authMiddleware", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Lỗi trong auth.middleware:", error);
+    return errorResponse(res, "Lỗi xác thực người dùng", 500);
+  }
+};
+
+/**
+ * Optional authentication: decodes user if token is present, but allows guest access if absent
+ */
+export const optionalAuth = async (req, _res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+
+    jwt.verify(token, config.jwt.accessTokenSecret, async (err, decoded) => {
+      if (!err && decoded?.userId) {
+        const user = await User.findById(decoded.userId).select("-hashedPassword");
+        req.user = user || null;
+      } else {
+        req.user = null;
+      }
+      next();
+    });
+  } catch {
+    req.user = null;
+    next();
   }
 };

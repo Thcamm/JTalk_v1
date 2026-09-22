@@ -1,59 +1,50 @@
-// @ts-nocheck
-import mongoose from "mongoose";
+import CurriculumService from "../services/curriculum.service.js";
 import Lesson from "../models/Lesson.js";
+import { successResponse, errorResponse } from "../utils/apiResponse.js";
+import mongoose from "mongoose";
 
-// GET /api/lessons
-export const getLessons = async (req, res) => {
+/**
+ * GET /api/v1/lessons (or /api/lessons)
+ */
+export const getLessons = async (req, res, next) => {
   try {
     const { topicId, level } = req.query;
-    const filter = { isPublished: true };
+    const lessons = await CurriculumService.getAllLessons({ topicId, level });
 
-    if (topicId) {
-      if (!mongoose.Types.ObjectId.isValid(topicId)) {
-        return res.status(400).json({ message: "topicId không hợp lệ" });
-      }
-      filter.topicId = topicId;
-    }
-
-    if (level && level !== "Tất cả") {
-      filter.level = level;
-    }
-
-    const lessons = await Lesson.find(filter)
-      .populate("topicId", "name level")
-      .sort({ createdAt: -1 });
-
-    return res.status(200).json({ lessons });
+    return res.status(200).json({
+      success: true,
+      data: lessons,
+      lessons, // Direct access for frontend
+    });
   } catch (error) {
-    console.error("Lỗi khi gọi getLessons:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
 
-// GET /api/lessons/:id
-export const getLessonById = async (req, res) => {
+/**
+ * GET /api/v1/lessons/:id
+ * Fetches lesson details. Premium verification handled by checkLessonPremiumAccess middleware.
+ */
+export const getLessonById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    // req.lesson might already be attached by checkLessonPremiumAccess middleware
+    const lesson = req.lesson || (await CurriculumService.getLessonById(id));
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Lesson ID không hợp lệ" });
-    }
-
-    const lesson = await Lesson.findById(id).populate("topicId", "name level");
-
-    if (!lesson) {
-      return res.status(404).json({ message: "Không tìm thấy Bài học" });
-    }
-
-    return res.status(200).json({ lesson });
+    return res.status(200).json({
+      success: true,
+      data: lesson,
+      lesson, // Direct access for frontend
+    });
   } catch (error) {
-    console.error("Lỗi khi gọi getLessonById:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
 
-// POST /api/lessons
-export const createLesson = async (req, res) => {
+/**
+ * POST /api/v1/lessons
+ */
+export const createLesson = async (req, res, next) => {
   try {
     const {
       topicId,
@@ -64,17 +55,26 @@ export const createLesson = async (req, res) => {
       translation,
       image,
       duration,
+      durationMinutes,
+      isPremiumOnly,
       isPublished,
+      dialogues,
+      vocabularyList,
     } = req.body;
 
-    if (!topicId || !title || !sampleSentence) {
-      return res.status(400).json({
-        message: "Không thể thiếu topicId, title hoặc sampleSentence",
-      });
+    const sentenceToUse =
+      sampleSentence || (dialogues && dialogues.length > 0 ? dialogues[0].japanese : "");
+
+    if (!topicId || !title || !sentenceToUse) {
+      return errorResponse(
+        res,
+        "Không thể thiếu topicId, title hoặc sampleSentence/dialogues",
+        400
+      );
     }
 
     if (!mongoose.Types.ObjectId.isValid(topicId)) {
-      return res.status(400).json({ message: "topicId không hợp lệ" });
+      return errorResponse(res, "topicId không hợp lệ", 400);
     }
 
     const lesson = await Lesson.create({
@@ -82,92 +82,62 @@ export const createLesson = async (req, res) => {
       title,
       description: description || "",
       level: level || "N5",
-      sampleSentence,
-      translation: translation || "",
+      sampleSentence: sentenceToUse,
+      translation:
+        translation || (dialogues && dialogues.length > 0 ? dialogues[0].translation : ""),
       image: image || "",
       duration: duration || "10 phút",
+      durationMinutes: durationMinutes || 10,
+      isPremiumOnly: !!isPremiumOnly,
       isPublished: isPublished !== undefined ? isPublished : true,
+      dialogues: dialogues || [],
+      vocabularyList: vocabularyList || [],
     });
 
-    return res.status(201).json({ lesson });
+    return successResponse(res, lesson, "Tạo bài học thành công!", 201);
   } catch (error) {
-    console.error("Lỗi khi gọi createLesson:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
 
-// PATCH /api/lessons/:id
-export const updateLesson = async (req, res) => {
+/**
+ * PATCH /api/v1/lessons/:id
+ */
+export const updateLesson = async (req, res, next) => {
   try {
     const { id } = req.params;
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Lesson ID không hợp lệ" });
+      return errorResponse(res, "Lesson ID không hợp lệ.", 400);
     }
 
-    const lesson = await Lesson.findById(id);
-
+    const lesson = await Lesson.findByIdAndUpdate(id, { $set: req.body }, { new: true });
     if (!lesson) {
-      return res.status(404).json({ message: "Không tìm thấy Bài học" });
+      return errorResponse(res, "Không tìm thấy Bài học.", 404);
     }
 
-    const {
-      topicId,
-      title,
-      description,
-      level,
-      sampleSentence,
-      translation,
-      image,
-      duration,
-      isPublished,
-    } = req.body;
-
-    if (topicId) {
-      if (!mongoose.Types.ObjectId.isValid(topicId)) {
-        return res.status(400).json({ message: "topicId không hợp lệ" });
-      }
-      lesson.topicId = topicId;
-    }
-
-    if (title !== undefined) lesson.title = title;
-    if (description !== undefined) lesson.description = description;
-    if (level !== undefined) lesson.level = level;
-    if (sampleSentence !== undefined) lesson.sampleSentence = sampleSentence;
-    if (translation !== undefined) lesson.translation = translation;
-    if (image !== undefined) lesson.image = image;
-    if (duration !== undefined) lesson.duration = duration;
-    if (isPublished !== undefined) lesson.isPublished = isPublished;
-
-    await lesson.save();
-
-    return res.status(200).json({ lesson });
+    return successResponse(res, lesson, "Cập nhật Bài học thành công!");
   } catch (error) {
-    console.error("Lỗi khi gọi updateLesson:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
 
-// DELETE /api/lessons/:id
-export const deleteLesson = async (req, res) => {
+/**
+ * DELETE /api/v1/lessons/:id
+ */
+export const deleteLesson = async (req, res, next) => {
   try {
     const { id } = req.params;
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Lesson ID không hợp lệ" });
+      return errorResponse(res, "Lesson ID không hợp lệ.", 400);
     }
 
-    const lesson = await Lesson.findById(id);
-
+    const lesson = await Lesson.findByIdAndDelete(id);
     if (!lesson) {
-      return res.status(404).json({ message: "Không tìm thấy Bài học" });
+      return errorResponse(res, "Không tìm thấy Bài học.", 404);
     }
 
-    await Lesson.deleteOne({ _id: id });
-
-    return res.status(200).json({ message: "Xoá Bài học thành công" });
+    return successResponse(res, null, "Xoá Bài học thành công!");
   } catch (error) {
-    console.error("Lỗi khi gọi deleteLesson:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };

@@ -1,123 +1,131 @@
-// @ts-nocheck
-import mongoose from "mongoose";
+import CurriculumService from "../services/curriculum.service.js";
 import Topic from "../models/Topic.js";
+import { successResponse, errorResponse } from "../utils/apiResponse.js";
+import mongoose from "mongoose";
 
-// GET /api/topics
-export const getTopics = async (req, res) => {
+/**
+ * GET /api/v1/topics (or /api/topics)
+ */
+export const getTopics = async (req, res, next) => {
   try {
-    const { level } = req.query;
-    const filter = { isPublished: true };
+    const { level, category } = req.query;
+    const topics = await CurriculumService.getAllTopics({ level, category });
 
-    if (level && level !== "Tất cả") {
-      filter.level = level;
-    }
-
-    const topics = await Topic.find(filter).sort({ createdAt: -1 });
-    return res.status(200).json({ topics });
+    return res.status(200).json({
+      success: true,
+      data: topics,
+      topics,
+    });
   } catch (error) {
-    console.error("Lỗi khi gọi getTopics:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
 
-// GET /api/topics/:id
-export const getTopicById = async (req, res) => {
+/**
+ * GET /api/v1/topics/:id
+ */
+export const getTopicById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const topic = req.topic || (await CurriculumService.getTopicById(id));
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Topic ID không hợp lệ" });
-    }
-
-    const topic = await Topic.findById(id);
-
-    if (!topic) {
-      return res.status(404).json({ message: "Không tìm thấy Topic" });
-    }
-
-    return res.status(200).json({ topic });
+    return res.status(200).json({
+      success: true,
+      data: topic,
+      topic,
+    });
   } catch (error) {
-    console.error("Lỗi khi gọi getTopicById:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
 
-// POST /api/topics
-export const createTopic = async (req, res) => {
+/**
+ * GET /api/v1/topics/:id/lessons (or /api/topics/:id/lessons)
+ * Retrieves lessons belonging to this topic
+ */
+export const getTopicLessons = async (req, res, next) => {
   try {
-    const { name, description, level, image, isPublished } = req.body;
+    const { id } = req.params;
+    const { level } = req.query;
+
+    const lessons = await CurriculumService.getLessonsByTopicId(id, { level });
+
+    return res.status(200).json({
+      success: true,
+      data: lessons,
+      lessons,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/topics
+ */
+export const createTopic = async (req, res, next) => {
+  try {
+    const { courseId, name, description, level, image, isPremiumOnly, isPublished, orderIndex } = req.body;
 
     if (!name) {
-      return res.status(400).json({ message: "Tên topic là bắt buộc" });
+      return errorResponse(res, "Tên chủ đề (name) là bắt buộc.", 400);
     }
 
     const topic = await Topic.create({
+      courseId: courseId || null,
       name,
       description: description || "",
       level: level || "N5",
       image: image || "",
+      isPremiumOnly: !!isPremiumOnly,
       isPublished: isPublished !== undefined ? isPublished : true,
+      orderIndex: orderIndex || 0,
     });
 
-    return res.status(201).json({ topic });
+    return successResponse(res, topic, "Tạo chủ đề thành công!", 201);
   } catch (error) {
-    console.error("Lỗi khi gọi createTopic:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
 
-// PATCH /api/topics/:id
-export const updateTopic = async (req, res) => {
+/**
+ * PATCH /api/v1/topics/:id
+ */
+export const updateTopic = async (req, res, next) => {
   try {
     const { id } = req.params;
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Topic ID không hợp lệ" });
+      return errorResponse(res, "Topic ID không hợp lệ.", 400);
     }
 
-    const topic = await Topic.findById(id);
-
+    const topic = await Topic.findByIdAndUpdate(id, { $set: req.body }, { new: true });
     if (!topic) {
-      return res.status(404).json({ message: "Không tìm thấy Topic" });
+      return errorResponse(res, "Không tìm thấy Topic.", 404);
     }
 
-    const { name, description, level, image, isPublished } = req.body;
-
-    if (name !== undefined) topic.name = name;
-    if (description !== undefined) topic.description = description;
-    if (level !== undefined) topic.level = level;
-    if (image !== undefined) topic.image = image;
-    if (isPublished !== undefined) topic.isPublished = isPublished;
-
-    await topic.save();
-
-    return res.status(200).json({ topic });
+    return successResponse(res, topic, "Cập nhật chủ đề thành công!");
   } catch (error) {
-    console.error("Lỗi khi gọi updateTopic:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
 
-// DELETE /api/topics/:id
-export const deleteTopic = async (req, res) => {
+/**
+ * DELETE /api/v1/topics/:id
+ */
+export const deleteTopic = async (req, res, next) => {
   try {
     const { id } = req.params;
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Topic ID không hợp lệ" });
+      return errorResponse(res, "Topic ID không hợp lệ.", 400);
     }
 
-    const topic = await Topic.findById(id);
-
+    const topic = await Topic.findByIdAndDelete(id);
     if (!topic) {
-      return res.status(404).json({ message: "Không tìm thấy Topic" });
+      return errorResponse(res, "Không tìm thấy Topic.", 404);
     }
 
-    await Topic.deleteOne({ _id: id });
-
-    return res.status(200).json({ message: "Xoá Topic thành công" });
+    return successResponse(res, null, "Xoá chủ đề thành công!");
   } catch (error) {
-    console.error("Lỗi khi gọi deleteTopic:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    next(error);
   }
 };
