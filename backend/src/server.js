@@ -47,11 +47,24 @@ app.use(
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // 4. API Routes Mounting
+// Root healthcheck & status
+app.get("/", (_req, res) => {
+  res.json({
+    status: "ok",
+    message: "🚀 JTalk Backend API Server is running",
+    timestamp: new Date().toISOString(),
+    env: config.env,
+  });
+});
+
 // Production standard API v1
 app.use("/api/v1", apiRouter);
 
 // Backward compatibility mount for current frontend
 app.use("/api", apiRouter);
+
+// Direct root mount fallback (in case client VITE_API_URL omits /api/v1 prefix)
+app.use("/", apiRouter);
 
 // 5. Centralized Error Handler Middleware
 app.use(errorHandler);
