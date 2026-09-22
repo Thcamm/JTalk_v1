@@ -1,9 +1,29 @@
 import axios from "axios";
 import { useAuthStore } from "@/stores/useAuthStore";
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.MODE === "development" ? "http://localhost:5001/api/v1" : "/api/v1");
+const getNormalizedApiUrl = (): string => {
+  let url =
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.MODE === "development"
+      ? "http://localhost:5001/api/v1"
+      : "/api/v1");
+
+  // Remove trailing slashes
+  url = url.trim().replace(/\/+$/, "");
+
+  // If the URL is absolute (http/https) and missing /api/v1 or /api prefix, auto-append /api/v1
+  if (
+    (url.startsWith("http://") || url.startsWith("https://")) &&
+    !url.endsWith("/api/v1") &&
+    !url.endsWith("/api")
+  ) {
+    url = `${url}/api/v1`;
+  }
+
+  return url;
+};
+
+export const API_BASE_URL = getNormalizedApiUrl();
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
