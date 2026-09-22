@@ -70,9 +70,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ loading: true });
       await authService.signUp(username, password, email, firstName, lastName);
       toast.success("Đăng ký thành công! Bạn sẽ được chuyển sang trang đăng nhập.");
-    } catch (error) {
-      console.error(error);
-      toast.error("Đăng ký không thành công");
+    } catch (error: any) {
+      console.error("Sign up error:", error);
+      const msg =
+        error.response?.data?.message ||
+        (error.message === "Network Error"
+          ? "Không thể kết nối tới máy chủ Backend. Vui lòng kiểm tra lại URL API hoặc server Render."
+          : "Đăng ký không thành công");
+      toast.error(msg);
       throw error;
     } finally {
       set({ loading: false });
@@ -89,9 +94,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await get().fetchMe();
 
       toast.success("Chào mừng bạn quay lại với JTalk AI");
-    } catch (error) {
-      console.error(error);
-      toast.error("Đăng nhập không thành công!");
+    } catch (error: any) {
+      console.error("Sign in error:", error);
+      const msg =
+        error.response?.data?.message ||
+        (error.message === "Network Error"
+          ? "Không thể kết nối tới máy chủ Backend. Vui lòng kiểm tra lại URL API hoặc server Render."
+          : "Đăng nhập không thành công!");
+      toast.error(msg);
       throw error;
     } finally {
       set({ loading: false });
