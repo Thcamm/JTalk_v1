@@ -26,25 +26,25 @@ export const LessonItem = ({
     : `/practice/${lesson._id}`;
 
   const content = (
-    <div className="group bg-white border border-slate-200/80 hover:border-emerald-300 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all duration-150 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-rose-300 dark:hover:border-rose-500 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all duration-150 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       {/* Index & Title */}
       <div className="flex items-start gap-3.5 flex-1 min-w-0">
         {index !== undefined && (
-          <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
+          <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-rose-100 dark:group-hover:bg-rose-950/60 group-hover:text-rose-700 dark:group-hover:text-rose-300 transition-colors">
             {index + 1}
           </div>
         )}
 
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="font-bold text-sm text-slate-800 group-hover:text-emerald-700 transition-colors truncate">
+            <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors truncate">
               {lesson.title}
             </h4>
             <Badge variant="secondary" size="sm">
               {lesson.level || "N5"}
             </Badge>
             {lesson.isPremiumOnly && (
-              <Badge variant="premium" size="sm" icon={<Sparkles className="w-2.5 h-2.5" />}>
+              <Badge variant="premium" size="sm" icon={<Sparkles className="w-2.5 h-2.5 animate-spin-slow" />}>
                 Premium
               </Badge>
             )}
@@ -88,8 +88,8 @@ export const LessonItem = ({
             <span>Mở khóa Premium</span>
           </button>
         ) : (
-          <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 group-hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs group-hover:shadow-xs transition-all">
-            {isVideoLesson ? <Play className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-3.5 h-3.5" />}
+          <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-rose-500 group-hover:brightness-105 text-white rounded-xl text-xs font-bold shadow-2xs group-hover:shadow-xs transition-all">
+            {isVideoLesson ? <Play className="w-3.5 h-3.5 fill-current animate-pulse" /> : <Mic className="w-3.5 h-3.5 animate-pulse" />}
             <span>{isVideoLesson ? "Học Video & Shadowing" : "Luyện nói AI"}</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </span>

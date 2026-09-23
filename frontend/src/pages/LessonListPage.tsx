@@ -125,13 +125,13 @@ export default function LessonListPage() {
   }, [topicId]);
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] p-4 sm:p-6 lg:p-8 font-sans transition-colors duration-200">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Navigation & Header */}
         <div>
           <Link
             to="/speaking"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors mb-4"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Quay lại phòng Luyện nói AI</span>
@@ -139,14 +139,14 @@ export default function LessonListPage() {
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-2xs font-bold uppercase tracking-wider mb-2">
-                <BookOpen className="w-3 h-3" />
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-2xs font-bold uppercase tracking-wider mb-2">
+                <BookOpen className="w-3 h-3 animate-float" />
                 <span>Chủ đề Kaiwa</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 {topic?.name || "Danh sách bài luyện phản xạ"}
               </h1>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {topic?.description || "Chọn bài học để vào phòng luyện nói và chấm điểm 4 tiêu chí cùng AI"}
               </p>
             </div>

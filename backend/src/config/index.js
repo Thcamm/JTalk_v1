@@ -1,5 +1,9 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 dotenv.config();
 
 export const config = {
@@ -19,6 +23,8 @@ export const config = {
   },
 
   ai: {
+    geminiApiKey: process.env.GEMINI_API_KEY || "",
+    geminiModel: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
     openaiApiKey: process.env.OPENAI_API_KEY || "",
     openaiModel: process.env.OPENAI_MODEL || "gpt-4o",
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
@@ -27,6 +33,9 @@ export const config = {
     googleApiKey: process.env.GOOGLE_CLOUD_API_KEY || "",
     googleSpeechLanguage: process.env.GOOGLE_SPEECH_LANGUAGE || "ja-JP",
     googleTtsVoice: process.env.GOOGLE_TTS_VOICE || "ja-JP-Neural2-B", // Giọng nữ chuẩn bản xứ
+    // VOICEVOX Engine (Mã nguồn mở AI giọng Nhật số 1 - Shikoku Metan & Zundamon)
+    voicevoxEndpoint: process.env.VOICEVOX_ENDPOINT || "http://localhost:50021",
+    voicevoxSpeaker: parseInt(process.env.VOICEVOX_DEFAULT_SPEAKER || "2", 10), // 2: 四国めたん, 3: ずんだもん, 13: 青山龍星
     // Azure (Legacy fallback)
     azureSpeechKey: process.env.AZURE_SPEECH_KEY || "",
     azureSpeechRegion: process.env.AZURE_SPEECH_REGION || "southeastasia",

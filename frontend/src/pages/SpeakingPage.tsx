@@ -201,8 +201,8 @@ export const SpeakingPage = () => {
   return (
     <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden transition-colors duration-200">
       {/* Ambient Lighting Orbs */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/3 left-10 w-96 h-96 bg-gradient-to-tr from-teal-500/5 via-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-b from-rose-500/10 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/3 left-10 w-96 h-96 bg-gradient-to-tr from-amber-500/5 via-rose-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto space-y-6 relative z-10">
         {/* 1. Header */}
@@ -219,7 +219,7 @@ export const SpeakingPage = () => {
           <button
             onClick={handleRandomQuickPractice}
             type="button"
-            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-105 active:translate-y-0.5 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg hover:shadow-emerald-500/20 transition-all cursor-pointer self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg hover:shadow-rose-500/20 transition-all cursor-pointer self-start sm:self-auto"
           >
             <Zap size={15} className="fill-amber-300 text-amber-300" />
             <span>Thử thách ngẫu nhiên</span>
@@ -235,7 +235,7 @@ export const SpeakingPage = () => {
               type="button"
               className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
                 activeTab === "scenarios"
-                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs"
+                  ? "bg-rose-600 dark:bg-rose-500 text-white shadow-xs"
                   : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
@@ -248,7 +248,7 @@ export const SpeakingPage = () => {
               type="button"
               className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                 activeTab === "learning"
-                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs"
+                  ? "bg-rose-600 dark:bg-rose-500 text-white shadow-xs"
                   : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
@@ -261,7 +261,7 @@ export const SpeakingPage = () => {
               type="button"
               className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                 activeTab === "history"
-                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs"
+                  ? "bg-rose-600 dark:bg-rose-500 text-white shadow-xs"
                   : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
@@ -274,7 +274,7 @@ export const SpeakingPage = () => {
               type="button"
               className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                 activeTab === "leaderboard"
-                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-xs"
+                  ? "bg-rose-600 dark:bg-rose-500 text-white shadow-xs"
                   : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
@@ -292,7 +292,7 @@ export const SpeakingPage = () => {
                 type="button"
                 className={`px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer shrink-0 ${
                   selectedLevel === lvl
-                    ? "bg-emerald-600 dark:bg-emerald-500 text-white font-bold shadow-2xs"
+                    ? "bg-rose-600 dark:bg-rose-500 text-white font-bold shadow-2xs"
                     : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 font-semibold"
                 }`}
               >
@@ -306,8 +306,8 @@ export const SpeakingPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-black text-slate-900 dark:text-white">Tất cả kịch bản</h2>
-            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-2xs font-extrabold">
-              <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />
+            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-300/80 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-2xs font-extrabold">
+              <CheckCircle2 size={12} className="text-rose-600 dark:text-rose-400" />
               <span>JTalk biên soạn</span>
             </div>
           </div>
@@ -320,7 +320,7 @@ export const SpeakingPage = () => {
               placeholder="Tìm kịch bản..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-full text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400 shadow-2xs transition-all"
+              className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-full text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 dark:focus:border-rose-400 shadow-2xs transition-all"
             />
           </div>
         </div>
@@ -344,7 +344,7 @@ export const SpeakingPage = () => {
                 <div
                   key={scenario.id}
                   onClick={() => handleScenarioClick(scenario)}
-                  className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 rounded-3xl overflow-hidden shadow-2xs hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1.5 transition-all duration-200 flex flex-col justify-between cursor-pointer"
+                  className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500 rounded-3xl overflow-hidden shadow-2xs hover:shadow-xl hover:shadow-rose-500/5 hover:-translate-y-1.5 transition-all duration-200 flex flex-col justify-between cursor-pointer"
                 >
                   {/* Thumbnail Image with Level badge */}
                   <div>
@@ -357,7 +357,7 @@ export const SpeakingPage = () => {
                       />
 
                       {/* Level badge at top left */}
-                      <div className="absolute left-3 top-3 px-2 py-0.5 bg-emerald-100/90 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 backdrop-blur-2xs rounded-md text-2xs font-extrabold uppercase shadow-xs border border-emerald-200/50 dark:border-emerald-800/60">
+                      <div className="absolute left-3 top-3 px-2 py-0.5 bg-rose-100/90 dark:bg-rose-950/90 text-rose-800 dark:text-rose-300 backdrop-blur-2xs rounded-md text-2xs font-extrabold uppercase shadow-xs border border-rose-200/50 dark:border-rose-800/60">
                         {scenario.level}
                       </div>
 
@@ -379,7 +379,7 @@ export const SpeakingPage = () => {
 
                     {/* Card Content */}
                     <div className="p-4 space-y-1.5">
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1 font-sans">
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors line-clamp-1 font-sans">
                         {scenario.japaneseTitle}
                       </h3>
 
@@ -396,7 +396,7 @@ export const SpeakingPage = () => {
                   {/* Card Footer */}
                   <div className="px-4 pb-4 pt-2.5 flex items-center justify-between text-3xs text-slate-400 dark:text-slate-500 font-semibold border-t border-slate-100 dark:border-slate-800/80">
                     <span>{scenario.durationMinutes} phút • {scenario.reflexTurns} câu</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold group-hover:underline">
+                    <span className="text-rose-600 dark:text-rose-400 font-bold group-hover:underline">
                       Vào luyện ›
                     </span>
                   </div>

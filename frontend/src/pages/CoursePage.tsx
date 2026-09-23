@@ -114,15 +114,15 @@ export const CoursePage = () => {
     <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] p-4 sm:p-6 lg:p-8 font-sans transition-colors duration-200">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* 1. Header & Bento Hero for Courses */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-indigo-500/10 dark:from-emerald-950/40 dark:via-slate-900/60 dark:to-indigo-950/30 border border-emerald-200/80 dark:border-emerald-800/60 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="relative overflow-hidden bg-gradient-to-br from-rose-500/10 via-amber-500/5 to-rose-500/10 dark:from-rose-950/40 dark:via-slate-900/60 dark:to-amber-950/30 border border-rose-200/80 dark:border-rose-800/60 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2.5 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/90 dark:bg-slate-800/90 border border-emerald-200 dark:border-emerald-800/80 rounded-full text-2xs font-extrabold text-emerald-800 dark:text-emerald-300 shadow-2xs">
-              <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/90 dark:bg-slate-800/90 border border-rose-200 dark:border-rose-800/80 rounded-full text-2xs font-extrabold text-rose-800 dark:text-rose-300 shadow-2xs">
+              <GraduationCap className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 animate-float" />
               <span>Khoá Học Video & Phản Xạ Kaiwa</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              Lộ trình bài giảng Kaiwa 5 phút 🎌
+              Lộ trình bài giảng Kaiwa 5 phút
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
@@ -133,9 +133,9 @@ export const CoursePage = () => {
           <div className="shrink-0 flex items-center gap-3">
             <Link
               to="/speaking"
-              className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg hover:shadow-emerald-500/20 active:translate-y-0.5 transition-all"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg hover:shadow-rose-500/20 transition-all"
             >
-              <Sparkles size={15} className="text-amber-300" />
+              <Sparkles size={15} className="text-amber-300 animate-spin-slow" />
               <span>Phòng Nói Đối Đáp AI</span>
             </Link>
           </div>
@@ -150,7 +150,7 @@ export const CoursePage = () => {
               placeholder="Tìm bài học Minna, phỏng vấn IT, BrSE..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-full text-xs font-medium dark:text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all shadow-2xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-full text-xs font-medium dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 dark:focus:border-rose-400 transition-all shadow-2xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -169,7 +169,7 @@ export const CoursePage = () => {
                 type="button"
                 className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
                   levelFilter === lvl.id
-                    ? "bg-emerald-600 text-white shadow-emerald-600/20"
+                    ? "bg-rose-600 dark:bg-rose-500 text-white shadow-rose-600/20"
                     : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
@@ -186,8 +186,8 @@ export const CoursePage = () => {
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
                 Chủ đề biên soạn chuẩn
               </h2>
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-2xs font-extrabold">
-                <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-300/80 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-2xs font-extrabold">
+                <CheckCircle2 size={12} className="text-rose-600 dark:text-rose-400 animate-bounce" />
                 <span>Tokyo Accent</span>
               </div>
             </div>
@@ -213,7 +213,7 @@ export const CoursePage = () => {
                   setSearchQuery("");
                   setLevelFilter("ALL");
                 }}
-                className="text-xs font-black text-emerald-600 dark:text-emerald-400 underline underline-offset-4 cursor-pointer"
+                className="text-xs font-black text-rose-600 dark:text-rose-400 underline underline-offset-4 cursor-pointer"
               >
                 Xóa bộ lọc tìm kiếm
               </button>
@@ -226,9 +226,9 @@ export const CoursePage = () => {
                 const completedCount = 0;
 
                 const cardContent = (
-                  <div className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden h-full">
+                  <div className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-xl hover:shadow-rose-500/5 transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden h-full">
                     {/* Background Decorative Gradient */}
-                    <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-emerald-500/10 via-transparent to-transparent rounded-bl-full pointer-events-none transition-transform group-hover:scale-125 duration-500" />
+                    <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-rose-500/10 via-transparent to-transparent rounded-bl-full pointer-events-none transition-transform group-hover:scale-125 duration-500" />
 
                     <div className="space-y-4">
                       {/* Top Thumbnail & Header */}
@@ -248,8 +248,8 @@ export const CoursePage = () => {
                               <Lock size={20} />
                             </div>
                           ) : (
-                            <div className="absolute inset-0 bg-emerald-600/0 group-hover:bg-emerald-600/20 transition-colors flex items-center justify-center">
-                              <div className="w-9 h-9 rounded-full bg-white/95 text-emerald-600 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300">
+                            <div className="absolute inset-0 bg-rose-600/0 group-hover:bg-rose-600/20 transition-colors flex items-center justify-center">
+                              <div className="w-9 h-9 rounded-full bg-white/95 text-rose-600 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300">
                                 <Play size={16} className="fill-current ml-0.5" />
                               </div>
                             </div>
@@ -259,12 +259,12 @@ export const CoursePage = () => {
                         {/* Title, Level, and Subtitle */}
                         <div className="space-y-1.5 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500 text-white text-3xs font-black uppercase shadow-2xs">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-rose-600 dark:bg-rose-500 text-white text-3xs font-black uppercase shadow-2xs">
                               {course.level || "N5"}
                             </span>
                             {course.isPremiumOnly && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 text-3xs font-extrabold rounded-lg border border-amber-200 dark:border-amber-800">
-                                <Sparkles size={10} className="text-amber-500" />
+                                <Sparkles size={10} className="text-amber-500 animate-spin-slow" />
                                 PRO ONLY
                               </span>
                             )}
@@ -273,7 +273,7 @@ export const CoursePage = () => {
                             </span>
                           </div>
 
-                          <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+                          <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors line-clamp-1">
                             {course.title}
                           </h3>
 
@@ -303,13 +303,13 @@ export const CoursePage = () => {
                       <div className="flex-1 space-y-1.5">
                         <div className="flex items-center justify-between text-2xs font-extrabold">
                           <span className="text-slate-400">Tiến trình</span>
-                          <span className="text-emerald-600 dark:text-emerald-400">
+                          <span className="text-rose-600 dark:text-rose-400 font-bold">
                             {completedCount}/{lessonsCount} bài
                           </span>
                         </div>
                         <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                            className="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full"
                             style={{
                               width: `${(completedCount / lessonsCount) * 100}%`,
                             }}
@@ -317,7 +317,7 @@ export const CoursePage = () => {
                         </div>
                       </div>
 
-                      <div className="shrink-0 flex items-center gap-1 text-xs font-black text-emerald-600 dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
+                      <div className="shrink-0 flex items-center gap-1 text-xs font-black text-rose-600 dark:text-rose-400 group-hover:translate-x-1 transition-transform">
                         <span>Vào học</span>
                         <ChevronRight size={15} />
                       </div>

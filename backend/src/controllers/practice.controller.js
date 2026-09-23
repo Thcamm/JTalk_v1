@@ -1,5 +1,6 @@
 import PracticeService from "../services/practice.service.js";
 import AiService from "../services/ai.service.js";
+import VoicevoxService from "../services/voicevox.service.js";
 import Practice from "../models/Practice.js";
 import { successResponse, errorResponse, paginatedResponse } from "../utils/apiResponse.js";
 import mongoose from "mongoose";
@@ -292,4 +293,60 @@ export const aiRoleplayChat = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/v1/practices/voicevox
+ * Synthesizes studio-grade native Japanese audio via Voicevox Deep Learning Engine
+ */
+export const synthesizeVoicevox = async (req, res, next) => {
+  try {
+    const { text, speakerId, speedScale, pitchScale } = req.body;
+    if (!text || !text.trim()) {
+      return errorResponse(res, "Vui lòng cung cấp văn bản tiếng Nhật (text).", 400);
+    }
+
+    const result = await VoicevoxService.synthesize({
+      text,
+      speakerId: speakerId !== undefined && speakerId !== null ? parseInt(speakerId, 10) : undefined,
+      speedScale: speedScale !== undefined ? parseFloat(speedScale) : 0.95,
+      pitchScale: pitchScale !== undefined ? parseFloat(pitchScale) : 0.0,
+    });
+
+    if (!result || !result.audioContent) {
+      return res.status(200).json({
+        success: false,
+        code: "VOICEVOX_OFFLINE",
+        message: "Voicevox Engine chưa được khởi chạy (cần mở Voicevox hoặc Docker port 50021).",
+        data: null,
+      });
+    }
+
+    return successResponse(res, result, "Tạo giọng phát âm Voicevox thành công!");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/practices/voicevox/status
+ * Returns health status and available speakers of Voicevox Engine
+ */
+export const getVoicevoxStatus = async (req, res, next) => {
+  try {
+    const health = await VoicevoxService.checkHealth();
+    const speakers = health.isOnline ? await VoicevoxService.getSpeakers() : [];
+
+    return successResponse(
+      res,
+      {
+        ...health,
+        speakers,
+      },
+      "Kiểm tra trạng thái Voicevox Engine hoàn tất!"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 

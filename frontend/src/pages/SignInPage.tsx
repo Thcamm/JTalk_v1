@@ -22,8 +22,8 @@ const SignInPage = () => {
       </button>
 
       {/* Ambient Mesh Background Glow */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-gradient-to-tl from-indigo-500/15 via-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-br from-rose-500/15 via-amber-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-gradient-to-tl from-indigo-500/15 via-rose-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Form Container */}
       <div className="w-full max-w-sm md:max-w-4xl relative z-10 my-auto">
@@ -35,14 +35,14 @@ const SignInPage = () => {
         Bằng cách tiếp tục, bạn đồng ý với{" "}
         <a
           href="#"
-          className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-4"
+          className="text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 underline underline-offset-4 transition-colors"
         >
           Điều khoản dịch vụ
         </a>{" "}
         và{" "}
         <a
           href="#"
-          className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline underline-offset-4"
+          className="text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 underline underline-offset-4 transition-colors"
         >
           Chính sách bảo mật
         </a>{" "}

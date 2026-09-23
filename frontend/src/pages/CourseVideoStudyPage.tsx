@@ -7,723 +7,810 @@ import {
   Mic,
   MicOff,
   Sparkles,
-  Headphones,
   BookOpen,
   Download,
   Repeat,
-  Heart,
-  Settings,
-  X,
-  Check,
-  Video,
+  Volume2,
   SkipBack,
   SkipForward,
-  Volume2,
+  RotateCcw,
+  CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
-import { curriculumService } from "@/services/curriculum.service";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { toast } from "sonner";
-import type { Lesson, VideoSubtitle, SubtitleWord } from "@/types";
+import { practiceService } from "@/services/practice.service";
+import { formatJapaneseForSpeech } from "@/utils/japanesePhrasing";
+import type { VideoSubtitle } from "@/types";
 
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
+type StudyMode = "shadowing" | "pronunciation" | "listening";
+
+interface DemoLesson {
+  id: string;
+  title: string;
+  description: string;
+  level: "N5" | "N4" | "N3";
+  senseiName: string;
+  senseiRole: string;
+  senseiAvatar: string;
+  duration: string;
+  subtitles: VideoSubtitle[];
 }
 
-type StudyMode = "shadowing" | "pronunciation" | "listening" | "exercise";
+const DEMO_LESSONS: DemoLesson[] = [
+  {
+    id: "lesson-keigo",
+    title: "敬語って何？ - Khái niệm Kính ngữ & 3 phân loại chính",
+    description: "Nhập môn Kính ngữ tiếng Nhật: Phân biệt Tôn kính ngữ (Sonkeigo), Khiêm nhường ngữ (Kenjougo) và Thể lịch sự (Teineigo).",
+    level: "N4",
+    senseiName: "Sensei Yuki",
+    senseiRole: "Tokyo Accent Specialist",
+    senseiAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80",
+    duration: "4 phút",
+    subtitles: [
+      {
+        startTime: 0,
+        endTime: 5,
+        japanese: "みなさん、こんにちは！今回は敬語についてお話ししましょう。",
+        furigana: "みなさん、こんにちは！こんかいはけいごについておはなししましょう。",
+        romaji: "Minasan, konnichiwa! Konkai wa keigo ni tsuite ohanashi shimashou.",
+        translation: "Xin chào các bạn! Hôm nay chúng ta hãy cùng trò chuyện về Kính ngữ nhé.",
+        words: [
+          { kanji: "みなさん", furigana: "" },
+          { kanji: "、こんにちは！", furigana: "" },
+          { kanji: "今回", furigana: "こんかい" },
+          { kanji: "は", furigana: "" },
+          { kanji: "敬語", furigana: "けいご" },
+          { kanji: "についてお", furigana: "" },
+          { kanji: "話", furigana: "はな" },
+          { kanji: "ししましょう。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 5,
+        endTime: 11,
+        japanese: "敬語には、丁寧語、尊敬語、謙譲語の3種類があります。",
+        furigana: "けいごには、ていねいご、そんけいご、けんじょうごのさんしゅるいがあります。",
+        romaji: "Keigo ni wa, teineigo, sonkeigo, kenjougo no sanshurui ga arimasu.",
+        translation: "Trong kính ngữ có 3 loại chính: Thể lịch sự, Tôn kính ngữ và Khiêm nhường ngữ.",
+        words: [
+          { kanji: "敬語", furigana: "けいご" },
+          { kanji: "には、", furigana: "" },
+          { kanji: "丁寧語", furigana: "ていねいご" },
+          { kanji: "、", furigana: "" },
+          { kanji: "尊敬語", furigana: "そんけいご" },
+          { kanji: "、", furigana: "" },
+          { kanji: "謙譲語", furigana: "けんじょうご" },
+          { kanji: "の", furigana: "" },
+          { kanji: "3種類", furigana: "さんしゅるい" },
+          { kanji: "があります。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 11,
+        endTime: 17,
+        japanese: "丁寧語は「です・ます」を使って、相手に丁寧に話す言葉です。",
+        furigana: "ていねいごは「です・ます」をつかって、あいてにていねいにはなすことばです。",
+        romaji: "Teineigo wa 'desu, masu' o tsukatte, aite ni teinei ni hanasu kotoba desu.",
+        translation: "Thể lịch sự dùng đuôi 'desu, masu' để nói chuyện nhã nhặn với đối phương.",
+        words: [
+          { kanji: "丁寧語", furigana: "ていねいご" },
+          { kanji: "は「です・ます」を", furigana: "" },
+          { kanji: "使", furigana: "つか" },
+          { kanji: "って、", furigana: "" },
+          { kanji: "相手", furigana: "あいて" },
+          { kanji: "に", furigana: "" },
+          { kanji: "丁寧", furigana: "ていねい" },
+          { kanji: "に", furigana: "" },
+          { kanji: "話", furigana: "はな" },
+          { kanji: "す", furigana: "" },
+          { kanji: "言葉", furigana: "ことば" },
+          { kanji: "です。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 17,
+        endTime: 23,
+        japanese: "尊敬語は、相手の行動を高めて相手に敬意を表す言葉です。",
+        furigana: "そんけいごは、あいてのこうどうをたかめてあいてにけいいをあらわすことばです。",
+        romaji: "Sonkeigo wa, aite no koudou o takamete aite ni keii o arawasu kotoba desu.",
+        translation: "Tôn kính ngữ nâng cao hành động của đối phương để bày tỏ sự tôn kính.",
+        words: [
+          { kanji: "尊敬語", furigana: "そんけいご" },
+          { kanji: "は、", furigana: "" },
+          { kanji: "相手", furigana: "あいて" },
+          { kanji: "の", furigana: "" },
+          { kanji: "行動", furigana: "こうどう" },
+          { kanji: "を", furigana: "" },
+          { kanji: "高", furigana: "たか" },
+          { kanji: "めて", furigana: "" },
+          { kanji: "敬意", furigana: "けいい" },
+          { kanji: "を", furigana: "" },
+          { kanji: "表", furigana: "あらわ" },
+          { kanji: "す", furigana: "" },
+          { kanji: "言葉", furigana: "ことば" },
+          { kanji: "です。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 23,
+        endTime: 28,
+        japanese: "例えば、「食べる」の尊敬語は「召し上がる」になります。",
+        furigana: "たとえば、「たべる」のそんけいごは「めしあがる」になります。",
+        romaji: "Tatoeba, 'taberu' no sonkeigo wa 'meshiagaru' ni narimasu.",
+        translation: "Ví dụ: tôn kính ngữ của động từ 'ăn' (taberu) sẽ là 'meshiagaru'.",
+        words: [
+          { kanji: "例", furigana: "たと" },
+          { kanji: "えば、「", furigana: "" },
+          { kanji: "食", furigana: "た" },
+          { kanji: "べる」の", furigana: "" },
+          { kanji: "尊敬語", furigana: "そんけいご" },
+          { kanji: "は「", furigana: "" },
+          { kanji: "召", furigana: "め" },
+          { kanji: "し", furigana: "" },
+          { kanji: "上", furigana: "あ" },
+          { kanji: "がる」になります。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 28,
+        endTime: 34,
+        japanese: "謙譲語は、自分の行動をへりくだって相手を立てる言葉です。",
+        furigana: "けんじょうごは、じぶんのこうどうをへりくだってあいてをたてることばです。",
+        romaji: "Kenjougo wa, jibun no koudou o herikudatte aite o tateru kotoba desu.",
+        translation: "Khiêm nhường ngữ hạ thấp hành động của mình nhằm tôn người đối diện lên.",
+        words: [
+          { kanji: "謙譲語", furigana: "けんじょうご" },
+          { kanji: "は、", furigana: "" },
+          { kanji: "自分", furigana: "じぶん" },
+          { kanji: "の", furigana: "" },
+          { kanji: "行動", furigana: "こうどう" },
+          { kanji: "をへりくだって", furigana: "" },
+          { kanji: "相手", furigana: "あいて" },
+          { kanji: "を", furigana: "" },
+          { kanji: "立", furigana: "た" },
+          { kanji: "てる", furigana: "" },
+          { kanji: "言葉", furigana: "ことば" },
+          { kanji: "です。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 34,
+        endTime: 40,
+        japanese: "例えば、「行く」の謙譲語は「伺う」や「参る」と言います。",
+        furigana: "たとえば、「いく」のけんじょうごは「うかがう」や「まいる」といいます。",
+        romaji: "Tatoeba, 'iku' no kenjougo wa 'ukagau' ya 'mairu' to iimasu.",
+        translation: "Ví dụ: khiêm nhường ngữ của 'đi' (iku) được gọi là 'ukagau' hoặc 'mairu'.",
+        words: [
+          { kanji: "例", furigana: "たと" },
+          { kanji: "えば、「", furigana: "" },
+          { kanji: "行", furigana: "い" },
+          { kanji: "く」の", furigana: "" },
+          { kanji: "謙譲語", furigana: "けんじょうご" },
+          { kanji: "は「", furigana: "" },
+          { kanji: "伺", furigana: "うかが" },
+          { kanji: "う」や「", furigana: "" },
+          { kanji: "参", furigana: "まい" },
+          { kanji: "る」と", furigana: "" },
+          { kanji: "言", furigana: "い" },
+          { kanji: "います。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 40,
+        endTime: 46,
+        japanese: "これから声に出して一緒にシャドーイングを練習しましょう！",
+        furigana: "これからこえにだしていっしょにシャドーイングをれんしゅうしましょう！",
+        romaji: "Korekara koe ni dashite issho ni shadouingu o renshuu shimashou!",
+        translation: "Bây giờ các bạn hãy phát âm thật to và cùng nhau luyện Shadowing nhé!",
+        words: [
+          { kanji: "これから", furigana: "" },
+          { kanji: "声", furigana: "こえ" },
+          { kanji: "に", furigana: "" },
+          { kanji: "出", furigana: "だ" },
+          { kanji: "して", furigana: "" },
+          { kanji: "一緒", furigana: "いっしょ" },
+          { kanji: "にシャドーイングを", furigana: "" },
+          { kanji: "練習", furigana: "れんしゅう" },
+          { kanji: "しましょう！", furigana: "" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "lesson-baito",
+    title: "アルバイトの面接 - Phỏng vấn xin việc thêm tại Combini",
+    description: "Kịch bản phỏng vấn Baito thực tế: Giới thiệu bản thân, lịch trình làm việc và thái độ giao tiếp chuẩn Nhật.",
+    level: "N5",
+    senseiName: "Sensei Kenji",
+    senseiRole: "Baito & Business Coach",
+    senseiAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80",
+    duration: "4 phút",
+    subtitles: [
+      {
+        startTime: 0,
+        endTime: 5,
+        japanese: "はじめまして、本日は面接のお時間をいただきありがとうございます。",
+        furigana: "はじめまして、ほんじつはめんせつのおじかんをいただきありがとうございます。",
+        romaji: "Hajimemashite, honjitsu wa mensetsu no ojikan o itadaki arigatou gozaimasu.",
+        translation: "Rất vui được gặp anh/chị, cảm ơn anh/chị vì đã dành thời gian phỏng vấn hôm nay.",
+        words: [
+          { kanji: "初", furigana: "はじ" },
+          { kanji: "めまして、", furigana: "" },
+          { kanji: "本日", furigana: "ほんじつ" },
+          { kanji: "は", furigana: "" },
+          { kanji: "面接", furigana: "めんせつ" },
+          { kanji: "のお", furigana: "" },
+          { kanji: "時間", furigana: "じかん" },
+          { kanji: "をいただきありがとうございます。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 5,
+        endTime: 10,
+        japanese: "ベトナムから参りましたナムと申します。どうぞよろしくお願いします。",
+        furigana: "ベトナムからまいりましたナムともうします。どうぞよろしくおねがいします。",
+        romaji: "Betonamu kara mairimashita Namu to moushimasu. Douzo yoroshiku onegaishimasu.",
+        translation: "Tôi là Nam, đến từ Việt Nam. Rất mong được anh/chị chiếu cố và giúp đỡ.",
+        words: [
+          { kanji: "ベトナムから", furigana: "" },
+          { kanji: "参", furigana: "まい" },
+          { kanji: "りましたナムと", furigana: "" },
+          { kanji: "申", furigana: "もう" },
+          { kanji: "します。どうぞよろしくお", furigana: "" },
+          { kanji: "願", furigana: "ねが" },
+          { kanji: "いします。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 10,
+        endTime: 16,
+        japanese: "履歴書をお持ちしましたので、こちらをご確認いただけますでしょうか。",
+        furigana: "りれきしょをおもちしましたので、こちらをごかくにんいただけますでしょうか。",
+        romaji: "Rirekisho o omochi shimashita node, kochira o gokakunin itadakemasu deshou ka.",
+        translation: "Tôi đã mang theo sơ yếu lý lịch, xin phép gửi anh/chị kiểm tra qua ạ.",
+        words: [
+          { kanji: "履歴書", furigana: "りれきしょ" },
+          { kanji: "をお", furigana: "" },
+          { kanji: "持", furigana: "も" },
+          { kanji: "ちしましたので、こちらをご", furigana: "" },
+          { kanji: "確認", furigana: "かくにん" },
+          { kanji: "いただけますでしょうか。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 16,
+        endTime: 21,
+        japanese: "週に3日、平日の夕方5時からシフトに入ることができます。",
+        furigana: "しゅうにみっか、へいじつのゆうがたごじからシフトにはいることができます。",
+        romaji: "Shuu ni mikka, heijitsu no yuugata goji kara shifuto ni hairu koto ga dekimasu.",
+        translation: "Một tuần 3 ngày, tôi có thể nhận ca làm việc từ 5 giờ chiều các ngày trong tuần.",
+        words: [
+          { kanji: "週", furigana: "しゅう" },
+          { kanji: "に", furigana: "" },
+          { kanji: "3日", furigana: "みっか" },
+          { kanji: "、", furigana: "" },
+          { kanji: "平日", furigana: "へいじつ" },
+          { kanji: "の", furigana: "" },
+          { kanji: "夕方", furigana: "ゆうがた" },
+          { kanji: "5", furigana: "ご" },
+          { kanji: "時", furigana: "じ" },
+          { kanji: "からシフトに", furigana: "" },
+          { kanji: "入", furigana: "はい" },
+          { kanji: "ることができます。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 21,
+        endTime: 27,
+        japanese: "人と接することが好きですので、接客やレジ打ちを一生懸命頑張ります！",
+        furigana: "ひととせっすることがすきですので、せっきゃくやレジうちをいっしょうけんめいがんばります！",
+        romaji: "Hito to sessuru koto ga suki desu node, sekkyaku ya rejiuchi o isshoukenmei gambarimasu!",
+        translation: "Tôi rất thích tương tác với mọi người nên sẽ cố gắng hết mình ở khâu phục vụ và thu ngân!",
+        words: [
+          { kanji: "人", furigana: "ひと" },
+          { kanji: "と", furigana: "" },
+          { kanji: "接", furigana: "せっ" },
+          { kanji: "することが", furigana: "" },
+          { kanji: "好", furigana: "す" },
+          { kanji: "きですので、", furigana: "" },
+          { kanji: "接客", furigana: "せっきゃく" },
+          { kanji: "やレジ", furigana: "" },
+          { kanji: "打", furigana: "う" },
+          { kanji: "ちを", furigana: "" },
+          { kanji: "一生懸命", furigana: "いっしょうけんめい" },
+          { kanji: "頑張", furigana: "がんば" },
+          { kanji: "ります！", furigana: "" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "lesson-shinjuku",
+    title: "新宿駅で乗り換え - Hỏi đường & Chuyển tàu điện Shinjuku",
+    description: "Kỹ năng tìm đường ray, chuyển tuyến tàu Yamanote/Metro và nạp thẻ Suica tại ga đông đúc nhất thế giới.",
+    level: "N5",
+    senseiName: "Sensei Yuki",
+    senseiRole: "Tokyo Accent Specialist",
+    senseiAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
+    duration: "3 phút",
+    subtitles: [
+      {
+        startTime: 0,
+        endTime: 5,
+        japanese: "すみません、新宿駅に行きたいんですが、どの電車に乗ればいいですか？",
+        furigana: "すみません、しんじゅくえきにいきたいんですが、どのでんしゃにのればいいですか？",
+        romaji: "Sumimasen, Shinjuku-eki ni ikitai n desu ga, dono densha ni noreba ii desu ka?",
+        translation: "Xin lỗi, tôi muốn đi đến ga Shinjuku thì nên lên chuyến tàu nào ạ?",
+        words: [
+          { kanji: "すみません、", furigana: "" },
+          { kanji: "新宿駅", furigana: "しんじゅくえき" },
+          { kanji: "に", furigana: "" },
+          { kanji: "行", furigana: "い" },
+          { kanji: "きたいんですが、どの", furigana: "" },
+          { kanji: "電車", furigana: "でんしゃ" },
+          { kanji: "に", furigana: "" },
+          { kanji: "乗", furigana: "の" },
+          { kanji: "ればいいですか？", furigana: "" },
+        ],
+      },
+      {
+        startTime: 5,
+        endTime: 10,
+        japanese: "山手線の外回り、3番ホームから乗ると約15分で到着しますよ。",
+        furigana: "やまのてせんのそとまわり、さんばんホームからのるとやくじゅうごふんでとうちゃくしますよ。",
+        romaji: "Yamanote-sen no sotomawari, sanban hoomu kara noru to yaku juugofun de touchaku shimasu yo.",
+        translation: "Bạn đón tuyến Yamanote vòng ngoài tại đường ray số 3, khoảng 15 phút là đến nơi nhé.",
+        words: [
+          { kanji: "山手線", furigana: "やまのてせん" },
+          { kanji: "の", furigana: "" },
+          { kanji: "外回", furigana: "そとまわ" },
+          { kanji: "り、", furigana: "" },
+          { kanji: "3番", furigana: "さんばん" },
+          { kanji: "ホームから", furigana: "" },
+          { kanji: "乗", furigana: "の" },
+          { kanji: "ると", furigana: "" },
+          { kanji: "約15分", furigana: "やくじゅうごふん" },
+          { kanji: "で", furigana: "" },
+          { kanji: "到着", furigana: "とうちゃく" },
+          { kanji: "しますよ。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 10,
+        endTime: 15,
+        japanese: "改札口の横にある券売機で、Suicaのチャージも簡単にできます。",
+        furigana: "かいさつぐちのよこにあるけんばいきで、スイカのチャージもかんたんにできます。",
+        romaji: "Kaisatsuguchi no yoko ni aru kenbaiki de, Suika no chaaji mo kantan ni dekimasu.",
+        translation: "Tại máy bán vé bên cạnh cổng soát vé, bạn cũng có thể nạp tiền thẻ Suica dễ dàng.",
+        words: [
+          { kanji: "改札口", furigana: "かいさつぐち" },
+          { kanji: "の", furigana: "" },
+          { kanji: "横", furigana: "よこ" },
+          { kanji: "にある", furigana: "" },
+          { kanji: "券売機", furigana: "けんばいき" },
+          { kanji: "で、Suicaのチャージも", furigana: "" },
+          { kanji: "簡単", furigana: "かんたん" },
+          { kanji: "にできます。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 15,
+        endTime: 20,
+        japanese: "ご親切に教えていただき、本当にありがとうございました！",
+        furigana: "ごしんせつにおしえていただき、ほんとうにありがとうございました！",
+        romaji: "Goshinsetsu ni oshiete itadaki, hontou ni arigatou gozaimashita!",
+        translation: "Cảm ơn anh/chị rất nhiều vì đã tận tình chỉ dẫn cho tôi!",
+        words: [
+          { kanji: "ご", furigana: "" },
+          { kanji: "親切", furigana: "しんせつ" },
+          { kanji: "にお", furigana: "" },
+          { kanji: "教", furigana: "おし" },
+          { kanji: "えていただき、", furigana: "" },
+          { kanji: "本当", furigana: "ほんとう" },
+          { kanji: "にありがとうございました！", furigana: "" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "lesson-ramen",
+    title: "レストランで注文 - Gọi món Ramen & Thanh toán PayPay",
+    description: "Tự tin bước vào quán Ramen Tokyo: Chọn độ cứng sợi mì, xin thêm nước đá và thanh toán không tiền mặt.",
+    level: "N5",
+    senseiName: "Sensei Kenji",
+    senseiRole: "Baito & Business Coach",
+    senseiAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80",
+    duration: "3 phút",
+    subtitles: [
+      {
+        startTime: 0,
+        endTime: 5,
+        japanese: "いらっしゃいませ！お一人様ですか？カウンター席へどうぞ。",
+        furigana: "いらっしゃいませ！おひとりさまですか？カウンターせきへどうぞ。",
+        romaji: "Irasshaimase! Ohitorisama desu ka? Kauntaa-seki e douzo.",
+        translation: "Kính chào quý khách! Bạn đi 1 người đúng không ạ? Mời bạn ngồi vào quầy counter.",
+        words: [
+          { kanji: "いらっしゃいませ！お", furigana: "" },
+          { kanji: "一人様", furigana: "ひとりさま" },
+          { kanji: "ですか？カウンター", furigana: "" },
+          { kanji: "席", furigana: "せき" },
+          { kanji: "へどうぞ。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 5,
+        endTime: 10,
+        japanese: "おすすめのとんこつラーメンセットをひとつお願いします。",
+        furigana: "おすすめのとんこつラーメンセットをひとつおねがいします。",
+        romaji: "Osusume no tonkotsu raamen setto o hitotsu onegaishimasu.",
+        translation: "Cho tôi một phần set ramen tonkotsu được gợi ý với ạ.",
+        words: [
+          { kanji: "おすすめのとんこつラーメンセットをひとつお", furigana: "" },
+          { kanji: "願", furigana: "ねが" },
+          { kanji: "いします。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 10,
+        endTime: 15,
+        japanese: "麺のかたさはかためで、スープはこってりでお願いします。",
+        furigana: "めんのかたさはかためで、スープはこってりでおねがいします。",
+        romaji: "Men no katasa wa katame de, suupu wa kotteri de onegaishimasu.",
+        translation: "Độ cứng của sợi mì cho tôi loại dai cứng, còn nước súp thì đậm đà béo nhé.",
+        words: [
+          { kanji: "麺", furigana: "めん" },
+          { kanji: "のかたさは", furigana: "" },
+          { kanji: "硬", furigana: "かた" },
+          { kanji: "めで、スープはこってりでお", furigana: "" },
+          { kanji: "願", furigana: "ねが" },
+          { kanji: "いします。", furigana: "" },
+        ],
+      },
+      {
+        startTime: 15,
+        endTime: 20,
+        japanese: "すみません、お会計をお願いします。PayPayで支払えますか？",
+        furigana: "すみません、おかいけいをおねがいします。ペイペイでしはらえますか？",
+        romaji: "Sumimasen, okaikei o onegaishimasu. Peipei de shiharaemasu ka?",
+        translation: "Xin lỗi, cho tôi thanh toán với. Quán có nhận thanh toán bằng PayPay không ạ?",
+        words: [
+          { kanji: "すみません、お", furigana: "" },
+          { kanji: "会計", furigana: "かいけい" },
+          { kanji: "をお", furigana: "" },
+          { kanji: "願", furigana: "ねが" },
+          { kanji: "いします。PayPayで", furigana: "" },
+          { kanji: "支払", furigana: "しはら" },
+          { kanji: "えますか？", furigana: "" },
+        ],
+      },
+    ],
+  },
+];
 
 export const CourseVideoStudyPage = () => {
   const { courseId, lessonId } = useParams<{ courseId?: string; lessonId: string }>();
   const navigate = useNavigate();
 
-  // 1. State
-  const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Find active lesson from curated demo list or fallback to first
+  const initialLesson =
+    DEMO_LESSONS.find((l) => l.id === lessonId) || DEMO_LESSONS[0];
+  const [selectedLesson, setSelectedLesson] = useState<DemoLesson>(initialLesson);
+
   const [studyMode, setStudyMode] = useState<StudyMode>("shadowing");
-
-  // Video playback states
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [activeSubIndex, setActiveSubIndex] = useState(0);
-  const [playbackRate, setPlaybackRate] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState<number>(1);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
 
-  // Subtitle display toggles (matching Image 8)
+  // Subtitle visibility toggles
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [showTranslation, setShowTranslation] = useState(true);
   const [showFurigana, setShowFurigana] = useState(true);
   const [isAbRepeat, setIsAbRepeat] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-  const [showTranscriptPanel, setShowTranscriptPanel] = useState(true);
+  const [showLessonDropdown, setShowLessonDropdown] = useState(false);
 
-  // Video Source & AI Sensei Studio Mode (Primary AI Video Studio)
-  const [videoSourceMode, setVideoSourceMode] = useState<"youtube" | "ai_video">("ai_video");
-  const [youtubeError, setYoutubeError] = useState(false);
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-
-  // Shadowing & Speech Recording states
+  // Shadowing & Speech Recognition states
   const [isRecording, setIsRecording] = useState(false);
   const [userTranscript, setUserTranscript] = useState("");
   const [evalScore, setEvalScore] = useState<number | null>(null);
   const [evalFeedback, setEvalFeedback] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const isRecordingRef = useRef<boolean>(false);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
-  // References
-  const playerRef = useRef<any>(null);
-  const timePollIntervalRef = useRef<any>(null);
-  const subtitleRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+  // Playback & State Reference Guards (Prevents stale React closures from dropping continuous sentences)
+  const isPlayingRef = useRef<boolean>(false);
+  const isAbRepeatRef = useRef<boolean>(false);
+  const activeSubIndexRef = useRef<number>(0);
+  const playbackRateRef = useRef<number>(1);
+  const playAiSubAudioRef = useRef<((index: number) => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    isAbRepeatRef.current = isAbRepeat;
+  }, [isAbRepeat]);
+
+  useEffect(() => {
+    activeSubIndexRef.current = activeSubIndex;
+  }, [activeSubIndex]);
+
+  useEffect(() => {
+    playbackRateRef.current = playbackRate;
+  }, [playbackRate]);
+
+  // Independent container ref for transcript list - ensures 0 window scroll
   const transcriptScrollContainerRef = useRef<HTMLDivElement>(null);
+  const subtitleRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
-  // 2. Fetch Lesson Data
-  useEffect(() => {
-    let isMounted = true;
-    const fetchLesson = async () => {
-      if (!lessonId) return;
-      try {
-        setLoading(true);
-        const data = await curriculumService.getLessonById(lessonId);
-        if (isMounted && data) {
-          setLesson(data);
-        } else if (isMounted) {
-          // Fallback matching image 8
-          setLesson({
-            _id: lessonId,
-            topicId: "topic-keigo",
-            title: "敬語って何？ /What is Japanese Keigo?【敬語 1】",
-            description: "Video bài giảng chuẩn bản xứ từ Sambon Juku: Khái niệm Kính ngữ và 3 phân loại chính.",
-            level: "N4",
-            youtubeId: "1iDoq9sGX1s",
-            channelName: "三本塾 -Sambon Juku-",
-            sampleSentence: "今回は敬語って何？というお話をしようと思います。",
-            translation: "Lần này tôi dự định sẽ chia sẻ câu chuyện: 'Kính ngữ rốt cuộc là gì?'.",
-            duration: "5 phút",
-            isPublished: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            subtitles: [
-              {
-                startTime: 0,
-                endTime: 6,
-                japanese: "このチャンネルで敬語についての動画を出したことがなかったんですけれども、",
-                furigana: "このチャンネルでけいごについてのどうがをだしたことがなかったんですけれども、",
-                romaji: "Kono channeru de keigo ni tsuite no douga o dashita koto ga nakatta n desu keredomo,",
-                translation: "Dù từ trước đến nay tôi chưa từng làm video nói về kính ngữ trên kênh này,",
-                words: [
-                  { kanji: "この", furigana: "" },
-                  { kanji: "チャンネル", furigana: "" },
-                  { kanji: "で", furigana: "" },
-                  { kanji: "敬語", furigana: "けいご" },
-                  { kanji: "について", furigana: "" },
-                  { kanji: "の", furigana: "" },
-                  { kanji: "動画", furigana: "どうが" },
-                  { kanji: "を", furigana: "" },
-                  { kanji: "出した", furigana: "だした" },
-                  { kanji: "ことが", furigana: "" },
-                  { kanji: "なかったんですけれども", furigana: "" },
-                ],
-              },
-              {
-                startTime: 6,
-                endTime: 14,
-                japanese: "これから少しずつビデオを出していこうと思います。",
-                furigana: "これからすこしずつビデオをだしていこうとおもいます。",
-                romaji: "Korekara sukoshizutsu bideo o dashite ikou to omoimasu.",
-                translation: "nhưng từ giờ tôi định sẽ dần dần đăng các video về chủ đề này.",
-                words: [
-                  { kanji: "これから", furigana: "" },
-                  { kanji: "少しずつ", furigana: "すこしずつ" },
-                  { kanji: "ビデオ", furigana: "" },
-                  { kanji: "を", furigana: "" },
-                  { kanji: "出していこう", furigana: "だしていこう" },
-                  { kanji: "と", furigana: "" },
-                  { kanji: "思い", furigana: "おも" },
-                  { kanji: "ます", furigana: "" },
-                ],
-              },
-              {
-                startTime: 14,
-                endTime: 22,
-                japanese: "みなさん、これから一緒に頑張っていきましょう。",
-                furigana: "みなさん、これからいっしょにがんばっていきましょう。",
-                romaji: "Minasan, korekara issho ni gambarimashou.",
-                translation: "Mọi người ơi, từ nay chúng ta hãy cùng nhau cố gắng nhé.",
-                words: [
-                  { kanji: "みなさん", furigana: "" },
-                  { kanji: "これから", furigana: "" },
-                  { kanji: "一緒に", furigana: "いっしょに" },
-                  { kanji: "頑張って", furigana: "がんばって" },
-                  { kanji: "いきましょう", furigana: "" },
-                ],
-              },
-              {
-                startTime: 22,
-                endTime: 35,
-                japanese: "今回は敬語のレッスン第1回ということで",
-                furigana: "こんかいはけいごのレッスンだいいっかいということで",
-                romaji: "Konkai wa keigo no ressun daiikkai to iu koto de",
-                translation: "Lần này là bài học Kính ngữ số 1,",
-                words: [
-                  { kanji: "今回", furigana: "こんかい" },
-                  { kanji: "は", furigana: "" },
-                  { kanji: "敬語", furigana: "けいご" },
-                  { kanji: "の", furigana: "" },
-                  { kanji: "レッスン", furigana: "" },
-                  { kanji: "第1回", furigana: "だいいっかい" },
-                  { kanji: "ということで", furigana: "" },
-                ],
-              },
-              {
-                startTime: 35,
-                endTime: 52,
-                japanese: "あまり難しい話はしません。",
-                furigana: "あまりむずかしいはなしはしません。",
-                romaji: "Amari muzukashii hanashi wa shimasen.",
-                translation: "nên tôi sẽ không nói những chuyện quá phức tạp đâu.",
-                words: [
-                  { kanji: "あまり", furigana: "" },
-                  { kanji: "難しい", furigana: "むずかしい" },
-                  { kanji: "話", furigana: "はなし" },
-                  { kanji: "は", furigana: "" },
-                  { kanji: "しません", furigana: "" },
-                ],
-              },
-              {
-                startTime: 52,
-                endTime: 70,
-                japanese: "今回は敬語って何？というお話をしようと思います。",
-                furigana: "こんかいはけいごってなん？というおはなしをしようとおもいます。",
-                romaji: "Konkai wa keigo tte nan? to iu ohanashi o shiyou to omoimasu.",
-                translation: "Lần này tôi dự định sẽ chia sẻ câu chuyện: 'Kính ngữ rốt cuộc là gì?'.",
-                words: [
-                  { kanji: "今回", furigana: "こんかい" },
-                  { kanji: "は", furigana: "" },
-                  { kanji: "敬語", furigana: "けいご" },
-                  { kanji: "って", furigana: "" },
-                  { kanji: "何", furigana: "なん" },
-                  { kanji: "？", furigana: "" },
-                  { kanji: "という", furigana: "" },
-                  { kanji: "お話", furigana: "おはなし" },
-                  { kanji: "を", furigana: "" },
-                  { kanji: "しよう", furigana: "" },
-                  { kanji: "と", furigana: "" },
-                  { kanji: "思い", furigana: "おも" },
-                  { kanji: "ます", furigana: "" },
-                  { kanji: "。", furigana: "" },
-                ],
-              },
-              {
-                startTime: 70,
-                endTime: 85,
-                japanese: "もうある程度日本語を勉強している人は",
-                furigana: "もうあるていどにほんごをべんきょうしているひとは",
-                romaji: "Mou aruteido nihongo o benkyou shite iru hito wa",
-                translation: "Có thể những bạn đã học tiếng Nhật ở một trình độ nhất định",
-                words: [
-                  { kanji: "もう", furigana: "" },
-                  { kanji: "ある程度", furigana: "あるていど" },
-                  { kanji: "日本語", furigana: "にほんご" },
-                  { kanji: "を", furigana: "" },
-                  { kanji: "勉強している", furigana: "べんきょうしている" },
-                  { kanji: "人", furigana: "ひと" },
-                  { kanji: "は", furigana: "" },
-                ],
-              },
-              {
-                startTime: 85,
-                endTime: 98,
-                japanese: "もうそんなの知ってるよと思うかもしれませんが",
-                furigana: "もうそんなのしってるよとおもうかもしれませんが",
-                romaji: "Mou sonna no shitteru yo to omou kamoshiremasen ga",
-                translation: "sẽ nghĩ rằng 'Ôi điều đó tôi biết rồi mà', nhưng...",
-                words: [
-                  { kanji: "もう", furigana: "" },
-                  { kanji: "そんなの", furigana: "" },
-                  { kanji: "知ってるよ", furigana: "しってるよ" },
-                  { kanji: "と", furigana: "" },
-                  { kanji: "思う", furigana: "おもう" },
-                  { kanji: "かもしれませんが", furigana: "" },
-                ],
-              },
-              {
-                startTime: 98,
-                endTime: 115,
-                japanese: "この敬語って何？",
-                furigana: "このけいごってなん？",
-                romaji: "Kono keigo tte nan?",
-                translation: "Thực chất kính ngữ này là gì?",
-                words: [
-                  { kanji: "この", furigana: "" },
-                  { kanji: "敬語", furigana: "けいご" },
-                  { kanji: "って", furigana: "" },
-                  { kanji: "何", furigana: "なん" },
-                  { kanji: "？", furigana: "" },
-                ],
-              },
-              {
-                startTime: 115,
-                endTime: 140,
-                japanese: "敬語には、丁寧語、尊敬語、謙譲語の3種類があります。",
-                furigana: "けいごには、ていねいご、そんけいご、けんじょうごのさんしゅるいがあります。",
-                romaji: "Keigo ni wa, teineigo, sonkeigo, kenjougo no sanshurui ga arimasu.",
-                translation: "Trong kính ngữ có 3 loại: thể lịch sự, tôn kính ngữ và khiêm nhường ngữ.",
-                words: [
-                  { kanji: "敬語", furigana: "けいご" },
-                  { kanji: "には", furigana: "" },
-                  { kanji: "丁寧語", furigana: "ていねいご" },
-                  { kanji: "尊敬語", furigana: "そんけいご" },
-                  { kanji: "謙譲語", furigana: "けんじょうご" },
-                  { kanji: "の", furigana: "" },
-                  { kanji: "3種類", furigana: "さんしゅるい" },
-                  { kanji: "があります", furigana: "" },
-                ],
-              },
-              {
-                startTime: 140,
-                endTime: 185,
-                japanese: "丁寧語は「です・ます」を使って、誰に対しても丁寧に話す言葉です。",
-                furigana: "ていねいごは「です・ます」をつかって、だれにたいしてもていねいにはなすことばです。",
-                romaji: "Teineigo wa 'desu, masu' o tsukatte, dare ni taishite mo teinei ni hanasu kotoba desu.",
-                translation: "Thể lịch sự dùng đuôi 'desu, masu' để nói chuyện nhã nhặn với bất kỳ ai.",
-                words: [
-                  { kanji: "丁寧語", furigana: "ていねいご" },
-                  { kanji: "は", furigana: "" },
-                  { kanji: "「です・ます」", furigana: "" },
-                  { kanji: "を", furigana: "" },
-                  { kanji: "使って", furigana: "つかって" },
-                  { kanji: "誰", furigana: "だれ" },
-                  { kanji: "に対して", furigana: "にたいして" },
-                  { kanji: "も", furigana: "" },
-                  { kanji: "丁寧", furigana: "ていねい" },
-                  { kanji: "に", furigana: "" },
-                  { kanji: "話す", furigana: "はなす" },
-                  { kanji: "言葉", furigana: "ことば" },
-                  { kanji: "です", furigana: "" },
-                ],
-              },
-              {
-                startTime: 185,
-                endTime: 240,
-                japanese: "尊敬語と謙譲語は、相手との関係や立場を考えて使い分ける必要があります。",
-                furigana: "そんけいごとけんじょうごは、あいてとのかんけいやたちばをかんがえてつかいわけるひつようがあります。",
-                romaji: "Sonkeigo to kenjougo wa, aite to no kankei ya tachiba o kangaete tsukaiwakeru hitsuyou ga arimasu.",
-                translation: "Tôn kính ngữ và khiêm nhường ngữ cần phân biệt dựa trên mối quan hệ và vị thế với đối phương.",
-                words: [
-                  { kanji: "尊敬語", furigana: "そんけいご" },
-                  { kanji: "と", furigana: "" },
-                  { kanji: "謙譲語", furigana: "けんじょうご" },
-                  { kanji: "は", furigana: "" },
-                  { kanji: "相手", furigana: "あいて" },
-                  { kanji: "との", furigana: "" },
-                  { kanji: "関係", furigana: "かんけい" },
-                  { kanji: "や", furigana: "" },
-                  { kanji: "立場", furigana: "たちば" },
-                  { kanji: "を", furigana: "" },
-                  { kanji: "考えて", furigana: "かんがえて" },
-                  { kanji: "使い分ける", furigana: "つかいわける" },
-                  { kanji: "必要", furigana: "ひつよう" },
-                  { kanji: "があります", furigana: "" },
-                ],
-              },
-              {
-                startTime: 240,
-                endTime: 300,
-                japanese: "次のレッスンでは、それぞれの詳しいルールと実践的な例文を勉強しましょう！",
-                furigana: "つぎのレッスンでは、それぞれのくわしいルールとじっせんてきなれいぶんをべんきょうしましょう！",
-                romaji: "Tsugi no ressun de wa, sorezore no kuwashii ruuru to jissenteki na reibun o benkyou shimashou!",
-                translation: "Trong bài học tiếp theo, chúng ta hãy cùng học quy tắc chi tiết và các câu ví dụ thực tế nhé!",
-                words: [
-                  { kanji: "次", furigana: "つぎ" },
-                  { kanji: "の", furigana: "" },
-                  { kanji: "レッスン", furigana: "" },
-                  { kanji: "では", furigana: "" },
-                  { kanji: "それぞれ", furigana: "" },
-                  { kanji: "の", furigana: "" },
-                  { kanji: "詳しい", furigana: "くわしい" },
-                  { kanji: "ルール", furigana: "" },
-                  { kanji: "と", furigana: "" },
-                  { kanji: "実践的", furigana: "じっせんてき" },
-                  { kanji: "な", furigana: "" },
-                  { kanji: "例文", furigana: "れいぶん" },
-                  { kanji: "を", furigana: "" },
-                  { kanji: "勉強", furigana: "べんきょう" },
-                  { kanji: "しましょう", furigana: "" },
-                ],
-              },
-            ],
-          });
-        }
-      } catch (err) {
-        console.error("Error loading lesson for video study:", err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    fetchLesson();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [lessonId]);
-
-  // Subtitles list
-  const subtitles: VideoSubtitle[] = lesson?.subtitles || [];
+  const subtitles = selectedLesson.subtitles;
   const currentSub = subtitles[activeSubIndex] || subtitles[0];
-  const youtubeVideoId = lesson?.youtubeId || "1iDoq9sGX1s";
+  const totalSubtitles = subtitles.length;
 
-  // AI Voice Synthesis for AI Sensei Video Mode (100% immune to copyright/embed blocks)
-  const playAiSubAudio = useCallback(
-    (index: number) => {
-      const sub = subtitles[index];
-      if (!sub) return;
-
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(sub.japanese);
-        utterance.lang = "ja-JP";
-        utterance.rate = playbackRate;
-
-        // Try to pick Japanese voice if available in browser
-        const voices = window.speechSynthesis.getVoices();
-        const jaVoice = voices.find((v) => v.lang.startsWith("ja"));
-        if (jaVoice) utterance.voice = jaVoice;
-
-        utterance.onstart = () => {
-          setIsAiSpeaking(true);
-        };
-
-        utterance.onend = () => {
-          setIsAiSpeaking(false);
-          // If AB repeat is on, loop again
-          if (isAbRepeat) {
-            setTimeout(() => {
-              if (isPlaying) playAiSubAudio(index);
-            }, 500);
-          } else {
-            // Advance to next subtitle
-            if (index < subtitles.length - 1) {
-              const nextIdx = index + 1;
-              setActiveSubIndex(nextIdx);
-              setCurrentTime(subtitles[nextIdx].startTime);
-              setTimeout(() => {
-                if (isPlaying) playAiSubAudio(nextIdx);
-              }, 400);
-            } else {
-              setIsPlaying(false);
-            }
-          }
-        };
-
-        utterance.onerror = () => {
-          setIsAiSpeaking(false);
-        };
-
-        window.speechSynthesis.speak(utterance);
-      }
-    },
-    [subtitles, playbackRate, isAbRepeat, isPlaying]
-  );
-
-  // Set duration as soon as subtitles are available
-  useEffect(() => {
-    if (subtitles.length > 0) {
-      const lastSub = subtitles[subtitles.length - 1];
-      if (lastSub?.endTime) {
-        setDuration(lastSub.endTime);
-      }
-    }
-  }, [subtitles]);
-
-  // In AI Video mode: smooth time progression
-  useEffect(() => {
-    if (videoSourceMode !== "ai_video" || !isPlaying) return;
-
-    if (duration === 0 && subtitles.length > 0) {
-      setDuration(subtitles[subtitles.length - 1]?.endTime || 300);
-    }
-
-    const interval = setInterval(() => {
-      setCurrentTime((prev) => {
-        const next = prev + 0.25 * playbackRate;
-        if (currentSub && next >= currentSub.endTime && !isAbRepeat) {
-          return currentSub.endTime;
-        }
-        return next;
-      });
-    }, 250);
-
-    return () => clearInterval(interval);
-  }, [videoSourceMode, isPlaying, playbackRate, currentSub, isAbRepeat, duration, subtitles]);
-
-  // Mode Switchers
-  const switchToAiVideoMode = () => {
-    if (playerRef.current && playerRef.current.pauseVideo) {
+  // Helper to cleanly stop both SpeechSynthesis & Voicevox HTMLAudioElement
+  const stopAllAudio = useCallback(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        playerRef.current.pauseVideo();
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+        }
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
       } catch (_) {}
     }
-    setVideoSourceMode("ai_video");
-    toast.success("Đã chuyển sang chế độ Video AI Sensei Studio");
-  };
-
-  const switchToYoutubeMode = () => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsAiSpeaking(false);
-    setYoutubeError(false);
-    setVideoSourceMode("youtube");
-  };
-
-  // 3. Initialize YouTube Iframe API
-  useEffect(() => {
-    if (!lesson || loading || videoSourceMode !== "youtube") return;
-
-    // Load YouTube Iframe script if not present
-    if (!window.YT) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      const firstScriptTag = document.getElementsByTagName("script")[0];
-      firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
-    }
-
-    const initPlayer = () => {
-      if (!window.YT || !window.YT.Player) return;
-
+    if (audioElementRef.current) {
       try {
-        if (playerRef.current) {
-          try {
-            playerRef.current.destroy();
-          } catch (_) {}
-        }
+        audioElementRef.current.pause();
+        audioElementRef.current.currentTime = 0;
+      } catch (_) {}
+      audioElementRef.current = null;
+    }
+    currentUtteranceRef.current = null;
+    setIsAiSpeaking(false);
+  }, []);
 
-        playerRef.current = new window.YT.Player("youtube-player-container", {
-          videoId: youtubeVideoId,
-          host: "https://www.youtube-nocookie.com",
-          playerVars: {
-            autoplay: 0,
-            controls: 1,
-            modestbranding: 1,
-            rel: 0,
-            playsinline: 1,
-            fs: 1,
-            enablejsapi: 1,
-            origin: window.location.origin,
-          },
-          events: {
-            onReady: (event: any) => {
-              setDuration(event.target.getDuration() || 0);
-              setYoutubeError(false);
-            },
-            onStateChange: (event: any) => {
-              // 1 = Playing, 2 = Paused, 0 = Ended
-              setIsPlaying(event.data === 1);
-            },
-            onError: (event: any) => {
-              console.warn("YouTube Player error event:", event.data);
-              setYoutubeError(true);
-              setVideoSourceMode("ai_video");
-              toast.error(
-                "Video YouTube gốc không khả dụng hoặc bị giới hạn nhúng bản quyền. Đã tự động chuyển sang Video AI Sensei để bài học hoạt động trơn tru!"
-              );
-            },
-          },
-        });
-      } catch (e) {
-        console.warn("YouTube Player initialization:", e);
-        setYoutubeError(true);
-        setVideoSourceMode("ai_video");
-      }
-    };
-
-    if (window.YT && window.YT.Player) {
-      initPlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = initPlayer;
+  // Cleanup speech synthesis on unmount & warm up voices
+  useEffect(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const loadVoices = () => {
+        window.speechSynthesis.getVoices();
+      };
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+      loadVoices();
     }
 
     return () => {
-      if (playerRef.current) {
+      isPlayingRef.current = false;
+      stopAllAudio();
+      if (recognitionRef.current) {
         try {
-          playerRef.current.destroy();
+          recognitionRef.current.abort();
         } catch (_) {}
       }
     };
-  }, [lesson, loading, youtubeVideoId, videoSourceMode]);
+  }, [stopAllAudio]);
 
-  // 4. Polling Current Time & Sync Subtitles
+  // Update selected lesson if URL parameter matches
   useEffect(() => {
-    if (!isPlaying) {
-      if (timePollIntervalRef.current) clearInterval(timePollIntervalRef.current);
-      return;
+    if (lessonId) {
+      const match = DEMO_LESSONS.find((l) => l.id === lessonId);
+      if (match) {
+        setSelectedLesson(match);
+        setActiveSubIndex(0);
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        stopAllAudio();
+      }
     }
+  }, [lessonId, stopAllAudio]);
 
-    timePollIntervalRef.current = setInterval(() => {
-      if (playerRef.current && playerRef.current.getCurrentTime) {
+  // AI Voice Synthesis for Sensei (VOICEVOX studio audio + Bunsetsu SpeechSynthesis fallback)
+  const playAiSubAudio = useCallback(
+    async (index: number) => {
+      const targetSub = subtitles[index];
+      if (!targetSub) {
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        setIsAiSpeaking(false);
+        return;
+      }
+
+      stopAllAudio();
+      setIsAiSpeaking(true);
+
+      const handleAudioFinished = () => {
+        setIsAiSpeaking(false);
+        audioElementRef.current = null;
+        currentUtteranceRef.current = null;
+
+        // If user pressed pause or stopped recording, do NOT advance
+        if (!isPlayingRef.current) {
+          return;
+        }
+
+        if (isAbRepeatRef.current) {
+          setTimeout(() => {
+            if (isPlayingRef.current) {
+              playAiSubAudioRef.current?.(index);
+            }
+          }, 500);
+        } else if (index < subtitles.length - 1) {
+          // Advance to next sentence automatically and continue playing
+          const nextIdx = index + 1;
+          setActiveSubIndex(nextIdx);
+          setTimeout(() => {
+            if (isPlayingRef.current) {
+              playAiSubAudioRef.current?.(nextIdx);
+            }
+          }, 450);
+        } else {
+          // Reached the end of the lesson
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+        }
+      };
+
+      // 1. Try Voicevox Studio-Grade AI Engine (Shikoku Metan / Tokyo Sensei voice)
+      try {
+        const voicevoxData = await practiceService.synthesizeVoicevox({
+          text: targetSub.japanese,
+          speedScale: playbackRateRef.current,
+        });
+
+        if (voicevoxData?.audioContent) {
+          const audio = new Audio(`data:audio/wav;base64,${voicevoxData.audioContent}`);
+          audioElementRef.current = audio;
+          audio.onended = handleAudioFinished;
+          audio.onerror = () => {
+            setIsAiSpeaking(false);
+            audioElementRef.current = null;
+            // On audio error, attempt next sentence if still playing
+            if (isPlayingRef.current && index < subtitles.length - 1) {
+              const nextIdx = index + 1;
+              setActiveSubIndex(nextIdx);
+              setTimeout(() => {
+                if (isPlayingRef.current) {
+                  playAiSubAudioRef.current?.(nextIdx);
+                }
+              }, 450);
+            }
+          };
+          await audio.play();
+          return;
+        }
+      } catch (_) {
+        // Voicevox engine offline -> fallback smoothly
+      }
+
+      // 2. High-speed Fallback: Browser SpeechSynthesis with Bunsetsu phrasing pauses
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try {
-          const time = playerRef.current.getCurrentTime();
-          setCurrentTime(time);
-
-          // Find subtitle line corresponding to time
-          if (subtitles.length > 0) {
-            const idx = subtitles.findIndex(
-              (s) => time >= s.startTime && time < s.endTime
-            );
-
-            if (idx !== -1 && idx !== activeSubIndex) {
-              setActiveSubIndex(idx);
-
-              // Auto-scroll transcript row into view smoothly
-              subtitleRefs.current[idx]?.scrollIntoView({
-                behavior: "smooth",
-                block: "nearest",
-              });
-            }
-
-            // AB Repeat Check: Loop between start and end of active subtitle
-            if (isAbRepeat && currentSub && time >= currentSub.endTime) {
-              playerRef.current.seekTo(currentSub.startTime, true);
-            }
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
           }
+
+          const phrasedText = formatJapaneseForSpeech(targetSub.japanese);
+          const utterance = new SpeechSynthesisUtterance(phrasedText);
+          utterance.lang = "ja-JP";
+          utterance.rate = playbackRateRef.current;
+          utterance.pitch = 1.0;
+
+          // Retain reference to prevent garbage collection in Chrome
+          currentUtteranceRef.current = utterance;
+          (window as unknown as { __jtalkUtterance: SpeechSynthesisUtterance }).__jtalkUtterance = utterance;
+
+          const voices = window.speechSynthesis.getVoices();
+          const jpVoice = voices.find(
+            (v) =>
+              v.lang === "ja-JP" ||
+              v.lang.startsWith("ja") ||
+              v.lang.includes("JP") ||
+              v.name.toLowerCase().includes("japanese")
+          );
+          if (jpVoice) utterance.voice = jpVoice;
+
+          utterance.onend = handleAudioFinished;
+          utterance.onerror = (e) => {
+            if (e.error !== "interrupted" && e.error !== "canceled") {
+              console.warn("SpeechSynthesis error:", e.error);
+            }
+            setIsAiSpeaking(false);
+            currentUtteranceRef.current = null;
+          };
+
+          window.speechSynthesis.speak(utterance);
+          return;
         } catch (e) {
-          console.warn("Polling time error:", e);
+          console.warn("SpeechSynthesis exception:", e);
         }
       }
-    }, 200);
 
-    return () => {
-      if (timePollIntervalRef.current) clearInterval(timePollIntervalRef.current);
-    };
-  }, [isPlaying, subtitles, activeSubIndex, isAbRepeat, currentSub]);
-
-  // 5. Jump to specific subtitle timestamp
-  const handleSelectSubtitle = useCallback(
-    (idx: number, autoPlay = true) => {
-      const targetSub = subtitles[idx];
-      if (!targetSub) return;
-
-      setActiveSubIndex(idx);
-      setCurrentTime(targetSub.startTime);
-
-      if (videoSourceMode === "youtube" && playerRef.current && !youtubeError) {
-        try {
-          playerRef.current.seekTo(targetSub.startTime, true);
-          if (autoPlay) {
-            playerRef.current.playVideo();
-            setIsPlaying(true);
-          }
-        } catch (e) {
-          console.warn("Seek error:", e);
-        }
-      } else {
-        // AI Video mode
-        if (autoPlay) {
-          setIsPlaying(true);
-          playAiSubAudio(idx);
-        }
-      }
+      setIsAiSpeaking(false);
     },
-    [subtitles, videoSourceMode, youtubeError, playAiSubAudio]
+    [subtitles, stopAllAudio]
   );
 
-  // Timeline Scrubber Seeking
-  const handleSeekTimeline = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!duration || duration <= 0) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-    const newTime = ratio * duration;
-    setCurrentTime(newTime);
+  useEffect(() => {
+    playAiSubAudioRef.current = playAiSubAudio;
+  }, [playAiSubAudio]);
 
-    if (videoSourceMode === "youtube" && playerRef.current && !youtubeError) {
-      try {
-        playerRef.current.seekTo(newTime, true);
-      } catch (_) {}
-    }
+  // Jump to specific sentence
+  const handleSelectSubtitle = useCallback(
+    (idx: number, autoPlay = true) => {
+      setActiveSubIndex(idx);
+      setUserTranscript("");
+      setEvalScore(null);
+      setEvalFeedback(null);
 
-    if (subtitles.length > 0) {
-      const idx = subtitles.findIndex(
-        (s) => newTime >= s.startTime && newTime <= s.endTime
-      );
-      if (idx !== -1 && idx !== activeSubIndex) {
-        setActiveSubIndex(idx);
-        if (videoSourceMode === "ai_video" && isPlaying) {
-          playAiSubAudio(idx);
-        }
+      if (autoPlay) {
+        isPlayingRef.current = true;
+        setIsPlaying(true);
+        playAiSubAudio(idx);
+      } else {
+        isPlayingRef.current = false;
+        stopAllAudio();
+        setIsPlaying(false);
       }
+    },
+    [playAiSubAudio, stopAllAudio]
+  );
+
+  // ISOLATED AUTO-SCROLL: Scrolls ONLY the transcript container, NEVER the window or video!
+  useEffect(() => {
+    const container = transcriptScrollContainerRef.current;
+    const element = subtitleRefs.current[activeSubIndex];
+    if (container && element) {
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
+      const targetScroll = relativeTop - container.clientHeight / 2 + elementRect.height / 2;
+
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: "smooth",
+      });
+    }
+  }, [activeSubIndex]);
+
+  // Toggle Video Play / Pause
+  const togglePlayPause = () => {
+    if (isPlayingRef.current) {
+      isPlayingRef.current = false;
+      stopAllAudio();
+      setIsPlaying(false);
+    } else {
+      isPlayingRef.current = true;
+      setIsPlaying(true);
+      playAiSubAudio(activeSubIndex);
     }
   };
 
   const handlePrevSubtitle = () => {
     if (activeSubIndex > 0) {
-      handleSelectSubtitle(activeSubIndex - 1, isPlaying);
+      handleSelectSubtitle(activeSubIndex - 1, isPlayingRef.current);
     }
   };
 
   const handleNextSubtitle = () => {
     if (activeSubIndex < subtitles.length - 1) {
-      handleSelectSubtitle(activeSubIndex + 1, isPlaying);
+      handleSelectSubtitle(activeSubIndex + 1, isPlayingRef.current);
     }
   };
 
-  // Helper to format seconds to M:SS (e.g. 0:59 / 11:59)
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${m}:${s < 10 ? "0" : ""}${s}`;
+  const handleReplayCurrent = () => {
+    handleSelectSubtitle(activeSubIndex, true);
   };
 
-  // Toggle Video Play / Pause
-  const togglePlayPause = () => {
-    if (videoSourceMode === "youtube" && playerRef.current && !youtubeError) {
-      try {
-        if (isPlaying) {
-          playerRef.current.pauseVideo();
-          setIsPlaying(false);
-        } else {
-          playerRef.current.playVideo();
-          setIsPlaying(true);
-        }
-      } catch (e) {
-        console.warn("Play/pause error:", e);
-      }
-    } else {
-      // AI Video mode
-      if (isPlaying) {
-        if ("speechSynthesis" in window) {
-          window.speechSynthesis.cancel();
-        }
-        setIsAiSpeaking(false);
-        setIsPlaying(false);
-      } else {
-        setIsPlaying(true);
-        playAiSubAudio(activeSubIndex);
-      }
-    }
-  };
-
-  // Change Playback Speed
-  const handleSetSpeed = (rate: number) => {
-    setPlaybackRate(rate);
-    setShowSettingsMenu(false);
-    if (videoSourceMode === "youtube" && playerRef.current && playerRef.current.setPlaybackRate) {
-      try {
-        playerRef.current.setPlaybackRate(rate);
-      } catch (_) {}
-    } else if (isPlaying) {
-      playAiSubAudio(activeSubIndex);
-    }
-    toast.info(`Tốc độ phát: ${rate}x`);
-  };
-
-  // 6. Web Speech API for Shadowing & Pronunciation Evaluation
+  // Shadowing Recording with Web Speech API
   const startRecording = useCallback(() => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (typeof window === "undefined") return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
       toast.error("Trình duyệt không hỗ trợ Web Speech API. Vui lòng dùng Chrome hoặc Edge.");
@@ -731,125 +818,120 @@ export const CourseVideoStudyPage = () => {
     }
 
     try {
-      // Pause video or AI speech when user starts shadowing
-      if (videoSourceMode === "youtube" && playerRef.current && isPlaying) {
-        playerRef.current.pauseVideo();
-      } else if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-        setIsAiSpeaking(false);
-      }
+      isPlayingRef.current = false;
+      stopAllAudio();
       setIsPlaying(false);
-
       setUserTranscript("");
       setEvalScore(null);
       setEvalFeedback(null);
+      isRecordingRef.current = true;
+      setIsRecording(true);
 
       const rec = new SpeechRecognition();
       rec.lang = "ja-JP";
-      rec.continuous = false;
+      rec.continuous = true;
       rec.interimResults = true;
 
       rec.onstart = () => {
+        isRecordingRef.current = true;
         setIsRecording(true);
-        toast.info("Đang lắng nghe giọng nhại lại (Shadowing)...");
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rec.onresult = (event: any) => {
-        let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        setUserTranscript(transcript);
+        const text = Array.from(event.results)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((r: any) => r[0].transcript)
+          .join("");
+        setUserTranscript(text);
       };
 
-      rec.onerror = (e: any) => {
-        console.warn("Shadowing speech recognition error:", e);
-        setIsRecording(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rec.onerror = (event: any) => {
+        console.warn("Shadowing speech recognition notice:", event.error);
+        if (event.error === "not-allowed") {
+          toast.error("Lỗi micro ghi âm. Vui lòng kiểm tra quyền micro.");
+          isRecordingRef.current = false;
+          setIsRecording(false);
+        }
       };
 
       rec.onend = () => {
-        setIsRecording(false);
-        // Automatically evaluate after user finishes
-        if (currentSub?.japanese) {
-          evaluateShadowing(currentSub.japanese);
+        if (isRecordingRef.current) {
+          try {
+            rec.start();
+          } catch (_) {}
+        } else {
+          setIsRecording(false);
         }
       };
 
-      recognitionRef.current = rec;
       rec.start();
-    } catch (err) {
-      console.error("Mic start error:", err);
+      recognitionRef.current = rec;
+    } catch {
+      isRecordingRef.current = false;
       setIsRecording(false);
     }
-  }, [currentSub, isPlaying]);
+  }, []);
 
   const stopRecording = useCallback(() => {
+    isRecordingRef.current = false;
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch (_) {}
     }
     setIsRecording(false);
-  }, []);
 
-  // Simple and intuitive pronunciation match scorer
-  const evaluateShadowing = (targetSentence: string) => {
-    const targetClean = targetSentence.replace(/[、。！？!?,.\s~…-]/g, "");
-    const spokenClean = userTranscript.replace(/[、。！？!?,.\s~…-]/g, "");
+    // Scoring calculation based on transcript accuracy
+    setTimeout(() => {
+      const target = currentSub.japanese.replace(/[、。！？\s]/g, "");
+      const spoken = userTranscript.replace(/[、。！？\s]/g, "");
 
-    if (!spokenClean) {
-      setEvalScore(null);
-      return;
-    }
+      if (!spoken || spoken.length === 0) {
+        toast.warning("Chưa ghi nhận được giọng nói. Bạn hãy bấm Micro và đọc đuổi theo câu mẫu nhé!");
+        setEvalScore(null);
+        setEvalFeedback(null);
+        return;
+      }
 
-    // Levenshtein / Word match heuristic
-    let matchedChars = 0;
-    for (const char of spokenClean) {
-      if (targetClean.includes(char)) matchedChars++;
-    }
+      // Levenshtein / character similarity metric
+      let matches = 0;
+      for (let i = 0; i < spoken.length; i++) {
+        if (target.includes(spoken[i])) matches++;
+      }
+      const similarity = Math.min(100, Math.round((matches / Math.max(target.length, 1)) * 100));
+      const score = Math.max(45, similarity);
 
-    const ratio = Math.min(1, matchedChars / Math.max(1, targetClean.length));
-    const score = Math.round(ratio * 40 + 60); // 60-100 range
+      setEvalScore(score);
+      if (score >= 90) {
+        setEvalFeedback("Xuất sắc! Ngữ điệu Tokyo chuẩn xác, phát âm rất tự nhiên.");
+        toast.success(`Điểm Shadowing: ${score}/100 • Xuất sắc!`);
+      } else {
+        setEvalFeedback("Khá tốt! Chú ý ngắt nhịp và trường âm để giọng nói trôi chảy hơn nhé.");
+        toast.info(`Điểm Shadowing: ${score}/100`);
+      }
+    }, 400);
+  }, [currentSub, userTranscript]);
 
-    setEvalScore(score);
-
-    if (score >= 85) {
-      setEvalFeedback("Xuất sắc! Âm điệu và độ chuẩn xác rất giống người bản xứ.");
-      toast.success(`Phát âm chuẩn: ${score}/100!`);
-    } else if (score >= 70) {
-      setEvalFeedback("Tốt! Hãy chú ý ngắt nhịp và trường âm để tự nhiên hơn nhé.");
-      toast.info(`Điểm Shadowing: ${score}/100`);
-    } else {
-      setEvalFeedback("Cần luyện thêm. Hãy nghe kỹ từng từ của thầy Sambon và thử lại.");
-      toast.warning(`Điểm Shadowing: ${score}/100`);
-    }
-  };
-
-  // Clean segment words for furigana rendering
+  // Clean segment words for Furigana rendering
   const renderFuriganaSentence = (sub: VideoSubtitle) => {
     if (sub.words && sub.words.length > 0) {
       return (
-        <div className="flex flex-wrap items-end justify-center gap-x-2.5 sm:gap-x-3.5 gap-y-2 text-base sm:text-xl font-medium tracking-wide">
-          {sub.words.map((w: SubtitleWord, idx: number) => {
+        <div className="flex flex-wrap items-end justify-center gap-x-0.5 gap-y-1 font-jp leading-relaxed">
+          {sub.words.map((w, idx) => {
             const hasFuri = showFurigana && w.furigana && w.furigana.trim().length > 0;
-            return (
-              <span
-                key={idx}
-                className="inline-flex flex-col items-center group cursor-pointer hover:text-emerald-300 transition-colors"
-                title={w.meaning || w.romaji || undefined}
-              >
-                {hasFuri ? (
-                  <span className="text-2xs sm:text-xs font-semibold text-emerald-300/95 select-none leading-none mb-0.5">
-                    {w.furigana}
-                  </span>
-                ) : (
-                  <span className="text-2xs sm:text-xs text-transparent select-none leading-none mb-0.5">
-                    -
-                  </span>
-                )}
-                <span className="border-b-2 border-slate-500/40 group-hover:border-emerald-400 pb-0.5">
+            if (hasFuri) {
+              return (
+                <ruby key={idx} className="text-lg sm:text-2xl font-black text-white hover:text-rose-300 transition-colors">
                   {w.kanji}
-                </span>
+                  <rt className="text-rose-400 font-bold">{w.furigana}</rt>
+                </ruby>
+              );
+            }
+            return (
+              <span key={idx} className="text-lg sm:text-2xl font-black text-white hover:text-rose-200 transition-colors">
+                {w.kanji}
               </span>
             );
           })}
@@ -857,65 +939,112 @@ export const CourseVideoStudyPage = () => {
       );
     }
 
-    // Fallback if segmented words are not present: display single line
     return (
-      <p className="text-base sm:text-xl font-bold text-center tracking-wide">
+      <p className="text-lg sm:text-2xl font-black text-white font-jp text-center leading-relaxed">
         {sub.japanese}
       </p>
     );
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <LoadingSpinner size="lg" label="Đang tải phòng học Video & Shadowing..." />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#F0F2F5] flex flex-col font-sans select-none">
+    <div className="min-h-screen lg:h-screen bg-slate-100 dark:bg-[#090d14] flex flex-col font-sans transition-colors overflow-x-hidden lg:overflow-hidden select-text">
       {/* ============================================================ */}
-      {/* 1. TOP HEADER (Matches Image 8 reference) */}
+      {/* 1. TOP HEADER & LESSON SELECTOR */}
       {/* ============================================================ */}
-      <header className="h-14 sm:h-16 bg-white border-b border-slate-200/90 px-4 sm:px-6 flex items-center justify-between gap-3 shrink-0 z-20 shadow-2xs">
-        {/* Left: Back button & Title */}
+      <header className="h-14 sm:h-16 bg-white dark:bg-slate-900 border-b border-slate-200/90 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-3 shrink-0 z-20 shadow-2xs">
+        {/* Left: Back button & Lesson Dropdown */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => (courseId ? navigate(`/courses/${courseId}`) : navigate("/courses"))}
             type="button"
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            title="Quay lại danh sách bài học"
+            className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            title="Quay lại danh sách khóa học"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-black text-slate-900 truncate">
-                {lesson?.title || "敬語って何？ /What is Japanese Keigo?【敬語 1】"}
-              </h1>
-              {lesson?.channelName && (
-                <span className="hidden md:inline-block text-3xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                  {lesson.channelName}
-                </span>
-              )}
-            </div>
+          {/* Quick Lesson Switcher Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowLessonDropdown((prev) => !prev)}
+              type="button"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-rose-50/80 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-left hover:bg-rose-100/80 transition cursor-pointer"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded text-3xs font-extrabold">
+                    {selectedLesson.level}
+                  </span>
+                  <span className="text-2xs sm:text-xs font-black text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-[320px]">
+                    {selectedLesson.title}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                </div>
+              </div>
+            </button>
+
+            {/* Dropdown Menu for 4 Curated AI Demo Lessons */}
+            {showLessonDropdown && (
+              <div className="absolute left-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-2 shadow-2xl z-50 space-y-1 animate-in fade-in-50 duration-150">
+                <div className="p-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-2xs font-bold uppercase tracking-wider text-slate-400">
+                    Chọn bài học Shadowing AI (MVP)
+                  </span>
+                  <span className="text-3xs text-rose-600 font-bold bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full">
+                    {DEMO_LESSONS.length} bài sẵn sàng
+                  </span>
+                </div>
+
+                {DEMO_LESSONS.map((l) => {
+                  const isSelected = l.id === selectedLesson.id;
+                  return (
+                    <button
+                      key={l.id}
+                      onClick={() => {
+                        setSelectedLesson(l);
+                        setActiveSubIndex(0);
+                        setShowLessonDropdown(false);
+                        setIsPlaying(false);
+                        stopAllAudio();
+                        toast.success(`Đã chuyển sang bài: ${l.title}`);
+                      }}
+                      type="button"
+                      className={`w-full text-left p-2.5 rounded-2xl flex items-center justify-between gap-3 transition-colors cursor-pointer ${
+                        isSelected
+                          ? "bg-rose-50 dark:bg-rose-950/80 text-rose-950 dark:text-rose-200 font-bold border border-rose-200 dark:border-rose-800"
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-3xs font-extrabold px-1.5 py-0.2 bg-slate-200 dark:bg-slate-800 rounded">
+                            {l.level}
+                          </span>
+                          <p className="text-xs truncate">{l.title}</p>
+                        </div>
+                        <p className="text-3xs text-slate-400 truncate mt-0.5">{l.description}</p>
+                      </div>
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-rose-600 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right: Study Mode Buttons (Matching Image 8 Top Right) */}
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto">
+        {/* Right: Study Mode Toggles & Badge */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => setStudyMode("shadowing")}
             type="button"
             className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs ${
               studyMode === "shadowing"
-                ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                ? "bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-rose-500/20"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 animate-spin-slow text-amber-300" />
             <span>Shadowing</span>
           </button>
 
@@ -924,660 +1053,388 @@ export const CourseVideoStudyPage = () => {
             type="button"
             className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               studyMode === "pronunciation"
-                ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                ? "bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-rose-500/20"
+                : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60"
             }`}
           >
-            <Mic className="w-3.5 h-3.5" />
-            <span>Phát âm</span>
-          </button>
-
-          <button
-            onClick={() => setStudyMode("listening")}
-            type="button"
-            className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              studyMode === "listening"
-                ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <Headphones className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Luyện nghe</span>
-          </button>
-
-          <button
-            onClick={() => setStudyMode("exercise")}
-            type="button"
-            className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              studyMode === "exercise"
-                ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Bài tập</span>
+            <Mic className="w-3.5 h-3.5 animate-pulse text-rose-500 dark:text-rose-400" />
+            <span className="hidden sm:inline">Phát âm</span>
           </button>
         </div>
       </header>
 
       {/* ============================================================ */}
-      {/* 2. MAIN STUDY ROOM WORKSPACE */}
+      {/* 2. MASTER SHADOWING WORKSPACE (FIT-SCREEN ZERO-SCROLL LAYOUT) */}
       {/* ============================================================ */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
-        {/* LEFT COLUMN: YouTube Player / AI Video Studio + Furigana Subtitle Bar + Interactive Actions */}
-        <div className="flex-1 flex flex-col justify-between overflow-y-auto p-3 sm:p-5 lg:p-6 space-y-4">
-          {/* Top Video Source Switcher */}
-          <div className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 px-1 flex-wrap">
-            <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-2xl shadow-2xs">
-              <button
-                onClick={switchToYoutubeMode}
-                type="button"
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  videoSourceMode === "youtube" && !youtubeError
-                    ? "bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Video className="w-3.5 h-3.5 text-rose-600" />
-                <span>Video Gốc (YouTube)</span>
-              </button>
+        {/* LEFT COLUMN: AI SENSEI VIDEO STAGE & DOCKED SHADOWING ACTION DOCK */}
+        <div className="flex-1 flex flex-col p-3 sm:p-5 lg:p-6 overflow-hidden justify-between space-y-3">
+          {/* A. Integrated AI Sensei Studio Player */}
+          <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-br from-slate-950 via-[#10131f] to-[#250d18] border border-rose-500/20 shadow-2xl flex-1 flex flex-col justify-between p-4 sm:p-6 select-none min-h-[300px] lg:min-h-[360px]">
+            {/* Ambient Tokyo Studio Lighting */}
+            <div className="absolute top-0 left-1/4 w-80 h-80 bg-rose-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
+            <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-              <button
-                onClick={switchToAiVideoMode}
-                type="button"
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  videoSourceMode === "ai_video" || youtubeError
-                    ? "bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Video AI Sensei Studio</span>
-              </button>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-3xs font-bold rounded-full border border-emerald-200/80">
-                <Sparkles className="w-3 h-3 text-emerald-500" />
-                Giọng chuẩn Tokyo • Tương tác trực quan
-              </span>
-            </div>
-          </div>
-
-          {/* Video Container (Responsive 16:9) */}
-          <div className="relative w-full max-w-5xl mx-auto rounded-3xl overflow-hidden bg-black shadow-lg aspect-video flex items-center justify-center">
-            {/* YouTube Player */}
-            <div
-              id="youtube-player-container"
-              className={`w-full h-full ${
-                videoSourceMode === "youtube" && !youtubeError ? "block" : "hidden"
-              }`}
-            />
-
-            {/* AI Video Sensei Studio Canvas (Active in ai_video mode OR when YouTube throws error) */}
-            {(videoSourceMode === "ai_video" || youtubeError) && (
-              <div className="w-full h-full relative overflow-hidden bg-gradient-to-br from-slate-950 via-[#0b121e] to-[#022c22] flex flex-col items-center justify-between p-3 sm:p-5 select-none">
-                {/* Ambient Studio Lights */}
-                <div className="absolute top-0 left-1/4 w-72 sm:w-96 h-72 sm:h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
-                <div className="absolute bottom-0 right-1/4 w-72 sm:w-96 h-72 sm:h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                {/* Top Badge: AI Studio Status */}
-                <div className="relative z-10 flex items-center justify-between w-full px-2">
-                  <div className="flex items-center gap-2 bg-slate-900/85 backdrop-blur-md border border-emerald-500/30 px-3 sm:px-4 py-1.5 rounded-full shadow-lg">
-                    <span className="relative flex h-2.5 w-2.5">
-                      {isPlaying && (
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      )}
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-                    </span>
-                    <span className="text-2xs sm:text-xs font-bold text-emerald-300">
-                      AI Sensei Studio • Tiếng Nhật Chuẩn Tokyo
-                    </span>
-                  </div>
-
-                  {youtubeError && (
-                    <div className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-200 px-2.5 py-1 rounded-full text-3xs font-semibold">
-                      <Sparkles className="w-3 h-3 text-amber-400" />
-                      <span>Đã chuyển tự động từ YouTube</span>
-                    </div>
+            {/* Top Bar: Sensei Info & Studio Status */}
+            <div className="relative z-10 flex items-center justify-between w-full">
+              <div className="flex items-center gap-2.5 bg-slate-900/80 backdrop-blur-md border border-rose-500/30 px-3.5 py-1.5 rounded-full shadow-lg">
+                <span className="relative flex h-2.5 w-2.5">
+                  {isPlaying && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
                   )}
-                </div>
-
-                {/* Center: AI Sensei Character & Dynamic Wave Visualizer (Clean, no buttons over face!) */}
-                <div className="relative z-10 flex flex-col items-center justify-center my-auto space-y-2.5 sm:space-y-3">
-                  {/* Animated Avatar Box */}
-                  <div className="relative">
-                    {isAiSpeaking && (
-                      <>
-                        <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
-                        <div className="absolute -inset-3 rounded-full border border-emerald-400/40 animate-pulse" />
-                      </>
-                    )}
-                    <div className="w-18 h-18 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-500 to-indigo-600 p-1 shadow-2xl flex items-center justify-center">
-                      <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden relative">
-                        <img
-                          src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=240&auto=format&fit=crop&q=80"
-                          alt="AI Japanese Sensei"
-                          className="w-full h-full object-cover"
-                        />
-                        {isAiSpeaking && (
-                          <div className="absolute bottom-1 bg-emerald-500 text-white text-3xs font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">
-                            Đang nói
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sound Wave Bars */}
-                  <div className="flex items-center gap-1 h-4 sm:h-5">
-                    {[40, 70, 100, 60, 90, 50, 80, 45, 95, 65, 85, 30].map((_, i) => (
-                      <span
-                        key={i}
-                        className={`w-1 rounded-full transition-all duration-150 ${
-                          isAiSpeaking ? "bg-emerald-400" : "bg-slate-700"
-                        }`}
-                        style={{
-                          height: isAiSpeaking
-                            ? `${Math.max(25, Math.sin(Date.now() / 150 + i) * 35 + 50)}%`
-                            : "20%",
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Center Text Prompt */}
-                  <div className="text-center px-4 max-w-xl">
-                    <p className="text-base sm:text-2xl font-black text-white drop-shadow-md tracking-wide">
-                      {currentSub?.japanese || "日本語の勉強を始めましょう"}
-                    </p>
-                    {currentSub?.translation && (
-                      <p className="text-2xs sm:text-xs text-slate-400 font-medium mt-1 line-clamp-2">
-                        {currentSub.translation}
-                      </p>
-                    )}
-
-                    {/* Subtle Play Prompt Below Text (Never covers the avatar) */}
-                    {!isPlaying && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePlayPause();
-                        }}
-                        type="button"
-                        className="mt-2.5 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/90 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg transition-transform hover:scale-105 cursor-pointer"
-                      >
-                        <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                        <span>Bắt đầu bài giảng AI</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bottom Control Dock inside Video Container */}
-                <div className="relative z-10 w-full px-2 sm:px-4 pt-2 bg-gradient-to-t from-black/85 via-black/50 to-transparent rounded-2xl space-y-2">
-                  {/* Interactive Timeline Scrubber Bar */}
-                  <div
-                    onClick={handleSeekTimeline}
-                    className="relative w-full h-1.5 sm:h-2 bg-slate-700/70 hover:h-2.5 rounded-full cursor-pointer transition-all overflow-hidden group"
-                    title="Click hoặc kéo để tua video"
-                  >
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full relative transition-all"
-                      style={{
-                        width: `${duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0}%`,
-                      }}
-                    >
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </div>
-
-                  {/* Player Controls Row */}
-                  <div className="flex items-center justify-between gap-2 py-1 text-white">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      {/* Play / Pause button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePlayPause();
-                        }}
-                        type="button"
-                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg flex items-center justify-center transition-transform hover:scale-105 cursor-pointer"
-                        title={isPlaying ? "Tạm dừng" : "Phát tiếp"}
-                      >
-                        {isPlaying ? (
-                          <Pause className="w-4 h-4 fill-current" />
-                        ) : (
-                          <Play className="w-4 h-4 fill-current ml-0.5" />
-                        )}
-                      </button>
-
-                      {/* Prev / Next Subtitle */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePrevSubtitle();
-                        }}
-                        disabled={activeSubIndex === 0}
-                        type="button"
-                        className="w-7 h-7 rounded-full text-slate-300 hover:text-white disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
-                        title="Câu trước đó"
-                      >
-                        <SkipBack className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNextSubtitle();
-                        }}
-                        disabled={activeSubIndex >= subtitles.length - 1}
-                        type="button"
-                        className="w-7 h-7 rounded-full text-slate-300 hover:text-white disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
-                        title="Câu kế tiếp"
-                      >
-                        <SkipForward className="w-4 h-4" />
-                      </button>
-
-                      {/* Time Display */}
-                      <span className="font-mono text-2xs sm:text-xs text-slate-300 font-semibold select-none ml-1">
-                        {formatTime(currentTime)} / {formatTime(duration)}
-                      </span>
-                    </div>
-
-                    {/* Right Status */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-3xs sm:text-2xs bg-slate-800/80 text-emerald-300 px-2.5 py-1 rounded-full border border-slate-700/60 font-semibold select-none">
-                        Câu {activeSubIndex + 1}/{subtitles.length}
-                      </span>
-                      {isAiSpeaking && (
-                        <span className="hidden sm:inline-flex items-center gap-1 text-3xs text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">
-                          <Volume2 className="w-3 h-3 animate-pulse" />
-                          <span>Sensei đang giảng</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ============================================================ */}
-          {/* FLOATING/INTERACTIVE FURIGANA SUBTITLE BAR (Exact Match to Image 8) */}
-          {/* ============================================================ */}
-          {showSubtitles && currentSub && (
-            <div className="w-full max-w-5xl mx-auto space-y-3">
-              {/* Dark Subtitle Display Pill */}
-              <div className="bg-[#1e2329]/95 backdrop-blur-md text-white border border-slate-700/60 rounded-3xl p-5 sm:p-6 shadow-xl space-y-3 transition-all">
-                {/* Kanji Words with Furigana floating above each word */}
-                {renderFuriganaSentence(currentSub)}
-
-                {/* Vietnamese Translation (Toggleable) */}
-                {showTranslation && currentSub.translation && (
-                  <p className="text-xs sm:text-sm font-normal text-slate-300 text-center pt-2 border-t border-slate-700/50">
-                    {currentSub.translation}
-                  </p>
-                )}
-              </div>
-
-              {/* Subtitle Controls Bar (Matching Buttons below Subtitle in Image 8) */}
-              <div className="flex flex-wrap items-center justify-between gap-3 px-2">
-                {/* Left Toggles: Play/Pause, Phụ đề, Bản dịch, Furigana */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Play / Pause Video button & Time counter (matching 0:59 / 11:59 in Image 8) */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-full shadow-2xs">
-                    <button
-                      onClick={togglePlayPause}
-                      type="button"
-                      className="text-slate-700 hover:text-emerald-600 transition-colors cursor-pointer"
-                      title={isPlaying ? "Tạm dừng" : "Phát tiếp"}
-                    >
-                      {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
-                    </button>
-                    <span className="font-mono text-2xs text-slate-500 font-semibold select-none">
-                      {formatTime(currentTime)} / {formatTime(duration)}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => setShowSubtitles((prev) => !prev)}
-                    type="button"
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                      showSubtitles
-                        ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
-                        : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    <Check className={`w-3.5 h-3.5 ${showSubtitles ? "text-emerald-700" : "opacity-0"}`} />
-                    <span>Phụ đề</span>
-                  </button>
-
-                  <button
-                    onClick={() => setShowTranslation((prev) => !prev)}
-                    type="button"
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                      showTranslation
-                        ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
-                        : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    <Check className={`w-3.5 h-3.5 ${showTranslation ? "text-emerald-700" : "opacity-0"}`} />
-                    <span>Bản dịch</span>
-                  </button>
-
-                  <button
-                    onClick={() => setShowFurigana((prev) => !prev)}
-                    type="button"
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                      showFurigana
-                        ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
-                        : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="font-sans font-black text-2xs">あ</span>
-                    <span>Furigana</span>
-                  </button>
-                </div>
-
-                {/* Right Action Icons (Heart, AB Loop, Settings, Close) */}
-                <div className="flex items-center gap-2">
-                  {/* Favorite */}
-                  <button
-                    onClick={() => {
-                      setIsFavorite((prev) => !prev);
-                      toast.success(isFavorite ? "Đã bỏ lưu câu" : "Đã lưu câu vào sổ tay ôn tập!");
-                    }}
-                    type="button"
-                    className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors cursor-pointer ${
-                      isFavorite
-                        ? "bg-rose-50 border-rose-200 text-rose-500"
-                        : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
-                    }`}
-                    title="Lưu câu vào yêu thích"
-                  >
-                    <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
-                  </button>
-
-                  {/* AB Repeat Loop current sentence */}
-                  <button
-                    onClick={() => {
-                      setIsAbRepeat((prev) => !prev);
-                      toast.info(isAbRepeat ? "Tắt lặp lại câu" : "Bật lặp lại đoạn câu hiện tại (A-B)");
-                    }}
-                    type="button"
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1 transition-colors cursor-pointer ${
-                      isAbRepeat
-                        ? "bg-emerald-600 border-emerald-600 text-white shadow-2xs"
-                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                    }`}
-                    title="Lặp lại câu hiện tại (A-B loop)"
-                  >
-                    <Repeat className="w-3.5 h-3.5" />
-                    <span>AB</span>
-                  </button>
-
-                  {/* Settings Speed Menu */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowSettingsMenu((prev) => !prev)}
-                      type="button"
-                      className="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer"
-                      title="Cài đặt tốc độ phát"
-                    >
-                      <Settings className="w-4 h-4" />
-                    </button>
-
-                    {showSettingsMenu && (
-                      <div className="absolute right-0 bottom-10 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-30 space-y-1">
-                        <span className="text-3xs font-bold text-slate-400 uppercase tracking-wider px-2 block py-1">
-                          Tốc độ phát
-                        </span>
-                        {[0.75, 1, 1.25, 1.5].map((rate) => (
-                          <button
-                            key={rate}
-                            onClick={() => handleSetSpeed(rate)}
-                            type="button"
-                            className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between cursor-pointer ${
-                              playbackRate === rate
-                                ? "bg-emerald-50 text-emerald-800"
-                                : "text-slate-700 hover:bg-slate-50"
-                            }`}
-                          >
-                            <span>{rate === 1 ? "Bình thường (1.0x)" : `${rate}x`}</span>
-                            {playbackRate === rate && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Toggle Transcript sidebar visibility on smaller screens */}
-                  <button
-                    onClick={() => setShowTranscriptPanel((prev) => !prev)}
-                    type="button"
-                    className="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer lg:hidden"
-                    title="Ẩn/hiện danh sách phụ đề"
-                  >
-                    <BookOpen className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================ */}
-          {/* SHADOWING / SPEAKING INTERACTION CARD (When mode is Shadowing / Phát âm) */}
-          {/* ============================================================ */}
-          {(studyMode === "shadowing" || studyMode === "pronunciation") && currentSub && (
-            <div className="w-full max-w-5xl mx-auto bg-white border border-emerald-200 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-2xs font-extrabold uppercase">
-                      Luyện Shadowing câu số {activeSubIndex + 1}
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium">
-                      (Bấm mic nói nhại lại theo người Nhật)
-                    </span>
-                  </div>
-                  <p className="text-sm font-bold text-slate-900 font-sans mt-1">
-                    {currentSub.japanese}
-                  </p>
-                </div>
-
-                {/* Mic Record Button */}
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                  <button
-                    onClick={isRecording ? stopRecording : startRecording}
-                    type="button"
-                    className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                      isRecording
-                        ? "bg-rose-500 hover:bg-rose-600 text-white animate-pulse shadow-rose-500/20"
-                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
-                    }`}
-                  >
-                    {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                    <span>{isRecording ? "Dừng ghi âm" : "Ghi âm nhại giọng"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Real-time speech recognition feedback & score */}
-              {(isRecording || userTranscript || evalScore !== null) && (
-                <div className="pt-3 border-t border-slate-100 space-y-2">
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3">
-                    <div className="space-y-0.5 min-w-0">
-                      <span className="text-2xs font-bold uppercase tracking-wider text-slate-400 block">
-                        Giọng nói của bạn nhận diện được:
-                      </span>
-                      <p className="text-sm font-bold text-slate-800 font-sans truncate">
-                        {userTranscript || "Đang lắng nghe..."}
-                      </p>
-                    </div>
-
-                    {evalScore !== null && (
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div
-                          className={`w-11 h-11 rounded-2xl flex flex-col items-center justify-center font-black text-xs border ${
-                            evalScore >= 80
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                              : "bg-amber-100 text-amber-800 border-amber-300"
-                          }`}
-                        >
-                          <span>{evalScore}</span>
-                          <span className="text-3xs font-medium">điểm</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {evalFeedback && (
-                    <p className="text-xs text-emerald-800 font-medium px-1 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <span>{evalFeedback}</span>
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* EXERCISE MODE (Quick comprehension quiz) */}
-          {studyMode === "exercise" && (
-            <div className="w-full max-w-5xl mx-auto bg-white border border-slate-200 rounded-3xl p-5 shadow-xs space-y-4">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-emerald-600" />
-                <h3 className="font-bold text-sm text-slate-900">Câu hỏi luyện tập theo video</h3>
-              </div>
-              <div className="space-y-2.5">
-                <p className="text-xs font-semibold text-slate-700">
-                  Trong tiếng Nhật, Kính ngữ (敬語 - Keigo) gồm có mấy loại chính?
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <button
-                    onClick={() => toast.info("Chưa chính xác, hãy nghe lại đoạn 1:55 của video nhé.")}
-                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl text-left cursor-pointer transition-colors"
-                  >
-                    A. Có 2 loại (Lịch sự và Thân mật)
-                  </button>
-                  <button
-                    onClick={() => toast.success("Chính xác! Gồm 丁寧語 (Teineigo), 尊敬語 (Sonkeigo), 謙譲語 (Kenjougo).")}
-                    className="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-950 font-bold rounded-2xl text-left cursor-pointer transition-colors"
-                  >
-                    B. Có 3 loại (丁寧語, 尊敬語, 謙譲語)
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ============================================================ */}
-        {/* RIGHT COLUMN: "Phụ đề" (Transcript Subtitle List - Exact Match to Image 8) */}
-        {/* ============================================================ */}
-        {showTranscriptPanel && (
-          <aside className="w-full lg:w-96 xl:w-[420px] bg-white border-t lg:border-t-0 lg:border-l border-slate-200/90 flex flex-col shrink-0 shadow-xs h-[400px] lg:h-auto">
-            {/* Header: Phụ đề + Action icons (Download, AB, Close) */}
-            <div className="p-4 border-b border-slate-200/90 flex items-center justify-between shrink-0 bg-slate-50/70">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-black text-slate-900">Phụ đề</h2>
-                <span className="text-3xs font-bold text-slate-400 bg-slate-200/80 px-2 py-0.5 rounded-full">
-                  {subtitles.length} câu
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
+                </span>
+                <span className="text-2xs sm:text-xs font-bold text-rose-200">
+                  {selectedLesson.senseiName} • {selectedLesson.senseiRole}
                 </span>
               </div>
 
-              <div className="flex items-center gap-1.5 text-slate-500">
-                <button
-                  onClick={() => toast.info("Đã tải phụ đề xuống định dạng .SRT")}
-                  type="button"
-                  className="w-7 h-7 rounded-lg hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-                  title="Tải phụ đề xuống"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setIsAbRepeat((prev) => !prev)}
-                  type="button"
-                  className={`px-1.5 py-0.5 text-3xs font-extrabold rounded-md border transition-colors cursor-pointer ${
-                    isAbRepeat
-                      ? "bg-emerald-600 text-white border-emerald-600"
-                      : "hover:bg-slate-200 border-slate-300 text-slate-600"
-                  }`}
-                  title="Lặp lại A-B"
-                >
-                  AB
-                </button>
-                <button
-                  onClick={() => setShowTranscriptPanel(false)}
-                  type="button"
-                  className="w-7 h-7 rounded-lg hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-                  title="Đóng bảng phụ đề"
-                >
-                  <X className="w-3.5 h-3.5 text-rose-500" />
-                </button>
+              <div className="flex items-center gap-2">
+                <span className="text-3xs font-extrabold bg-slate-800/80 border border-slate-700/60 text-slate-300 px-2.5 py-1 rounded-full">
+                  Câu {activeSubIndex + 1}/{totalSubtitles}
+                </span>
+                {isAiSpeaking && (
+                  <span className="inline-flex items-center gap-1 text-3xs text-rose-300 bg-rose-500/20 border border-rose-500/30 px-2.5 py-1 rounded-full font-bold animate-pulse">
+                    <Volume2 className="w-3 h-3 text-rose-400" />
+                    <span>Sensei đang đọc mẫu</span>
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Scrollable Subtitle Rows */}
-            <div
-              ref={transcriptScrollContainerRef}
-              className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1.5 scrollbar-thin divide-y divide-slate-100"
-            >
-              {subtitles.map((sub, idx) => {
-                const isActive = idx === activeSubIndex;
+            {/* Center: AI Sensei Avatar & Sound Wave Equalizer */}
+            <div className="relative z-10 flex flex-col items-center justify-center my-auto space-y-3">
+              {/* Avatar Box with Glowing Wave Ring */}
+              <div className="relative">
+                <div
+                  className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 shadow-2xl transition-all duration-300 ${
+                    isAiSpeaking
+                      ? "border-rose-400 ring-4 ring-rose-500/40 scale-105"
+                      : "border-slate-700/80"
+                  }`}
+                >
+                  <img
+                    src={selectedLesson.senseiAvatar}
+                    alt={selectedLesson.senseiName}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
 
-                return (
-                  <div
-                    key={idx}
-                    ref={(el) => {
-                      subtitleRefs.current[idx] = el;
-                    }}
-                    onClick={() => handleSelectSubtitle(idx, true)}
-                    className={`group flex items-start gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
-                      isActive
-                        ? "bg-emerald-50/90 border-l-4 border-emerald-500 text-emerald-950 shadow-2xs font-semibold"
-                        : "hover:bg-slate-50 text-slate-700"
+                {isAiSpeaking && (
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-3xs font-black px-2 py-0.5 rounded-full shadow-md whitespace-nowrap">
+                    Tokyo Accent
+                  </div>
+                )}
+              </div>
+
+              {/* Sound Wave Bars */}
+              <div className="flex items-center gap-1 h-4">
+                {[30, 60, 95, 50, 85, 45, 90, 40, 80, 60, 75, 25].map((val, i) => (
+                  <span
+                    key={i}
+                    className={`w-1 rounded-full transition-all duration-150 ${
+                      isAiSpeaking ? "bg-rose-400" : "bg-slate-700/60"
                     }`}
-                  >
-                    {/* Play Button Icon for each row (Circle with Play triangle) */}
+                    style={{
+                      height: isAiSpeaking
+                        ? `${Math.max(25, Math.sin(Date.now() / 150 + i) * 35 + val * 0.5)}%`
+                        : "20%",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* LOWER THIRD: EMBEDDED FURIGANA SUBTITLE (Directly visible, no scrolling needed!) */}
+            <div className="relative z-10 w-full max-w-3xl mx-auto text-center space-y-1.5 py-2 px-3 bg-black/55 backdrop-blur-md border border-slate-800/80 rounded-2xl shadow-xl">
+              {showSubtitles && (
+                <>
+                  {renderFuriganaSentence(currentSub)}
+                  {showTranslation && currentSub.translation && (
+                    <p className="text-xs sm:text-sm font-normal text-slate-300 italic pt-1 border-t border-slate-800/60 line-clamp-2">
+                      "{currentSub.translation}"
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Bottom Controls Bar inside Studio Player */}
+            <div className="relative z-10 w-full pt-3 flex items-center justify-between border-t border-slate-800/80 mt-2">
+              {/* Playback Controls */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={togglePlayPause}
+                  type="button"
+                  className="w-9 h-9 rounded-full bg-gradient-to-r from-rose-600 to-rose-500 hover:brightness-110 text-white shadow-lg flex items-center justify-center transition-transform hover:scale-105 cursor-pointer"
+                  title={isPlaying ? "Tạm dừng" : "Phát tiếp"}
+                >
+                  {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                </button>
+
+                <button
+                  onClick={handlePrevSubtitle}
+                  disabled={activeSubIndex === 0}
+                  type="button"
+                  className="w-8 h-8 rounded-full text-slate-300 hover:text-white disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Câu trước đó"
+                >
+                  <SkipBack className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={handleNextSubtitle}
+                  disabled={activeSubIndex >= totalSubtitles - 1}
+                  type="button"
+                  className="w-8 h-8 rounded-full text-slate-300 hover:text-white disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Câu kế tiếp"
+                >
+                  <SkipForward className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={handleReplayCurrent}
+                  type="button"
+                  className="w-8 h-8 rounded-full text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                  title="Nghe lại câu hiện tại"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Quick Subtitle Display Toggles */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  onClick={() => setShowSubtitles((prev) => !prev)}
+                  type="button"
+                  className={`px-2.5 py-1 text-3xs font-extrabold rounded-full border transition-all cursor-pointer ${
+                    showSubtitles
+                      ? "bg-rose-600 text-white border-rose-500"
+                      : "bg-slate-900/80 text-slate-400 border-slate-700 hover:text-white"
+                  }`}
+                  title="Bật/Tắt Phụ đề"
+                >
+                  Phụ đề
+                </button>
+
+                <button
+                  onClick={() => setShowFurigana((prev) => !prev)}
+                  type="button"
+                  className={`px-2.5 py-1 text-3xs font-extrabold rounded-full border transition-all cursor-pointer ${
+                    showFurigana
+                      ? "bg-rose-600 text-white border-rose-500"
+                      : "bg-slate-900/80 text-slate-400 border-slate-700 hover:text-white"
+                  }`}
+                  title="Bật/Tắt Furigana"
+                >
+                  Furigana
+                </button>
+
+                <button
+                  onClick={() => setShowTranslation((prev) => !prev)}
+                  type="button"
+                  className={`px-2.5 py-1 text-3xs font-extrabold rounded-full border transition-all cursor-pointer ${
+                    showTranslation
+                      ? "bg-rose-600 text-white border-rose-500"
+                      : "bg-slate-900/80 text-slate-400 border-slate-700 hover:text-white"
+                  }`}
+                  title="Bật/Tắt Bản dịch tiếng Việt"
+                >
+                  Bản dịch
+                </button>
+
+                <button
+                  onClick={() => setIsAbRepeat((prev) => !prev)}
+                  type="button"
+                  className={`px-2.5 py-1 text-3xs font-extrabold rounded-full border transition-all cursor-pointer ${
+                    isAbRepeat
+                      ? "bg-amber-500 text-slate-950 border-amber-400 font-black"
+                      : "bg-slate-900/80 text-slate-400 border-slate-700 hover:text-white"
+                  }`}
+                  title="Lặp lại câu này liên tục"
+                >
+                  <Repeat className="w-3 h-3 inline mr-1" />
+                  A-B
+                </button>
+
+                {/* Speed Selector */}
+                <div className="flex items-center bg-slate-900/80 border border-slate-700 rounded-full px-1.5 py-0.5">
+                  {[0.8, 1.0, 1.2].map((spd) => (
                     <button
+                      key={spd}
+                      onClick={() => setPlaybackRate(spd)}
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelectSubtitle(idx, true);
-                      }}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-colors cursor-pointer ${
-                        isActive
-                          ? "bg-emerald-600 text-white shadow-2xs"
-                          : "bg-slate-200/80 text-slate-600 group-hover:bg-emerald-500 group-hover:text-white"
+                      className={`px-1.5 py-0.5 text-3xs font-extrabold rounded-full transition-colors cursor-pointer ${
+                        playbackRate === spd
+                          ? "bg-rose-600 text-white font-black"
+                          : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                      {spd}x
                     </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
 
-                    {/* Subtitle Content */}
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <p
-                        className={`text-xs sm:text-sm leading-relaxed font-sans ${
-                          isActive ? "font-bold text-emerald-950" : "text-slate-800"
-                        }`}
-                      >
-                        {sub.japanese}
-                      </p>
+          {/* B. DOCKED SHADOWING PRACTICE DECK (Always visible, directly actionable!) */}
+          <div className="bg-white dark:bg-slate-900 border border-rose-200/90 dark:border-rose-900/60 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3 shrink-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 rounded text-2xs font-extrabold uppercase">
+                    Luyện Shadowing câu {activeSubIndex + 1}
+                  </span>
+                  <span className="text-2xs text-slate-400 font-medium">
+                    (Bấm mic để nói nhại lại theo Sensei)
+                  </span>
+                </div>
+                <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-jp line-clamp-1">
+                  {currentSub.japanese}
+                </p>
+              </div>
 
-                      {showTranslation && sub.translation && (
-                        <p className="text-3xs sm:text-2xs text-slate-500 line-clamp-2">
-                          {sub.translation}
-                        </p>
-                      )}
+              {/* Big Prominent Microphone Button */}
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                type="button"
+                className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-md ${
+                  isRecording
+                    ? "bg-rose-600 hover:bg-rose-700 text-white animate-pulse shadow-rose-600/30 scale-105"
+                    : "bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 text-white shadow-rose-600/20 active:scale-95"
+                }`}
+              >
+                {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 animate-pulse" />}
+                <span>{isRecording ? "Dừng ghi âm & Chấm điểm" : "Bấm Micro & Nhại giọng"}</span>
+              </button>
+            </div>
+
+            {/* Live Transcript & Pronunciation Feedback */}
+            {(isRecording || userTranscript || evalScore !== null) && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-3xs font-bold uppercase tracking-wider text-slate-400 block">
+                    Giọng nói nhận diện được:
+                  </span>
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 font-jp truncate">
+                    {userTranscript || "Đang lắng nghe giọng của bạn..."}
+                  </p>
+                  {evalFeedback && (
+                    <p className="text-2xs text-rose-600 dark:text-rose-400 font-medium">
+                      💡 {evalFeedback}
+                    </p>
+                  )}
+                </div>
+
+                {evalScore !== null && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div
+                      className={`px-3 py-1 rounded-xl flex items-center gap-1.5 font-black text-xs border ${
+                        evalScore >= 85
+                          ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                          : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>{evalScore} điểm</span>
                     </div>
                   </div>
-                );
-              })}
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* RIGHT COLUMN: ISOLATED SCROLLABLE TRANSCRIPT SIDEBAR */}
+        {/* (Auto-scroll stays 100% inside this column, 0 window scrolling!) */}
+        {/* ============================================================ */}
+        <aside className="w-full lg:w-96 xl:w-[420px] bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200/90 dark:border-slate-800 flex flex-col shrink-0 shadow-xs h-[350px] lg:h-auto overflow-hidden">
+          {/* Header: Phụ đề + Download */}
+          <div className="p-3.5 sm:p-4 border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-slate-800/70">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-rose-600" />
+              <h2 className="text-sm font-black text-slate-900 dark:text-white">Kịch bản bài giảng</h2>
+              <span className="text-3xs font-extrabold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-900">
+                {totalSubtitles} câu
+              </span>
             </div>
-          </aside>
-        )}
+
+            <button
+              onClick={() => toast.info("Đã tải phụ đề bài học xuống định dạng .SRT")}
+              type="button"
+              className="text-slate-500 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+              title="Tải phụ đề xuống"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* ISOLATED SCROLL CONTAINER: ONLY THIS BOX SCROLLS */}
+          <div
+            ref={transcriptScrollContainerRef}
+            className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1.5 scrollbar-thin divide-y divide-slate-100 dark:divide-slate-800/60"
+          >
+            {subtitles.map((sub, idx) => {
+              const isActive = idx === activeSubIndex;
+
+              return (
+                <div
+                  key={idx}
+                  ref={(el) => {
+                    subtitleRefs.current[idx] = el;
+                  }}
+                  onClick={() => handleSelectSubtitle(idx, true)}
+                  className={`group flex items-start gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-rose-50/90 dark:bg-rose-950/50 border-l-4 border-rose-500 text-rose-950 dark:text-rose-200 shadow-2xs font-semibold"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  {/* Play circle icon */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectSubtitle(idx, true);
+                    }}
+                    className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-colors cursor-pointer ${
+                      isActive
+                        ? "bg-rose-600 text-white shadow-2xs"
+                        : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-rose-500 group-hover:text-white"
+                    }`}
+                  >
+                    <Play className="w-3 h-3 fill-current ml-0.5" />
+                  </button>
+
+                  {/* Japanese text & Furigana */}
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <p
+                      className={`text-xs sm:text-sm leading-relaxed font-jp ${
+                        isActive ? "font-bold text-rose-950 dark:text-rose-200" : "text-slate-800 dark:text-slate-200"
+                      }`}
+                    >
+                      {sub.japanese}
+                    </p>
+
+                    {showFurigana && sub.furigana && (
+                      <p className="text-3xs text-rose-600 dark:text-rose-400 font-semibold font-jp">
+                        {sub.furigana}
+                      </p>
+                    )}
+
+                    {showTranslation && sub.translation && (
+                      <p className="text-2xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
+                        {sub.translation}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
       </div>
     </div>
   );
