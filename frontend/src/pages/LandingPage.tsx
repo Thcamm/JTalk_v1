@@ -160,12 +160,9 @@ export default function LandingPage() {
                   JTalk
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-3xs font-extrabold bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
-                  AI Reflex
+                  AI
                 </span>
               </div>
-              <span className="text-3xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest block -mt-1">
-                会話特化型AI • Tokyo Accent
-              </span>
             </div>
           </Link>
 
