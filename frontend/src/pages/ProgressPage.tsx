@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
   Flame,
@@ -13,6 +13,7 @@ import {
   Lock,
   ArrowUpRight,
   TrendingUp,
+  Sparkles,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -130,12 +131,23 @@ export default function ProgressPage() {
   }, [user, totalPractices]);
 
   // Achievements calculation
-  const achievements = useMemo(() => [
+  const achievements = useMemo<{
+    id: string;
+    title: string;
+    description: string;
+    icon: ReactNode;
+    unlocked: boolean;
+    progress: string;
+  }[]>(() => [
     {
       id: "first_practice",
       title: "Phát âm đầu tiên",
       description: "Hoàn thành bài luyện nói phản xạ đầu tiên",
-      icon: "🎙️",
+      icon: (
+        <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 shadow-2xs">
+          <Mic className="w-5 h-5 animate-pulse" />
+        </div>
+      ),
       unlocked: totalPractices >= 1,
       progress: totalPractices >= 1 ? "1/1" : "0/1",
     },
@@ -143,7 +155,11 @@ export default function ProgressPage() {
       id: "streak_3",
       title: "Bền bỉ 3 ngày",
       description: "Duy trì chuỗi học liên tiếp từ 3 ngày",
-      icon: "🔥",
+      icon: (
+        <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 shadow-2xs">
+          <Flame className="w-5 h-5 fill-rose-500 text-rose-500 animate-bounce" />
+        </div>
+      ),
       unlocked: streak >= 3,
       progress: `${Math.min(streak, 3)}/3 ngày`,
     },
@@ -151,7 +167,11 @@ export default function ProgressPage() {
       id: "high_score",
       title: "Phản xạ xuất sắc",
       description: "Đạt từ 80/100 điểm phản xạ trở lên trong 1 bài",
-      icon: "🎯",
+      icon: (
+        <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+          <Target className="w-5 h-5 animate-spin-slow" />
+        </div>
+      ),
       unlocked: practices.some((p) => (p.overallScore || p.score || 0) >= 80),
       progress: practices.some((p) => (p.overallScore || p.score || 0) >= 80)
         ? "Đạt được"
@@ -161,7 +181,11 @@ export default function ProgressPage() {
       id: "study_time",
       title: "Học viên siêng năng",
       description: "Tích lũy trên 15 phút luyện nói cùng AI",
-      icon: "⭐",
+      icon: (
+        <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+          <Award className="w-5 h-5 animate-float" />
+        </div>
+      ),
       unlocked: totalMinutes >= 15,
       progress: `${Math.min(totalMinutes, 15)}/15 phút`,
     },
@@ -181,14 +205,14 @@ export default function ProgressPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-              <TrendingUp className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
               Báo cáo học tập & phân tích phản xạ
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               Tiến trình & Thống kê
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
               Theo dõi sự tiến bộ hàng ngày, thời lượng đàm thoại và phân tích điểm số phản xạ AI
             </p>
           </div>
@@ -196,9 +220,9 @@ export default function ProgressPage() {
           <div className="flex items-center gap-3">
             <Link
               to="/speaking"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-black shadow-xs hover:shadow-md transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg hover:shadow-rose-500/20 transition-all cursor-pointer"
             >
-              <Mic className="w-4 h-4" />
+              <Mic className="w-4 h-4 animate-pulse" />
               <span>Vào luyện phản xạ AI</span>
               <ArrowUpRight className="w-4 h-4" />
             </Link>
@@ -214,13 +238,13 @@ export default function ProgressPage() {
                 Chuỗi Streak
               </p>
               <h3 className="text-3xl font-black text-slate-900 dark:text-white">{streak} ngày</h3>
-              <p className="text-2xs text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <p className="text-2xs text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
                 <span>Kỷ lục: {user?.gamification?.longestStreak || streak} ngày</span>
               </p>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-100 dark:border-amber-800/60 shadow-2xs">
-              <Flame className="w-7 h-7 fill-amber-500 text-amber-500 animate-pulse" />
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-800/60 shadow-2xs">
+              <Flame className="w-7 h-7 fill-rose-500 text-rose-500 animate-bounce" />
             </div>
           </div>
 
@@ -231,13 +255,13 @@ export default function ProgressPage() {
                 Thời gian 7 ngày
               </p>
               <h3 className="text-3xl font-black text-slate-900 dark:text-white">{totalMinutes} phút</h3>
-              <p className="text-2xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+              <p className="text-2xs text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
                 <Clock3 className="w-3.5 h-3.5" />
                 <span>Hôm nay: {user?.dailyUsage?.minutesSpent || 0} phút</span>
               </p>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-800/60 shadow-2xs">
-              <Clock3 className="w-7 h-7" />
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-800/60 shadow-2xs">
+              <Clock3 className="w-7 h-7 animate-float" />
             </div>
           </div>
 
@@ -254,7 +278,7 @@ export default function ProgressPage() {
               </p>
             </div>
             <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-800/60 shadow-2xs">
-              <Trophy className="w-7 h-7" />
+              <Trophy className="w-7 h-7 animate-bounce" />
             </div>
           </div>
 
@@ -267,13 +291,13 @@ export default function ProgressPage() {
               <h3 className="text-3xl font-black text-slate-900 dark:text-white">
                 {averageScore > 0 ? `${averageScore}đ` : "Chưa có"}
               </h3>
-              <p className="text-2xs text-teal-600 dark:text-teal-400 font-bold flex items-center gap-1">
+              <p className="text-2xs text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
                 <Target className="w-3.5 h-3.5" />
                 <span>Tổng {totalPractices} bài đã làm</span>
               </p>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 border border-teal-100 dark:border-teal-800/60 shadow-2xs">
-              <Target className="w-7 h-7" />
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-100 dark:border-amber-800/60 shadow-2xs">
+              <Target className="w-7 h-7 animate-spin-slow" />
             </div>
           </div>
         </div>
@@ -284,8 +308,9 @@ export default function ProgressPage() {
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-2xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Biểu đồ thời gian luyện phản xạ 7 ngày gần nhất
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-rose-500 animate-pulse" />
+                  <span>Biểu đồ thời gian luyện phản xạ 7 ngày gần nhất</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Đo lường số phút nói và số câu phản xạ tiếng Nhật thực tế
@@ -294,11 +319,11 @@ export default function ProgressPage() {
 
               <div className="flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-md bg-emerald-500 inline-block" />
+                  <span className="w-3 h-3 rounded-md bg-rose-500 inline-block" />
                   <span>{totalMinutes} phút học</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-md bg-teal-300 inline-block" />
+                  <span className="w-3 h-3 rounded-md bg-amber-400 inline-block" />
                   <span>{totalPractices} lượt luyện</span>
                 </div>
               </div>
@@ -325,16 +350,18 @@ export default function ProgressPage() {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
-                          <div className="bg-slate-900 text-white text-xs rounded-xl py-2.5 px-3.5 shadow-xl space-y-1">
+                          <div className="bg-slate-900 text-white text-xs rounded-xl py-2.5 px-3.5 shadow-xl space-y-1.5">
                             <p className="font-bold border-b border-slate-700 pb-1 flex items-center gap-1">
                               <Calendar className="w-3 h-3 text-slate-400" />
                               <span>{data.day} ({data.date})</span>
                             </p>
-                            <p className="text-emerald-400 font-semibold">
-                              ⏱️ Thời gian: {data.minutes} phút
+                            <p className="text-rose-400 font-semibold flex items-center gap-1.5">
+                              <Clock3 className="w-3.5 h-3.5 text-rose-400" />
+                              <span>Thời gian: {data.minutes} phút</span>
                             </p>
-                            <p className="text-blue-400">
-                              🗣️ Luyện nói: {data.practices} lượt
+                            <p className="text-amber-400 flex items-center gap-1.5">
+                              <Mic className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Luyện nói: {data.practices} lượt</span>
                             </p>
                           </div>
                         );
@@ -350,7 +377,7 @@ export default function ProgressPage() {
                       return (
                         <Cell
                           key={`cell-${index}`}
-                          fill={isToday ? "#10B981" : "#A7F3D0"}
+                          fill={isToday ? "#f43f5e" : "#fda4af"}
                         />
                       );
                     })}
@@ -368,7 +395,7 @@ export default function ProgressPage() {
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">Tiến độ khóa học</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Các lộ trình đang tham gia</p>
                 </div>
-                <Link to="/courses" className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
+                <Link to="/courses" className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline">
                   Xem tất cả
                 </Link>
               </div>
@@ -390,21 +417,21 @@ export default function ProgressPage() {
                           <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
                             {course.title}
                           </span>
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                          <span className="font-bold text-rose-600 dark:text-rose-400 shrink-0">
                             {percent}%
                           </span>
                         </div>
 
                         <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full transition-all duration-500"
                             style={{ width: `${percent}%` }}
                           />
                         </div>
 
                         <div className="flex items-center justify-between text-2xs text-slate-400">
                           <span>{completedCount}/{totalLessons} bài hoàn thành</span>
-                          <Badge variant={course.level === "N4" ? "primary" : "success"} size="sm">
+                          <Badge variant={course.level === "N4" ? "primary" : "secondary"} size="sm">
                             {course.level || "N5"}
                           </Badge>
                         </div>
@@ -436,7 +463,7 @@ export default function ProgressPage() {
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Hoạt động luyện nói gần đây</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Các lượt chấm phản xạ đã được lưu vào hệ thống</p>
               </div>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg">
+              <span className="text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60 px-2.5 py-1 rounded-lg">
                 {practices.length} lượt lưu
               </span>
             </div>
@@ -449,7 +476,7 @@ export default function ProgressPage() {
                 </p>
                 <Link
                   to="/speaking"
-                  className="inline-block text-xs font-bold text-emerald-600 dark:text-emerald-400 underline"
+                  className="inline-block text-xs font-bold text-rose-600 dark:text-rose-400 underline underline-offset-4"
                 >
                   Bắt đầu bài luyện phản xạ đầu tiên
                 </Link>
@@ -474,7 +501,7 @@ export default function ProgressPage() {
                     >
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
                           <h4 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate">
                             {practice.sampleSentence || "Câu phản xạ hội thoại"}
                           </h4>
@@ -493,7 +520,7 @@ export default function ProgressPage() {
                         <span
                           className={`text-xs font-black px-2.5 py-1 rounded-lg ${
                             score >= 80
-                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                              ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
                               : score >= 60
                               ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
                               : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
@@ -517,7 +544,7 @@ export default function ProgressPage() {
                 <p className="text-xs text-slate-500 dark:text-slate-400">Mở khóa thành tích khi kiên trì luyện phản xạ</p>
               </div>
               <div className="flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 px-2.5 py-1 rounded-lg">
-                <Award className="w-3.5 h-3.5 text-amber-500" />
+                <Award className="w-3.5 h-3.5 text-amber-500 animate-float" />
                 <span>
                   {achievements.filter((a) => a.unlocked).length}/{achievements.length} Đã mở
                 </span>
@@ -530,15 +557,15 @@ export default function ProgressPage() {
                   key={item.id}
                   className={`p-4 rounded-2xl border transition-all ${
                     item.unlocked
-                      ? "bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs"
+                      ? "bg-rose-50/40 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-800/80 shadow-2xs"
                       : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800 opacity-70"
                   }`}
                 >
                   <div className="flex items-start justify-between">
-                    <span className="text-3xl">{item.icon}</span>
+                    <div>{item.icon}</div>
                     {item.unlocked ? (
-                      <span className="inline-flex items-center gap-1 text-2xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="w-3 h-3" />
+                      <span className="inline-flex items-center gap-1 text-2xs font-bold text-rose-700 dark:text-rose-300 bg-rose-100/80 dark:bg-rose-900/60 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3 text-rose-600" />
                         <span>Mở khóa</span>
                       </span>
                     ) : (

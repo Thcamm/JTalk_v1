@@ -86,8 +86,15 @@ export const WordHighlight: React.FC<WordHighlightProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="font-bold text-base">Từ: 「{selectedWord.word}」</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white/70 dark:bg-slate-900/70">
-              {selectedWord.isCorrect ? "Chính xác ✓" : `Lỗi: ${selectedWord.errorType || "Phát âm"}`}
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white/70 dark:bg-slate-900/70 inline-flex items-center gap-1">
+              {selectedWord.isCorrect ? (
+                <>
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" />
+                  <span>Chính xác</span>
+                </>
+              ) : (
+                `Lỗi: ${selectedWord.errorType || "Phát âm"}`
+              )}
             </span>
           </div>
 

@@ -11,7 +11,7 @@ export const sidebarItems = [
   {
     icon: Home,
     text: "Trang chủ",
-    to: "/",
+    to: "/dashboard",
   },
   {
     icon: GraduationCap,

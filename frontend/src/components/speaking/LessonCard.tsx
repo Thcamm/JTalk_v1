@@ -14,11 +14,11 @@ export default function LessonCard({
       onClick={onClick}
       className="
         rounded-2xl
-        border
+        border border-slate-200 dark:border-slate-800
         p-5
         cursor-pointer
-        hover:border-emerald-400
-        hover:bg-emerald-50
+        hover:border-rose-400 dark:hover:border-rose-500
+        hover:bg-rose-50 dark:hover:bg-rose-950/40
         transition-all
       "
     >

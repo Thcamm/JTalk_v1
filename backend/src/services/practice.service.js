@@ -2,10 +2,11 @@ import mongoose from "mongoose";
 import Practice from "../models/Practice.js";
 import Lesson from "../models/Lesson.js";
 import User from "../models/User.js";
+import StudyLog from "../models/StudyLog.js";
 import StorageService from "./storage.service.js";
 import AiService from "./ai.service.js";
 import StudyLogService from "./studylog.service.js";
-import { calculateNewStreak } from "../utils/dateUtils.js";
+import { calculateNewStreak, getTodayDateString } from "../utils/dateUtils.js";
 
 export class PracticeService {
   /**
@@ -50,7 +51,18 @@ export class PracticeService {
       transcript = await AiService.speechToText(fileBuffer, mimeType, targetSentence);
     }
     if (!transcript) {
-      transcript = targetSentence || "";
+      return {
+        audioUrl,
+        transcript: "",
+        targetSentence,
+        scores: { pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0 },
+        overallScore: 0,
+        wordFeedback: [],
+        feedback: {
+          grammarSuggestions: ["Chưa nhận diện được giọng nói."],
+          generalAdvice: "Vui lòng bấm nút Micro và đọc to, rõ ràng câu tiếng Nhật mẫu nhé.",
+        },
+      };
     }
 
     // Step C: LLM Multi-Criteria Assessment (OpenAI / Claude)

@@ -55,7 +55,7 @@ export function SignupForm() {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xl dark:shadow-2xl dark:shadow-emerald-950/20 overflow-hidden transition-colors">
+    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xl dark:shadow-2xl dark:shadow-rose-950/20 overflow-hidden transition-colors">
       <div className="grid grid-cols-1 md:grid-cols-2">
         {/* Left Column: Sign Up Form */}
         <div className="p-6 sm:p-10 flex flex-col justify-between">
@@ -63,14 +63,15 @@ export function SignupForm() {
             {/* Logo & Header */}
             <div className="space-y-2">
               <Link to="/" className="inline-flex items-center gap-2.5 group mb-1">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 flex items-center justify-center text-white font-black text-xl shadow-md group-hover:scale-105 transition-transform shrink-0">
-                  <span className="text-xl select-none">🐸</span>
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 via-rose-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform shrink-0 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-white/10 rounded-2xl animate-pulse" />
+                  <Sparkles size={20} className="text-white animate-spin-slow relative z-10" />
                 </div>
                 <div className="text-left">
                   <span className="text-lg font-black text-slate-900 dark:text-white tracking-tight block">
                     JTalk
                   </span>
-                  <span className="text-3xs font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block -mt-1">
+                  <span className="text-3xs font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-widest block -mt-1">
                     AI
                   </span>
                 </div>
@@ -98,7 +99,7 @@ export function SignupForm() {
                   id="lastname"
                   placeholder="Nguyễn"
                   {...register("lastname")}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400 transition-all shadow-2xs"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 dark:focus:border-rose-400 transition-all shadow-2xs"
                 />
                 {errors.lastname && (
                   <p className="text-3xs font-bold text-rose-500 dark:text-rose-400 mt-0.5">
@@ -119,7 +120,7 @@ export function SignupForm() {
                   id="firstname"
                   placeholder="Văn A"
                   {...register("firstname")}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400 transition-all shadow-2xs"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 dark:focus:border-rose-400 transition-all shadow-2xs"
                 />
                 {errors.firstname && (
                   <p className="text-3xs font-bold text-rose-500 dark:text-rose-400 mt-0.5">
@@ -146,7 +147,7 @@ export function SignupForm() {
                   id="username"
                   placeholder="jtalker2026"
                   {...register("username")}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400 transition-all shadow-2xs"
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 dark:focus:border-rose-400 transition-all shadow-2xs"
                 />
               </div>
               {errors.username && (
@@ -173,7 +174,7 @@ export function SignupForm() {
                   id="email"
                   placeholder="ban@example.com"
                   {...register("email")}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400 transition-all shadow-2xs"
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 dark:focus:border-rose-400 transition-all shadow-2xs"
                 />
               </div>
               {errors.email && (
@@ -200,7 +201,7 @@ export function SignupForm() {
                   id="password"
                   placeholder="••••••••"
                   {...register("password")}
-                  className="w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-400 transition-all shadow-2xs"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 dark:focus:border-rose-400 transition-all shadow-2xs"
                 />
                 <button
                   type="button"
@@ -222,7 +223,7 @@ export function SignupForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-105 active:translate-y-0.5 text-white font-black text-sm rounded-2xl shadow-md hover:shadow-lg hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white font-black text-sm rounded-2xl shadow-md hover:shadow-lg hover:shadow-rose-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <span>Đang khởi tạo tài khoản...</span>
@@ -239,7 +240,7 @@ export function SignupForm() {
               <span>Đã có tài khoản? </span>
               <Link
                 to="/signin"
-                className="font-black text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-4 cursor-pointer"
+                className="font-black text-rose-600 dark:text-rose-400 hover:underline underline-offset-4 cursor-pointer"
               >
                 Đăng nhập
               </Link>
@@ -248,14 +249,14 @@ export function SignupForm() {
         </div>
 
         {/* Right Column: Branded Hero Showcase */}
-        <div className="relative hidden md:flex flex-col justify-between p-8 sm:p-10 bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 text-white overflow-hidden">
+        <div className="relative hidden md:flex flex-col justify-between p-8 sm:p-10 bg-gradient-to-br from-rose-600 via-rose-700 to-slate-900 text-white overflow-hidden">
           {/* Ambient Lighting Orbs */}
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-rose-400/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
 
           {/* Top Pill */}
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-2xs font-extrabold uppercase tracking-wider text-emerald-100 shadow-2xs">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-2xs font-extrabold uppercase tracking-wider text-rose-100 shadow-2xs">
               <Sparkles size={13} className="text-amber-300" />
               <span>Gia Nhập JTalk Ngay Hôm Nay</span>
             </div>
@@ -265,9 +266,9 @@ export function SignupForm() {
           <div className="relative z-10 space-y-5 my-auto py-6">
             <div className="space-y-2">
               <h2 className="text-2xl lg:text-3xl font-black leading-tight tracking-tight">
-                Học giao tiếp tiếng Nhật thông minh hơn 
+                Học giao tiếp tiếng Nhật thông minh hơn
               </h2>
-              <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-rose-100/90 leading-relaxed font-medium">
                 Tài khoản miễn phí trọn đời với các công nghệ AI nhận diện phát âm và đối đáp Kaiwa tiên tiến nhất.
               </p>
             </div>
@@ -275,39 +276,39 @@ export function SignupForm() {
             {/* Feature Cards */}
             <div className="space-y-2.5">
               <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/30 flex items-center justify-center text-amber-300 shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/30 flex items-center justify-center text-amber-300 shrink-0">
                   <Zap size={16} />
                 </div>
                 <div className="min-w-0 text-left">
                   <p className="text-xs font-bold text-white">Miễn phí 2 lượt luyện nói / ngày</p>
-                  <p className="text-3xs text-emerald-200/80">Luyện Shadowing và nhận kết quả chấm điểm giọng nói</p>
+                  <p className="text-3xs text-rose-200/80">Luyện Shadowing và nhận kết quả chấm điểm giọng nói</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/30 flex items-center justify-center text-amber-300 shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/30 flex items-center justify-center text-amber-300 shrink-0">
                   <CheckCircle2 size={16} />
                 </div>
                 <div className="min-w-0 text-left">
                   <p className="text-xs font-bold text-white">Lưu trữ giọng nói Cloudinary</p>
-                  <p className="text-3xs text-emerald-200/80">Nghe lại giọng phát âm của bạn để cải thiện từng ngày</p>
+                  <p className="text-3xs text-rose-200/80">Nghe lại giọng phát âm của bạn để cải thiện từng ngày</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/30 flex items-center justify-center text-amber-300 shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/30 flex items-center justify-center text-amber-300 shrink-0">
                   <Flame size={16} className="fill-amber-400 text-amber-400" />
                 </div>
                 <div className="min-w-0 text-left">
-                  <p className="text-xs font-bold text-white">Theo dõi tiến trình & Streak</p>
-                  <p className="text-3xs text-emerald-200/80">Biểu đồ học tập 7 ngày và huy hiệu thành tích</p>
+                  <p className="text-xs font-bold text-white">Duy trì thói quen học tập</p>
+                  <p className="text-3xs text-rose-200/80">Đóng mộc Hanko mỗi ngày, nâng cao phản xạ tự nhiên</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Bottom Badge */}
-          <div className="relative z-10 pt-4 border-t border-white/15 flex items-center justify-between text-2xs text-emerald-200/80">
+          <div className="relative z-10 pt-4 border-t border-white/15 flex items-center justify-between text-2xs text-rose-200/80">
             <span className="font-extrabold text-white">JTalk AI</span>
           </div>
         </div>

@@ -216,7 +216,16 @@ export class AiService {
     vocabularyList = [],
     level = "N5",
   }) {
-    // Try Claude (Anthropic) or OpenAI if API key exists
+    // 1. Try Google Gemini (Free Tier / High Speed)
+    if (config.ai.geminiApiKey) {
+      try {
+        return await this.evaluateWithGemini({ transcript, expectedSentence, vocabularyList, level });
+      } catch (err) {
+        console.warn("Lỗi gọi Gemini API cho chấm điểm, thử Claude/OpenAI/Fallback:", err.message);
+      }
+    }
+
+    // 2. Try Claude (Anthropic)
     if (config.ai.anthropicApiKey) {
       try {
         return await this.evaluateWithClaude({ transcript, expectedSentence, vocabularyList, level });
@@ -225,6 +234,7 @@ export class AiService {
       }
     }
 
+    // 3. Try OpenAI
     if (config.ai.openaiApiKey) {
       try {
         return await this.evaluateWithOpenAI({ transcript, expectedSentence, vocabularyList, level });
@@ -233,8 +243,72 @@ export class AiService {
       }
     }
 
-    // Heuristic Evaluation Fallback (Production resilient when external AI is rate-limited or offline)
+    // 4. Heuristic Evaluation Fallback (Production resilient when external AI is rate-limited or offline)
     return this.evaluateHeuristically({ transcript, expectedSentence });
+  }
+
+  /**
+   * Helper to call Google Gemini API with smart multi-model fallback to handle capacity spikes
+   */
+  static async callGemini({ prompt, temperature = 0.2, isJson = true }) {
+    if (!config.ai.geminiApiKey) {
+      throw new Error("GEMINI_API_KEY chưa được cấu hình.");
+    }
+
+    // Try candidate models in order to bypass any 503 high demand spikes or deprecated model 404s
+    const candidateModels = [
+      config.ai.geminiModel || "gemini-3.1-flash-lite",
+      "gemini-3.1-flash-lite",
+      "gemini-3-flash-preview",
+      "gemini-3.6-flash",
+    ];
+
+    const models = [...new Set(candidateModels)];
+    let lastError = null;
+
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.ai.geminiApiKey}`;
+        const bodyPayload = {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature,
+            ...(isJson ? { responseMimeType: "application/json" } : {}),
+          },
+        };
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bodyPayload),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Gemini (${model}) error [${response.status}]: ${errText}`);
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          return text;
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn(`[Gemini Engine] Model ${model} gặp lỗi/bận, thử model tiếp theo:`, err.message);
+      }
+    }
+
+    throw lastError || new Error("Tất cả các model Gemini đều không phản hồi.");
+  }
+
+  /**
+   * Evaluate speech reflex using Google Gemini API
+   */
+  static async evaluateWithGemini({ transcript, expectedSentence, vocabularyList, level }) {
+    const prompt = this.buildPrompt({ transcript, expectedSentence, vocabularyList, level });
+    const rawContent = await this.callGemini({ prompt, temperature: 0.2, isJson: true });
+    return this.parseEvaluationJson(rawContent);
   }
 
   /**
@@ -323,23 +397,21 @@ Chấm điểm và phân tích chi tiết dựa trên 4 tiêu chí (thang điể
 3. accuracy (Độ chính xác / Ngữ pháp): Sử dụng đúng trợ từ (は, が, を, に), chia thể động từ.
 4. completeness (Độ hoàn thiện): Nói đủ ý, không bỏ sót các thành phần câu.
 
-Đồng thời, phân rã câu người học nói thành danh sách các từ/cụm từ (wordFeedback).
-- Mỗi từ được gán:
-  + "word": từ tiếng Nhật
-  + "isCorrect": true nếu phát âm và dùng đúng (màu Xanh), false nếu sai/thiếu/thừa (màu Đỏ)
-  + "accuracyScore": điểm (0-100)
-  + "errorType": "none" | "mispronunciation" | "omission" | "insertion" | "grammar"
-  + "suggestion": hướng dẫn sửa bằng tiếng Việt (ngắn gọn)
+LƯU Ý ĐẶC BIỆT VỀ ĐÁNH GIÁ TỪNG TỪ (wordFeedback):
+- Phân rã câu thành danh sách các từ/cụm từ có nghĩa (kanji, trợ từ, đuôi động từ).
+- Nếu từ/cụm từ đó được phát âm đúng hoặc khớp với câu mẫu, BẮT BUỘC gán "isCorrect": true (màu Xanh) và "accuracyScore" >= 90.
+- CHỈ gán "isCorrect": false khi từ đó bị phát âm sai lệch nghiêm trọng, thiếu hoặc dùng sai trợ từ.
+- Tuyệt đối không đánh dấu toàn bộ câu là màu đỏ nếu người học đã nói đúng hoặc nói gần đúng câu mẫu!
 
 Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài json):
 {
   "scores": {
-    "pronunciation": 85,
-    "accuracy": 90,
-    "fluency": 80,
+    "pronunciation": 90,
+    "accuracy": 92,
+    "fluency": 85,
     "completeness": 95
   },
-  "overallScore": 88,
+  "overallScore": 91,
   "wordFeedback": [
     {
       "word": "...",
@@ -463,7 +535,16 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
     conversationHistory = [],
     userMessage = "",
   }) {
-    // 1. Try Claude (Anthropic)
+    // 1. Try Google Gemini (Free Tier / High Speed)
+    if (config.ai.geminiApiKey) {
+      try {
+        return await this.roleplayWithGemini({ scenarioTitle, level, conversationHistory, userMessage });
+      } catch (err) {
+        console.warn("Lỗi gọi Gemini API cho Roleplay, thử Claude/OpenAI/Fallback:", err.message);
+      }
+    }
+
+    // 2. Try Claude (Anthropic)
     if (config.ai.anthropicApiKey) {
       try {
         return await this.roleplayWithClaude({ scenarioTitle, level, conversationHistory, userMessage });
@@ -472,7 +553,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
       }
     }
 
-    // 2. Try OpenAI
+    // 3. Try OpenAI
     if (config.ai.openaiApiKey) {
       try {
         return await this.roleplayWithOpenAI({ scenarioTitle, level, conversationHistory, userMessage });
@@ -481,8 +562,17 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
       }
     }
 
-    // 3. Fallback Heuristic Conversational Engine
+    // 4. Fallback Heuristic Conversational Engine
     return this.roleplayHeuristically({ scenarioTitle, level, conversationHistory, userMessage });
+  }
+
+  /**
+   * Roleplay turn with Google Gemini API
+   */
+  static async roleplayWithGemini({ scenarioTitle, level, conversationHistory, userMessage }) {
+    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage });
+    const rawContent = await this.callGemini({ prompt, temperature: 0.7, isJson: true });
+    return this.parseRoleplayJson(rawContent, scenarioTitle, userMessage);
   }
 
   /**

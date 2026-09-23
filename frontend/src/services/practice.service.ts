@@ -90,6 +90,27 @@ export const practiceService = {
   },
 
   /**
+   * Synthesize natural Japanese speech using Voicevox Engine (VITS + OpenJTalk)
+   */
+  synthesizeVoicevox: async (payload: {
+    text: string;
+    speakerId?: number;
+    speedScale?: number;
+    pitchScale?: number;
+  }): Promise<{ audioContent: string; mimeType: string; speakerId: number; cached?: boolean }> => {
+    const res = await api.post("/practices/voicevox", payload);
+    return res.data?.data || res.data;
+  },
+
+  /**
+   * Check Voicevox health and get available character speakers
+   */
+  getVoicevoxStatus: async () => {
+    const res = await api.get("/practices/voicevox/status");
+    return res.data?.data || res.data;
+  },
+
+  /**
    * Create initial practice session (compatibility)
    */
   createPractice: async (lessonId: string, sampleSentence: string): Promise<Practice> => {

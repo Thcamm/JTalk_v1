@@ -10,6 +10,8 @@ import {
   updatePractice,
   deletePractice,
   aiRoleplayChat,
+  synthesizeVoicevox,
+  getVoicevoxStatus,
 } from "../controllers/practice.controller.js";
 import { protectedRoute } from "../middleware/auth.middleware.js";
 import { checkPracticeQuota } from "../middleware/quota.middleware.js";
@@ -41,6 +43,18 @@ router.post("/roleplay-chat", aiRoleplayChat);
  * Tạo giọng phát âm tiếng Nhật từ văn bản (Google Cloud TTS)
  */
 router.post("/text-to-speech", synthesizeVoice);
+
+/**
+ * POST /api/v1/practices/voicevox
+ * Tạo giọng phát âm chất lượng phòng thu từ Voicevox Engine (Mã nguồn mở AI Nhật Bản)
+ */
+router.post("/voicevox", synthesizeVoicevox);
+
+/**
+ * GET /api/v1/practices/voicevox/status
+ * Kiểm tra trạng thái kết nối & danh sách nhân vật Voicevox (Shikoku Metan, Zundamon, Aoyama Ryusei)
+ */
+router.get("/voicevox/status", getVoicevoxStatus);
 
 /**
  * POST /api/v1/practices/save
