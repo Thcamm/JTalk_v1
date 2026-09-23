@@ -23,8 +23,9 @@ export default function ActionArea({
     >
       {step === "user" && (
         <>
-          <p className="mb-4 font-medium">
-            🎤 Đến lượt bạn
+          <p className="mb-4 font-bold flex items-center justify-center gap-1.5 text-slate-800 dark:text-slate-200">
+            <Mic className="w-4 h-4 text-rose-500 animate-pulse" />
+            <span>Đến lượt bạn</span>
           </p>
 
           <button
@@ -32,11 +33,15 @@ export default function ActionArea({
             className="
               size-24
               rounded-full
-              bg-emerald-500
+              bg-gradient-to-tr
+              from-rose-600
+              via-rose-500
+              to-amber-500
               text-white
               shadow-lg
               hover:scale-105
               transition
+              cursor-pointer
             "
           >
             <Mic

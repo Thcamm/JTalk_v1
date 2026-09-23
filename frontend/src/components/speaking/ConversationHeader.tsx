@@ -58,7 +58,7 @@ export default function ConversationHeader({
                     className="
             text-4xl
             font-bold
-            text-emerald-500
+            text-rose-600 dark:text-rose-400
           "
                 >
                     {title}

@@ -83,8 +83,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        heading: ["Inter", "system-ui", "sans-serif"],
+        sans: ["'Plus Jakarta Sans'", "'Zen Maru Gothic'", "system-ui", "sans-serif"],
+        heading: ["'Plus Jakarta Sans'", "'Zen Maru Gothic'", "system-ui", "sans-serif"],
+        jp: ["'Zen Maru Gothic'", "'Plus Jakarta Sans'", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -92,6 +93,18 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        spinSlow: {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        floatGentle: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
+        pulseGlow: {
+          "0%, 100%": { opacity: "0.7", transform: "scale(1)" },
+          "50%": { opacity: "1", transform: "scale(1.06)" },
+        },
         "accordion-down": {
           from: {
             height: "0",
@@ -110,6 +123,9 @@ export default {
         },
       },
       animation: {
+        "spin-slow": "spinSlow 12s linear infinite",
+        float: "floatGentle 3s ease-in-out infinite",
+        "pulse-glow": "pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },

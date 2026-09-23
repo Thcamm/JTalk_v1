@@ -189,11 +189,30 @@
   }
 
   body {
-    background-color: #f8fafc;
+    background-color: #fafaf7;
     color: #0f172a;
+    font-family: 'Plus Jakarta Sans', 'Zen Maru Gothic', system-ui, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Japanese Furigana / Ruby Typography */
+  ruby {
+    display: inline-ruby;
+    ruby-align: center;
+    ruby-position: over;
+  }
+
+  rt {
+    display: ruby-text;
+    font-size: 0.52em;
+    line-height: 1;
+    text-align: center;
+    ruby-align: center;
+    user-select: none;
+    font-weight: 700;
+    letter-spacing: 0;
   }
 
   .dark body,
@@ -212,17 +231,17 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
+  background: rgba(244, 63, 94, 0.3);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.5);
+  background: rgba(244, 63, 94, 0.6);
 }
 .dark ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.6);
+  background: rgba(244, 63, 94, 0.7);
 }
 
 /* Chat App Utility Classes */

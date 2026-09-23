@@ -20,7 +20,7 @@ export const LoadingSpinner = ({
 
   return (
     <div className={`flex flex-col items-center justify-center gap-2.5 ${className}`}>
-      <Loader2 className={`${sizeMap[size]} text-emerald-500 animate-spin`} />
+      <Loader2 className={`${sizeMap[size]} text-rose-500 animate-spin`} />
       {label && <p className="text-sm font-medium text-slate-500 animate-pulse">{label}</p>}
     </div>
   );

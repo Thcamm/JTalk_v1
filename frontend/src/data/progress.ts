@@ -2,26 +2,26 @@ export const overviewStats = [
   {
     title: "Chuỗi học",
     value: "12 ngày",
-    icon: "🔥",
-    color: "bg-orange-100 text-orange-600",
+    icon: "Flame",
+    color: "bg-rose-100 text-rose-600",
   },
   {
     title: "XP hôm nay",
     value: "240 XP",
-    icon: "⭐",
-    color: "bg-yellow-100 text-yellow-600",
+    icon: "Sparkles",
+    color: "bg-amber-100 text-amber-600",
   },
   {
     title: "Thời gian",
     value: "35 phút",
-    icon: "⏱",
-    color: "bg-blue-100 text-blue-600",
+    icon: "Clock",
+    color: "bg-rose-100 text-rose-600",
   },
   {
     title: "Hoàn thành",
     value: "7 / 10",
-    icon: "🎯",
-    color: "bg-green-100 text-green-600",
+    icon: "Target",
+    color: "bg-amber-100 text-amber-600",
   },
 ];
 
@@ -107,22 +107,22 @@ export const achievements = [
   {
     id: 1,
     title: "Học 7 ngày liên tiếp",
-    icon: "🔥",
+    icon: "Flame",
   },
   {
     id: 2,
     title: "Hoàn thành 100 bài",
-    icon: "🏆",
+    icon: "Trophy",
   },
   {
     id: 3,
     title: "Đạt 1000 XP",
-    icon: "⭐",
+    icon: "Sparkles",
   },
   {
     id: 4,
     title: "Hoàn thành khóa N5",
-    icon: "🎓",
+    icon: "GraduationCap",
   },
 ];
 

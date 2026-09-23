@@ -50,7 +50,7 @@ export default function Navbar() {
             />
             <input
               placeholder="Tìm bài học, kịch bản phỏng vấn, từ vựng..."
-              className="h-10 w-full rounded-full bg-slate-100/90 dark:bg-slate-800/70 pl-10 pr-12 text-xs font-medium outline-hidden border border-transparent dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs"
+              className="h-10 w-full rounded-full bg-slate-100/90 dark:bg-slate-800/70 pl-10 pr-12 text-xs font-medium outline-hidden border border-transparent dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all focus:bg-white dark:focus:bg-slate-800 focus:border-rose-500 dark:focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 shadow-2xs"
             />
             <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-3xs font-bold text-slate-400 dark:text-slate-500 bg-white/80 dark:bg-slate-700/80 px-1.5 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-600">
               ⌘K
@@ -63,7 +63,7 @@ export default function Navbar() {
           {/* Quick Action: Start AI Speaking */}
           <Link
             to="/speaking"
-            className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white rounded-full text-xs font-bold shadow-xs hover:shadow-md hover:shadow-emerald-500/20 active:scale-97 transition-all cursor-pointer"
+            className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white rounded-full text-xs font-bold shadow-xs hover:shadow-md hover:shadow-rose-500/20 active:scale-97 transition-all cursor-pointer"
           >
             <Mic size={14} className="animate-pulse" />
             <span>Luyện phản xạ</span>
@@ -71,20 +71,20 @@ export default function Navbar() {
 
           {/* Daily Streak Badge */}
           <div
-            className="flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 px-3 py-1.5 text-xs font-black text-amber-900 dark:text-amber-200 shrink-0 cursor-default hover:scale-103 transition-transform"
+            className="flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 px-3 py-1.5 text-xs font-black text-rose-900 dark:text-rose-200 shrink-0 cursor-default hover:scale-103 transition-transform"
             title={`Bạn đang giữ chuỗi ${streak} ngày học liên tiếp!`}
           >
-            <Flame size={15} className="text-amber-500 fill-amber-500 animate-bounce" />
+            <Flame size={15} className="text-rose-500 fill-rose-500 animate-pulse" />
             <span>{streak} ngày</span>
           </div>
 
           {/* XP Pill (Hidden on mobile) */}
           {xpPoints > 0 && (
             <div
-              className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-full text-xs font-black text-indigo-900 dark:text-indigo-200 shrink-0"
+              className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-full text-xs font-black text-amber-900 dark:text-amber-200 shrink-0"
               title={`Tổng điểm kinh nghiệm: ${xpPoints} XP`}
             >
-              <Trophy size={13} className="text-indigo-500" />
+              <Trophy size={13} className="text-amber-500" />
               <span>{xpPoints} XP</span>
             </div>
           )}
@@ -100,13 +100,13 @@ export default function Navbar() {
               type="button"
               className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border shadow-2xs ${
                 remainingFreePractices > 0
-                  ? "bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60"
-                  : "bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border-rose-300/80 dark:border-rose-800/60 animate-pulse"
+                  ? "bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-800 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60"
+                  : "bg-rose-100 dark:bg-rose-950/60 hover:bg-rose-200 text-rose-700 dark:text-rose-300 border-rose-300/80 dark:border-rose-800/60 animate-pulse"
               }`}
             >
               <Gift
                 size={13}
-                className={remainingFreePractices > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}
+                className="text-rose-600 dark:text-rose-400"
               />
               <span>
                 {remainingFreePractices > 0
@@ -140,12 +140,12 @@ export default function Navbar() {
             className="flex items-center gap-2 group relative p-0.5 rounded-full"
             title="Xem hồ sơ cá nhân"
           >
-            <div className="h-9 w-9 rounded-full p-0.5 bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 group-hover:scale-105 transition-transform shadow-2xs">
-              <div className="w-full h-full rounded-full bg-emerald-600 dark:bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white dark:border-[#0f172a]">
+            <div className="h-9 w-9 rounded-full p-0.5 bg-gradient-to-tr from-rose-500 via-rose-600 to-amber-500 group-hover:scale-105 transition-transform shadow-2xs">
+              <div className="w-full h-full rounded-full bg-rose-600 dark:bg-slate-900 text-white font-black text-xs flex items-center justify-center border-2 border-white dark:border-[#0f172a]">
                 {user?.displayName ? user.displayName.charAt(0).toUpperCase() : "J"}
               </div>
             </div>
-            <span className="hidden xl:inline-block text-2xs font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            <span className="hidden xl:inline-block text-2xs font-extrabold px-1.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
               {targetLevel}
             </span>
           </Link>

@@ -98,12 +98,12 @@ export const AudioPlayer = ({
         type="button"
         className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-95 cursor-pointer ${
           isPlaying
-            ? "bg-emerald-600 text-white shadow-xs"
-            : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/80"
+            ? "bg-rose-600 text-white shadow-xs animate-pulse"
+            : "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 hover:bg-rose-200 dark:hover:bg-rose-900/80"
         }`}
         title={isPlaying ? "Dừng" : "Phát âm thanh"}
       >
-        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5 fill-current" />}
       </button>
 
       <div className="flex flex-col">
@@ -111,7 +111,7 @@ export const AudioPlayer = ({
         {audioUrl && (
           <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-1 overflow-hidden">
             <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-100"
+              className="h-full bg-rose-500 rounded-full transition-all duration-100"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -127,7 +127,7 @@ export const AudioPlayer = ({
         <RotateCcw className="w-3.5 h-3.5" />
       </button>
 
-      <Volume2 className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0" />
+      <Volume2 className={`w-4 h-4 shrink-0 transition-colors ${isPlaying ? "text-rose-500 animate-pulse" : "text-slate-400 dark:text-slate-500"}`} />
     </div>
   );
 };

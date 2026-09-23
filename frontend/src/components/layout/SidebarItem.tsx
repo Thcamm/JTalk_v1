@@ -31,7 +31,7 @@ export default function SidebarItem({
           isActive
             ? highlight
               ? "bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 shadow-2xs"
-              : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-l-4 border-emerald-500 dark:border-emerald-400 shadow-2xs"
+              : "bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border-l-4 border-rose-500 dark:border-rose-400 shadow-2xs"
             : highlight
             ? "text-amber-600 dark:text-amber-400 hover:bg-amber-50/80 dark:hover:bg-amber-950/30 hover:text-amber-700"
             : "text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100"

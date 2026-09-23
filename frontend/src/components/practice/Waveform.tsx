@@ -24,7 +24,7 @@ export const Waveform = ({
             key={idx}
             className={`w-1 sm:w-1.5 rounded-full transition-all duration-75 ${
               isRecording
-                ? "bg-gradient-to-t from-emerald-500 to-teal-400 shadow-xs shadow-emerald-200 dark:shadow-emerald-950/50"
+                ? "bg-gradient-to-t from-rose-500 to-amber-400 shadow-xs shadow-rose-200 dark:shadow-rose-950/50"
                 : "bg-slate-200 dark:bg-slate-700"
             }`}
             style={{

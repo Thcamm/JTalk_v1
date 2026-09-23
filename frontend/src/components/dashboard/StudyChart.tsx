@@ -59,11 +59,11 @@ export const StudyChart = ({ logs = [], className = "" }: StudyChartProps) => {
         </div>
         <div className="flex items-center gap-4 text-xs font-bold">
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-md bg-emerald-500 inline-block" />
+            <span className="w-3 h-3 rounded-md bg-rose-500 inline-block shadow-2xs" />
             <span className="text-slate-700 dark:text-slate-300">{totalMinutes} phút</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-md bg-indigo-500 inline-block" />
+            <span className="w-3 h-3 rounded-md bg-amber-500 inline-block shadow-2xs" />
             <span className="text-slate-700 dark:text-slate-300">{totalPractices} lượt nói</span>
           </div>
         </div>
@@ -94,8 +94,8 @@ export const StudyChart = ({ logs = [], className = "" }: StudyChartProps) => {
                       <p className="font-extrabold border-b border-slate-700 pb-1">
                         {data.day} ({data.date})
                       </p>
-                      <p className="text-emerald-400 font-semibold">Thời gian: {data.minutes} phút</p>
-                      <p className="text-indigo-400 font-semibold">Luyện nói: {data.practices} lượt</p>
+                      <p className="text-rose-400 font-semibold">Thời gian: {data.minutes} phút</p>
+                      <p className="text-amber-400 font-semibold">Luyện nói: {data.practices} lượt</p>
                     </div>
                   );
                 }
@@ -106,8 +106,8 @@ export const StudyChart = ({ logs = [], className = "" }: StudyChartProps) => {
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={entry.day === "Hôm nay" ? "#10B981" : "#34D399"}
-                  opacity={entry.day === "Hôm nay" ? 1 : 0.6}
+                  fill={entry.day === "Hôm nay" ? "#f43f5e" : "#fda4af"}
+                  opacity={entry.day === "Hôm nay" ? 1 : 0.65}
                 />
               ))}
             </Bar>

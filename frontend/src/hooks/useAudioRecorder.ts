@@ -93,7 +93,7 @@ export const useAudioRecorder = () => {
     animationFrameRef.current = requestAnimationFrame(updateVisualizer);
   }, [isRecording]);
 
-  const startRecording = useCallback(async () => {
+  const startRecording = useCallback(async (): Promise<boolean> => {
     setErrorMessage(null);
     setAudioBlob(null);
     setAudioUrl(null);
@@ -168,6 +168,7 @@ export const useAudioRecorder = () => {
 
       // Start waveform loop
       animationFrameRef.current = requestAnimationFrame(updateVisualizer);
+      return true;
     } catch (err: unknown) {
       const msg =
         (err as Error)?.name === "NotAllowedError"
@@ -175,6 +176,7 @@ export const useAudioRecorder = () => {
           : (err as Error)?.message || "Không thể khởi động microphone.";
       setErrorMessage(msg);
       cleanupAudioContext();
+      return false;
     }
   }, [cleanupAudioContext, updateVisualizer]);
 

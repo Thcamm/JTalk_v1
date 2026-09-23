@@ -4,7 +4,6 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Star,
   Zap,
   Flame,
   X,
@@ -136,10 +135,11 @@ export default function Sidebar() {
         <div className="overflow-y-auto no-scrollbar">
           {/* Top Header & Logo */}
           <div className="h-18 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800/80 relative">
-            <Link to="/" className="flex items-center gap-2.5 min-w-0 group">
-              {/* Mascot avatar */}
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 flex items-center justify-center text-white font-black text-xl shadow-md group-hover:scale-105 group-hover:rotate-3 transition-transform shrink-0">
-                <span className="text-xl select-none">🐸</span>
+            <Link to="/dashboard" className="flex items-center gap-2.5 min-w-0 group">
+              {/* Mascot / Logo avatar */}
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 via-rose-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-rose-500/20 group-hover:scale-105 group-hover:rotate-3 transition-transform shrink-0 relative overflow-hidden">
+                <div className="absolute inset-0 bg-white/10 rounded-2xl animate-pulse" />
+                <Sparkles size={20} className="text-white animate-spin-slow relative z-10" />
               </div>
 
               {!isCollapsed && (
@@ -147,7 +147,7 @@ export default function Sidebar() {
                   <span className="text-lg font-black text-slate-900 dark:text-white tracking-tight block truncate">
                     JTalk
                   </span>
-                  <span className="text-3xs font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block -mt-1 truncate">
+                  <span className="text-3xs font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-widest block -mt-1 truncate">
                     AI Reflex Kaiwa
                   </span>
                 </div>
@@ -171,13 +171,16 @@ export default function Sidebar() {
             </button>
           </div>
 
-          {/* Weekly Streak Stars Widget (Only shown when expanded) */}
+          {/* Weekly Hanko Stamp Widget (Only shown when expanded) */}
           {!isCollapsed && (
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-rose-50/30 dark:bg-slate-900/40">
               <div className="flex items-center justify-between text-2xs font-extrabold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span>Streak tuần này</span>
-                <span className="text-amber-500 dark:text-amber-400 flex items-center gap-0.5">
-                  <Flame size={12} className="fill-amber-500" />
+                <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                  <span className="text-rose-600 font-black">判子</span>
+                  <span>Mộc điểm danh</span>
+                </span>
+                <span className="text-rose-600 dark:text-rose-400 flex items-center gap-0.5 font-black">
+                  <Flame size={12} className="fill-rose-500 text-rose-500 animate-pulse" />
                   {streak} ngày
                 </span>
               </div>
@@ -190,35 +193,33 @@ export default function Sidebar() {
                       className="flex flex-col items-center group relative"
                       title={`${day.label} (${day.date}): ${
                         day.hasPracticed
-                          ? "Đã hoàn thành luyện nói"
+                          ? "Đã hoàn thành luyện nói - Mộc 済"
                           : day.isToday
-                          ? "Hôm nay - Luyện nói ngay để giữ streak!"
+                          ? "Hôm nay - Luyện nói ngay để đóng mộc!"
                           : day.isPast
                           ? "Chưa luyện tập"
                           : "Sắp tới"
                       }`}
                     >
-                      <div className="h-4.5 flex items-center justify-center">
+                      <div className="h-5 flex items-center justify-center">
                         {day.hasPracticed ? (
-                          <Star
-                            size={13}
-                            className="text-amber-400 fill-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.6)] animate-in fade-in zoom-in duration-200"
-                          />
+                          <div className="w-4.5 h-4.5 rounded-full border border-rose-500 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-3xs font-black shadow-xs hover:scale-110 transition-transform">
+                            済
+                          </div>
                         ) : day.isToday ? (
-                          <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-amber-400 dark:border-amber-400 flex items-center justify-center animate-pulse">
-                            <div className="w-1 h-1 rounded-full bg-amber-400" />
+                          <div className="w-4 h-4 rounded-full border-2 border-dashed border-rose-400 dark:border-rose-400 flex items-center justify-center animate-pulse bg-rose-50/50 dark:bg-rose-950/20">
+                            <div className="w-1 h-1 rounded-full bg-rose-500" />
                           </div>
                         ) : (
-                          <Star
-                            size={13}
-                            className="text-slate-300 dark:text-slate-700 stroke-1"
-                          />
+                          <div className="w-3.5 h-3.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 flex items-center justify-center text-4xs">
+                            -
+                          </div>
                         )}
                       </div>
                       <span
                         className={`text-3xs mt-0.5 font-bold transition-colors ${
                           day.isToday
-                            ? "text-amber-600 dark:text-amber-400 font-black underline decoration-amber-400 decoration-2 underline-offset-2"
+                            ? "text-rose-600 dark:text-rose-400 font-black underline decoration-rose-400 decoration-2 underline-offset-2"
                             : day.hasPracticed
                             ? "text-slate-700 dark:text-slate-300 font-extrabold"
                             : "text-slate-400 dark:text-slate-500"
@@ -257,14 +258,14 @@ export default function Sidebar() {
           {isCollapsed ? (
             <Link
               to="/checkout"
-              className="w-11 h-11 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md hover:scale-105 transition-transform"
+              className="w-11 h-11 mx-auto rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20 hover:scale-105 transition-transform"
               title="Nâng cấp gói Premium"
             >
-              <Sparkles size={18} className="text-amber-300" />
+              <Sparkles size={18} className="text-amber-200" />
             </Link>
           ) : isPremium ? (
-            <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 p-3 text-center">
-              <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1.5">
+            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 p-3 text-center">
+              <span className="text-xs font-black text-rose-800 dark:text-rose-300 flex items-center justify-center gap-1.5">
                 <Zap size={14} className="text-amber-500 fill-amber-500" />
                 <span>Gói Premium Vô Hạn</span>
               </span>
@@ -272,9 +273,9 @@ export default function Sidebar() {
           ) : (
             <Link
               to="/checkout"
-              className="w-full py-3 px-3.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-105 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:shadow-emerald-500/20 active:translate-y-0.5 transition-all"
+              className="w-full py-3 px-3.5 bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 hover:brightness-105 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 hover:shadow-lg active:translate-y-0.5 transition-all"
             >
-              <Sparkles size={15} className="text-amber-300 animate-spin-slow" />
+              <Sparkles size={15} className="text-amber-200 animate-spin-slow" />
               <span>Nâng cấp Plus 99k</span>
             </Link>
           )}
