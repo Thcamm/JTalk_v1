@@ -151,12 +151,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else {
         set({ user: null });
       }
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      if (error?.response?.status !== 401 && error?.status !== 401) {
+        console.error("fetchMe error:", error);
+      }
       set({ user: null, accessToken: null });
-      throw error;
     } finally {
       set({ loading: false });
+    }
+  },
+
+  initSession: async () => {
+    if (get().accessToken && get().user) return;
+    try {
+      const accessToken = await authService.refresh();
+      if (accessToken) {
+        get().setAccessToken(accessToken);
+        await get().fetchMe();
+      }
+    } catch {
+      // Guest or expired session: clean state silently
+      get().clearState();
     }
   },
 

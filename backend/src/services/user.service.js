@@ -106,6 +106,32 @@ export class UserService {
 
     return updatedUser;
   }
+
+  /**
+   * Retrieves leaderboard sorted by total XP or streak
+   * @param {string} type - 'xp' | 'streak'
+   * @param {number} limit - number of users (default 20)
+   */
+  static async getLeaderboard(type = "xp", limit = 20) {
+    const sortField = type === "streak" ? "gamification.streak" : "gamification.totalXp";
+    const users = await User.find({})
+      .select("displayName avatarUrl profile.targetLevel gamification subscription.tier")
+      .sort({ [sortField]: -1 })
+      .limit(Math.min(limit, 50))
+      .lean();
+
+    return users.map((u, index) => ({
+      rank: index + 1,
+      _id: u._id,
+      displayName: u.displayName || "Học viên JTalk",
+      avatarUrl: u.avatarUrl,
+      targetLevel: u.profile?.targetLevel || "N5",
+      totalXp: u.gamification?.totalXp || 0,
+      streak: u.gamification?.streak || 0,
+      level: u.gamification?.level || 1,
+      isPremium: u.subscription?.tier === "premium",
+    }));
+  }
 }
 
 export default UserService;

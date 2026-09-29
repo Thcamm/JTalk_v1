@@ -1,4 +1,7 @@
-import { NavLink } from "react-router";
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -15,13 +18,15 @@ export default function SidebarItem({
   highlight,
   isCollapsed = false,
 }: SidebarItemProps) {
+  const pathname = usePathname();
+  const isActive = to === "/" ? pathname === "/" : pathname?.startsWith(to);
+
   return (
-    <NavLink
-      to={to}
-      end={to === "/"}
+    <Link
+      href={to}
+      prefetch={true}
       title={isCollapsed ? text : undefined}
-      className={({ isActive }) =>
-        `
+      className={`
         flex items-center gap-3.5
         ${isCollapsed ? "justify-center px-2 py-3" : "px-3.5 py-3"}
         rounded-2xl
@@ -36,16 +41,13 @@ export default function SidebarItem({
             ? "text-amber-600 dark:text-amber-400 hover:bg-amber-50/80 dark:hover:bg-amber-950/30 hover:text-amber-700"
             : "text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100"
         }
-      `
-      }
+      `}
     >
       <span className="shrink-0 transition-transform duration-200 group-hover:scale-110">
         {icon}
       </span>
       {!isCollapsed && <span className="truncate tracking-tight">{text}</span>}
-      {isCollapsed && (
-        <span className="sr-only">{text}</span>
-      )}
-    </NavLink>
+      {isCollapsed && <span className="sr-only">{text}</span>}
+    </Link>
   );
 }

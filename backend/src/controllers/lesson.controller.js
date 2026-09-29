@@ -58,19 +58,21 @@ export const createLesson = async (req, res, next) => {
       durationMinutes,
       isPremiumOnly,
       isPublished,
+      youtubeId,
+      videoUrl,
+      channelName,
+      subtitles,
       dialogues,
       vocabularyList,
     } = req.body;
 
     const sentenceToUse =
-      sampleSentence || (dialogues && dialogues.length > 0 ? dialogues[0].japanese : "");
+      sampleSentence ||
+      (dialogues && dialogues.length > 0 ? dialogues[0].japanese : "") ||
+      (subtitles && subtitles.length > 0 ? subtitles[0].japanese : title);
 
-    if (!topicId || !title || !sentenceToUse) {
-      return errorResponse(
-        res,
-        "Không thể thiếu topicId, title hoặc sampleSentence/dialogues",
-        400
-      );
+    if (!topicId || !title) {
+      return errorResponse(res, "Không thể thiếu topicId hoặc title", 400);
     }
 
     if (!mongoose.Types.ObjectId.isValid(topicId)) {
@@ -84,8 +86,14 @@ export const createLesson = async (req, res, next) => {
       level: level || "N5",
       sampleSentence: sentenceToUse,
       translation:
-        translation || (dialogues && dialogues.length > 0 ? dialogues[0].translation : ""),
+        translation ||
+        (dialogues && dialogues.length > 0 ? dialogues[0].translation : "") ||
+        (subtitles && subtitles.length > 0 ? subtitles[0].translation : ""),
       image: image || "",
+      youtubeId: youtubeId || "",
+      videoUrl: videoUrl || "",
+      channelName: channelName || "",
+      subtitles: subtitles || [],
       duration: duration || "10 phút",
       durationMinutes: durationMinutes || 10,
       isPremiumOnly: !!isPremiumOnly,

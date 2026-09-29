@@ -1,119 +1,23 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Link } from "@/lib/react-router-compat";
 import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
   Zap,
-  Flame,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import SidebarItem from "./SidebarItem";
 import { sidebarItems } from "./sidebar-data";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebarStore } from "@/stores/useSidebarStore";
-import { studylogService, type DailyStudyLog } from "@/services/studylog.service";
-
-interface WeekDayInfo {
-  label: string;
-  dayNumber: number; // 1 (Th2) to 7 (CN)
-  date: string; // YYYY-MM-DD
-  isToday: boolean;
-  isPast: boolean;
-  isFuture: boolean;
-  hasPracticed: boolean;
-}
 
 export default function Sidebar() {
-  const { isPremium, streak, practiceCountToday } = useAuth();
+  const { isPremium, user } = useAuth();
   const { isCollapsed, toggleSidebar } = useSidebarStore();
-  const [weeklyLogs, setWeeklyLogs] = useState<DailyStudyLog[]>([]);
-
-  // Fetch real study logs for weekly progress
-  useEffect(() => {
-    let isMounted = true;
-    studylogService.getWeeklyLogs().then((logs) => {
-      if (isMounted && logs && logs.length > 0) {
-        setWeeklyLogs(logs);
-      }
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, [practiceCountToday]);
-
-  // Compute 7 calendar days of the current week (Th2 -> CN) with accurate practice status
-  const weekDays = useMemo<WeekDayInfo[]>(() => {
-    const now = new Date();
-    const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday...
-    const currentIsoDay = currentDay === 0 ? 7 : currentDay; // 1 (Mon) -> 7 (Sun)
-
-    // Find Monday of the current week
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - (currentIsoDay - 1));
-
-    const weekLabels = [
-      { label: "Th2", dayNumber: 1 },
-      { label: "Th3", dayNumber: 2 },
-      { label: "Th4", dayNumber: 3 },
-      { label: "Th5", dayNumber: 4 },
-      { label: "Th6", dayNumber: 5 },
-      { label: "Th7", dayNumber: 6 },
-      { label: "CN", dayNumber: 7 },
-    ];
-
-    const logMap = new Map<string, number>();
-    weeklyLogs.forEach((l) => {
-      if (l.date) {
-        logMap.set(l.date, l.practiceCount || (l.minutesSpent > 0 ? 1 : 0));
-      }
-    });
-
-    return weekLabels.map((item, idx) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + idx);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      const dateStr = `${y}-${m}-${day}`;
-
-      const isToday = item.dayNumber === currentIsoDay;
-      const isPast = item.dayNumber < currentIsoDay;
-      const isFuture = item.dayNumber > currentIsoDay;
-
-      let hasPracticed = false;
-
-      if (isFuture) {
-        hasPracticed = false;
-      } else if (isToday) {
-        const logged = logMap.get(dateStr) || 0;
-        hasPracticed = practiceCountToday > 0 || logged > 0;
-      } else {
-        // Past day in current week
-        if (logMap.has(dateStr)) {
-          hasPracticed = (logMap.get(dateStr) || 0) > 0;
-        } else if (streak > 0) {
-          // Fallback streak mapping if logs haven't synced
-          const daysAgo = currentIsoDay - item.dayNumber;
-          if (practiceCountToday > 0) {
-            hasPracticed = daysAgo < streak;
-          } else {
-            hasPracticed = daysAgo <= streak;
-          }
-        }
-      }
-
-      return {
-        label: item.label,
-        dayNumber: item.dayNumber,
-        date: dateStr,
-        isToday,
-        isPast,
-        isFuture,
-        hasPracticed,
-      };
-    });
-  }, [weeklyLogs, practiceCountToday, streak]);
 
   return (
     <>
@@ -145,10 +49,10 @@ export default function Sidebar() {
               {!isCollapsed && (
                 <div className="min-w-0">
                   <span className="text-lg font-black text-slate-900 dark:text-white tracking-tight block truncate">
-                    JTalk
+                    JTalk AI
                   </span>
                   <span className="text-3xs font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-widest block -mt-1 truncate">
-                    AI Reflex Kaiwa
+                    Luyện Nói Tiếng Nhật
                   </span>
                 </div>
               )}
@@ -171,69 +75,6 @@ export default function Sidebar() {
             </button>
           </div>
 
-          {/* Weekly Hanko Stamp Widget (Only shown when expanded) */}
-          {!isCollapsed && (
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-rose-50/30 dark:bg-slate-900/40">
-              <div className="flex items-center justify-between text-2xs font-extrabold text-slate-500 dark:text-slate-400 mb-1.5">
-                <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
-                  <span className="text-rose-600 font-black">判子</span>
-                  <span>Mộc điểm danh</span>
-                </span>
-                <span className="text-rose-600 dark:text-rose-400 flex items-center gap-0.5 font-black">
-                  <Flame size={12} className="fill-rose-500 text-rose-500 animate-pulse" />
-                  {streak} ngày
-                </span>
-              </div>
-
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {weekDays.map((day) => {
-                  return (
-                    <div
-                      key={day.label}
-                      className="flex flex-col items-center group relative"
-                      title={`${day.label} (${day.date}): ${
-                        day.hasPracticed
-                          ? "Đã hoàn thành luyện nói - Mộc 済"
-                          : day.isToday
-                          ? "Hôm nay - Luyện nói ngay để đóng mộc!"
-                          : day.isPast
-                          ? "Chưa luyện tập"
-                          : "Sắp tới"
-                      }`}
-                    >
-                      <div className="h-5 flex items-center justify-center">
-                        {day.hasPracticed ? (
-                          <div className="w-4.5 h-4.5 rounded-full border border-rose-500 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-3xs font-black shadow-xs hover:scale-110 transition-transform">
-                            済
-                          </div>
-                        ) : day.isToday ? (
-                          <div className="w-4 h-4 rounded-full border-2 border-dashed border-rose-400 dark:border-rose-400 flex items-center justify-center animate-pulse bg-rose-50/50 dark:bg-rose-950/20">
-                            <div className="w-1 h-1 rounded-full bg-rose-500" />
-                          </div>
-                        ) : (
-                          <div className="w-3.5 h-3.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 flex items-center justify-center text-4xs">
-                            -
-                          </div>
-                        )}
-                      </div>
-                      <span
-                        className={`text-3xs mt-0.5 font-bold transition-colors ${
-                          day.isToday
-                            ? "text-rose-600 dark:text-rose-400 font-black underline decoration-rose-400 decoration-2 underline-offset-2"
-                            : day.hasPracticed
-                            ? "text-slate-700 dark:text-slate-300 font-extrabold"
-                            : "text-slate-400 dark:text-slate-500"
-                        }`}
-                      >
-                        {day.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Navigation Menu */}
           <nav className="p-3 space-y-1">
             {sidebarItems.map((item) => {
@@ -250,12 +91,44 @@ export default function Sidebar() {
                 />
               );
             })}
+
+            {user?.role === "admin" && (
+              <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
+                <SidebarItem
+                  icon={<ShieldCheck size={18} className="text-indigo-500" />}
+                  text="Cổng Quản Trị"
+                  to="/admin"
+                  highlight={false}
+                  isCollapsed={isCollapsed}
+                />
+              </div>
+            )}
           </nav>
         </div>
 
         {/* Upgrade banner / Button at bottom */}
         <div className="p-3 border-t border-slate-100 dark:border-slate-800/80">
-          {isCollapsed ? (
+          {user?.role === "admin" ? (
+            isCollapsed ? (
+              <Link
+                to="/admin"
+                className="w-11 h-11 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:scale-105 transition-transform"
+                title="Cổng Quản trị viên"
+              >
+                <ShieldCheck size={18} />
+              </Link>
+            ) : (
+              <div className="rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 p-3 text-center">
+                <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 flex items-center justify-center gap-1.5">
+                  <ShieldCheck size={14} className="text-indigo-600 dark:text-indigo-400" />
+                  <span>Quản Trị Viên</span>
+                </span>
+                <span className="text-[10px] text-indigo-700/80 dark:text-indigo-400/80 block mt-0.5 font-bold">
+                  Toàn quyền hệ thống
+                </span>
+              </div>
+            )
+          ) : isCollapsed ? (
             <Link
               to="/checkout"
               className="w-11 h-11 mx-auto rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20 hover:scale-105 transition-transform"
@@ -276,7 +149,7 @@ export default function Sidebar() {
               className="w-full py-3 px-3.5 bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 hover:brightness-105 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 hover:shadow-lg active:translate-y-0.5 transition-all"
             >
               <Sparkles size={15} className="text-amber-200 animate-spin-slow" />
-              <span>Nâng cấp Plus 99k</span>
+              <span>Nâng cấp Premium</span>
             </Link>
           )}
         </div>

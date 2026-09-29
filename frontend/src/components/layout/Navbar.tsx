@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link } from "@/lib/react-router-compat";
 import {
   Search,
   Flame,
@@ -10,12 +12,14 @@ import {
   Moon,
   Menu,
   Trophy,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebarStore } from "@/stores/useSidebarStore";
 import { useThemeStore } from "@/stores/useThemeStore";
 import Logout from "../auth/Logout";
 import { PremiumModal } from "@/components/common/PremiumModal";
+import { DailyCheckInModal } from "@/components/gamification/DailyCheckInModal";
 import { Badge } from "@/components/common/Badge";
 
 export default function Navbar() {
@@ -23,6 +27,7 @@ export default function Navbar() {
   const { toggleSidebar } = useSidebarStore();
   const { isDark, toggleTheme } = useThemeStore();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const targetLevel = user?.profile?.targetLevel || "N5";
   const xpPoints = user?.gamification?.totalXp || 0;
@@ -60,23 +65,37 @@ export default function Navbar() {
 
         {/* Right Section: Badges, Actions, Theme Toggle & User */}
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          {/* Admin Portal Quick Link (Only visible to admin) */}
+          {user?.role === "admin" && (
+            <Link
+              to="/admin"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-full text-xs font-bold shadow-xs hover:shadow-md hover:shadow-indigo-500/25 active:scale-97 transition-all cursor-pointer"
+              title="Truy cập Cổng Quản trị viên"
+            >
+              <ShieldCheck size={14} />
+              <span>Admin Portal</span>
+            </Link>
+          )}
+
           {/* Quick Action: Start AI Speaking */}
           <Link
             to="/speaking"
             className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white rounded-full text-xs font-bold shadow-xs hover:shadow-md hover:shadow-rose-500/20 active:scale-97 transition-all cursor-pointer"
           >
             <Mic size={14} className="animate-pulse" />
-            <span>Luyện phản xạ</span>
+            <span>Luyện nói AI</span>
           </Link>
 
           {/* Daily Streak Badge */}
-          <div
-            className="flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 px-3 py-1.5 text-xs font-black text-rose-900 dark:text-rose-200 shrink-0 cursor-default hover:scale-103 transition-transform"
-            title={`Bạn đang giữ chuỗi ${streak} ngày học liên tiếp!`}
+          <button
+            onClick={() => setShowCheckInModal(true)}
+            type="button"
+            className="flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 px-3 py-1.5 text-xs font-black text-rose-900 dark:text-rose-200 shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs hover:bg-rose-100/80 dark:hover:bg-rose-900/40"
+            title={`Chuỗi ${streak} ngày học liên tiếp! Bấm để xem Thẻ điểm danh 7 ngày.`}
           >
             <Flame size={15} className="text-rose-500 fill-rose-500 animate-pulse" />
             <span>{streak} ngày</span>
-          </div>
+          </button>
 
           {/* XP Pill (Hidden on mobile) */}
           {xpPoints > 0 && (
@@ -89,8 +108,8 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Quota / Premium Badge */}
-          {isPremium ? (
+          {/* Quota / Premium Badge (Không hiển thị cho Admin vì Admin đã có toàn quyền) */}
+          {user?.role === "admin" ? null : isPremium ? (
             <Badge variant="premium" size="sm" icon={<Sparkles className="w-3 h-3" />}>
               PRO Vô Hạn
             </Badge>
@@ -159,6 +178,12 @@ export default function Navbar() {
         isOpen={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}
         reason="quota_exceeded"
+      />
+
+      <DailyCheckInModal
+        isOpen={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
+        autoCheckDaily={false}
       />
     </>
   );

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   X,
   MapPin,
@@ -7,7 +9,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router";
+import { useNavigate } from "@/lib/react-router-compat";
 
 interface Props {
   lessonId: string | number;

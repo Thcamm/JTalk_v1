@@ -77,6 +77,7 @@ export interface AuthState {
   signOut: () => Promise<void>;
   fetchMe: () => Promise<void>;
   refresh: () => Promise<void>;
+  initSession: () => Promise<void>;
   dailyPracticeCount: number;
   incrementDailyPracticeCount: () => void;
   updateUserGamification: (gamification: Partial<UserGamification>) => void;

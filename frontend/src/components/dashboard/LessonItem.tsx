@@ -1,4 +1,6 @@
-import { Link } from "react-router";
+"use client";
+
+import { Link } from "@/lib/react-router-compat";
 import type { Lesson } from "@/types";
 import { Mic, Clock, Lock, Sparkles, ChevronRight, Play } from "lucide-react";
 import { Badge } from "@/components/common/Badge";

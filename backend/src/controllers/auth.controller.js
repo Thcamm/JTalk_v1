@@ -54,15 +54,16 @@ export const login = async (req, res, next) => {
     // Set secure HTTP-only cookie with refreshToken
     res.cookie("refreshToken", refreshToken, cookieOptions);
 
-    return successResponse(
-      res,
-      {
+    return res.status(200).json({
+      success: true,
+      message: `Chào mừng ${user.displayName} quay trở lại!`,
+      data: {
         user,
         accessToken,
       },
-      `Chào mừng ${user.displayName} quay trở lại!`,
-      200
-    );
+      user,
+      accessToken,
+    });
   } catch (error) {
     next(error);
   }
@@ -81,15 +82,16 @@ export const refresh = async (req, res, next) => {
 
     const { accessToken, user } = await AuthService.refreshAccessToken(token);
 
-    return successResponse(
-      res,
-      {
+    return res.status(200).json({
+      success: true,
+      message: "Cấp mới Access Token thành công!",
+      data: {
         accessToken,
         user,
       },
-      "Cấp mới Access Token thành công!",
-      200
-    );
+      accessToken,
+      user,
+    });
   } catch (error) {
     next(error);
   }
