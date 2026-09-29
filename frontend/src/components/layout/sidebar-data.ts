@@ -35,7 +35,7 @@ export const sidebarItems = [
   },
   {
     icon: Sparkles,
-    text: "Gói Premium 99k",
+    text: "Gói Premium",
     to: "/checkout",
     highlight: true,
   },

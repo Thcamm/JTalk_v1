@@ -308,7 +308,7 @@ export const DashboardPage = () => {
               </div>
               <div>
                 <h3 className="font-extrabold text-sm text-rose-900 dark:text-rose-200 group-hover:text-rose-600 dark:group-hover:text-rose-300 transition-colors">
-                  Hội Viên Premium 99k
+                  Hội Viên Premium 
                 </h3>
                 <p className="text-2xs text-rose-800/80 dark:text-rose-300/80 line-clamp-2 mt-1 font-medium leading-relaxed">
                   {isPremium
