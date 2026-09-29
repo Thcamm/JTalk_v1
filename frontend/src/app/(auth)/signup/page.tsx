@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import SignUpPage from "@/views/SignUpPage";
 import type { Metadata } from "next";
 
@@ -7,5 +8,15 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <SignUpPage />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0b0f17]">
+          <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <SignUpPage />
+    </Suspense>
+  );
 }
