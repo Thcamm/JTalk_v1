@@ -276,7 +276,7 @@ export default function Sidebar() {
               className="w-full py-3 px-3.5 bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 hover:brightness-105 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 hover:shadow-lg active:translate-y-0.5 transition-all"
             >
               <Sparkles size={15} className="text-amber-200 animate-spin-slow" />
-              <span>Nâng cấp Plus 99k</span>
+              <span>Nâng cấp Premium</span>
             </Link>
           )}
         </div>

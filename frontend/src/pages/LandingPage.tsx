@@ -802,7 +802,7 @@ export default function LandingPage() {
                   1.500.000đ - 3.000.000đ/tháng (khá đắt cho sinh viên)
                 </td>
                 <td className="py-5 px-6 font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20">
-                  Chỉ 99.000đ/tháng (bằng 2 cốc trà sữa)
+                  Chỉ 99.000đ/tháng
                 </td>
               </tr>
               <tr>
