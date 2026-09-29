@@ -47,8 +47,10 @@ export const useNavigate = () => {
 
 export const useLocation = () => {
   const pathname = usePathname();
-  const searchParams = useNextSearchParams();
-  const search = searchParams ? `?${searchParams.toString()}` : "";
+  let search = "";
+  if (typeof window !== "undefined") {
+    search = window.location.search || "";
+  }
   return {
     pathname: pathname || "/",
     search,
