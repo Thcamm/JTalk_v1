@@ -3,10 +3,9 @@ import { useAuthStore } from "@/stores/useAuthStore";
 
 const getNormalizedApiUrl = (): string => {
   let url =
-    import.meta.env.VITE_API_URL ||
-    (import.meta.env.MODE === "development"
-      ? "http://localhost:5001/api/v1"
-      : "/api/v1");
+    (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
+    (typeof window !== "undefined" && (window as any).__ENV__?.VITE_API_URL) ||
+    "http://localhost:5001/api/v1";
 
   // Remove trailing slashes
   url = url.trim().replace(/\/+$/, "");

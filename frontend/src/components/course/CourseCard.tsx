@@ -1,4 +1,6 @@
-import { useNavigate } from "react-router";
+"use client";
+
+import { useNavigate } from "@/lib/react-router-compat";
 import { BookOpen, FolderGit2 } from "lucide-react";
 
 type Props = {

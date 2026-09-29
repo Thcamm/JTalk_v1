@@ -10,3 +10,9 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Next.js build and cache
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts

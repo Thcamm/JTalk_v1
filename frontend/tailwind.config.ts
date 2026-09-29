@@ -87,6 +87,11 @@ export default {
         heading: ["'Plus Jakarta Sans'", "'Zen Maru Gothic'", "system-ui", "sans-serif"],
         jp: ["'Zen Maru Gothic'", "'Plus Jakarta Sans'", "sans-serif"],
       },
+      fontSize: {
+        "2xs": ["0.6875rem", { lineHeight: "0.875rem" }],
+        "3xs": ["0.5625rem", { lineHeight: "0.75rem" }],
+        "4xs": ["0.5rem", { lineHeight: "0.625rem" }],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

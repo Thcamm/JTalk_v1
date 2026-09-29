@@ -69,3 +69,17 @@ export const optionalAuth = async (req, _res, next) => {
     next();
   }
 };
+
+/**
+ * Middleware strictly requiring user to have "admin" role
+ * Must be used after protectedRoute
+ */
+export const adminRoute = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return errorResponse(res, "Bạn không có quyền truy cập quản trị viên.", 403, {
+      code: "FORBIDDEN_ADMIN_ONLY",
+    });
+  }
+  next();
+};
+

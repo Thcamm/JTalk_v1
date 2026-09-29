@@ -1,6 +1,8 @@
+"use client";
+
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useEffect, useState } from "react";
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet } from "@/lib/react-router-compat";
 
 const ProtectedRoute = () => {
   const { accessToken, refresh } = useAuthStore();

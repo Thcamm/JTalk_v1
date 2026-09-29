@@ -36,5 +36,20 @@ export const updateProfile = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/v1/users/leaderboard
+ */
+export const getLeaderboard = async (req, res, next) => {
+  try {
+    const type = req.query.type || "xp"; // "xp" | "streak"
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const leaderboard = await UserService.getLeaderboard(type, limit);
+
+    return successResponse(res, leaderboard, "Lấy bảng xếp hạng thành công!");
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Aliases for compatibility
 export const authMe = getMe;

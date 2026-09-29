@@ -1,8 +1,10 @@
+"use client";
+
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { useNavigate } from "react-router";
+import { useNavigate } from "@/lib/react-router-compat";
 
 interface SpeakingCardProps {
   id: string | number;
