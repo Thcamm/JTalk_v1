@@ -1,6 +1,8 @@
+"use client";
+
 import { LogOut } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useNavigate } from "react-router";
+import { useNavigate } from "@/lib/react-router-compat";
 
 const Logout = () => {
   const { signOut } = useAuthStore();

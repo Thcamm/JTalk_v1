@@ -30,7 +30,7 @@ export const useAudioRecorder = () => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const timerIntervalRef = useRef<number | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const cleanupAudioContext = useCallback(() => {
     if (animationFrameRef.current) {

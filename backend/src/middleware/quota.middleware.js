@@ -17,6 +17,18 @@ export const checkPracticeQuota = async (req, res, next) => {
       return errorResponse(res, "Vui lòng đăng nhập để luyện nói.", 401);
     }
 
+    // Admin has unlimited practice quota by default
+    if (user.role === "admin") {
+      req.isPremium = true;
+      req.quota = {
+        isUnlimited: true,
+        remaining: Infinity,
+        limit: Infinity,
+        usedToday: 0,
+      };
+      return next();
+    }
+
     // 1. Kiểm tra trạng thái gói Premium từ collection subscriptions
     const { isPremium, subscription } = await checkUserPremiumSubscription(user._id);
 

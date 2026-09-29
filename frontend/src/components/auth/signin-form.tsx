@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "@/lib/react-router-compat";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,10 +27,25 @@ const signInSchema = z.object({
 type SignInFormValues = z.infer<typeof signInSchema>;
 
 export function SigninForm() {
-  const { signIn, loading } = useAuthStore();
+  const { signIn, loading, user, accessToken } = useAuthStore();
   const navigate = useNavigate();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // If already authenticated, redirect appropriately
+  useEffect(() => {
+    if (accessToken && user) {
+      const redirectParam = searchParams?.get("redirect");
+      if (redirectParam) {
+        navigate(redirectParam);
+      } else if (user.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [accessToken, user, searchParams, navigate]);
 
   const {
     register,
@@ -42,7 +60,17 @@ export function SigninForm() {
       setIsSubmitting(true);
       const { username, password } = data;
       await signIn(username, password);
-      navigate("/dashboard");
+
+      const currentUser = useAuthStore.getState().user;
+      const redirectParam = searchParams?.get("redirect");
+
+      if (redirectParam) {
+        navigate(redirectParam);
+      } else if (currentUser?.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch {
       // Notification handled in authStore
     } finally {

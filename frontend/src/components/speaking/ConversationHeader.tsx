@@ -1,10 +1,12 @@
+"use client";
+
 import {
     ArrowLeft,
     LayoutGrid,
     PhoneOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router";
+import { useNavigate } from "@/lib/react-router-compat";
 
 type Props = {
     title: string;

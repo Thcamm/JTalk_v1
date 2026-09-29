@@ -35,6 +35,12 @@ export const requirePremium = async (req, res, next) => {
       return errorResponse(res, "Vui lòng đăng nhập để truy cập tính năng này.", 401);
     }
 
+    // Admin has full system access without needing a subscription
+    if (req.user.role === "admin") {
+      req.isPremium = true;
+      return next();
+    }
+
     const { isPremium, subscription } = await checkUserPremiumSubscription(req.user._id);
 
     if (!isPremium) {
@@ -92,6 +98,13 @@ export const checkLessonPremiumAccess = async (req, res, next) => {
       );
     }
 
+    // Admin has full unrestricted access
+    if (req.user.role === "admin") {
+      req.isPremium = true;
+      req.lesson = lesson;
+      return next();
+    }
+
     // Check if user has active subscription
     const { isPremium, subscription } = await checkUserPremiumSubscription(req.user._id);
 
@@ -145,6 +158,13 @@ export const checkTopicPremiumAccess = async (req, res, next) => {
         403,
         { requiresPremium: true }
       );
+    }
+
+    // Admin has full unrestricted access
+    if (req.user.role === "admin") {
+      req.isPremium = true;
+      req.topic = topic;
+      return next();
     }
 
     const { isPremium, subscription } = await checkUserPremiumSubscription(req.user._id);

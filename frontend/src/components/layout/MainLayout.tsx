@@ -1,6 +1,8 @@
+"use client";
+
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
-import { Outlet } from "react-router";
+import { Outlet } from "@/lib/react-router-compat";
 import { useSidebarStore } from "@/stores/useSidebarStore";
 
 export default function MainLayout() {

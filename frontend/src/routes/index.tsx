@@ -4,20 +4,20 @@ import MainLayout from "@/components/layout/MainLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuthStore } from "@/stores/useAuthStore";
 
-import LandingPage from "@/pages/LandingPage";
-import SignInPage from "@/pages/SignInPage";
-import SignUpPage from "@/pages/SignUpPage";
-import DashboardPage from "@/pages/DashboardPage";
-import SpeakingPage from "@/pages/SpeakingPage";
-import LessonListPage from "@/pages/LessonListPage";
-import PracticeRoomPage from "@/pages/PracticeRoomPage";
-import CoursePage from "@/pages/CoursePage";
-import LessonListCoursePage from "@/pages/LessonListCoursePage";
-import CourseVideoStudyPage from "@/pages/CourseVideoStudyPage";
-import ProfilePage from "@/pages/ProfilePage";
-import ProgressPage from "@/pages/ProgressPage";
-import CheckoutPage from "@/pages/CheckoutPage";
-import MoMoCallbackPage from "@/pages/MoMoCallbackPage";
+import LandingPage from "@/views/LandingPage";
+import SignInPage from "@/views/SignInPage";
+import SignUpPage from "@/views/SignUpPage";
+import DashboardPage from "@/views/DashboardPage";
+import SpeakingPage from "@/views/SpeakingPage";
+import LessonListPage from "@/views/LessonListPage";
+import PracticeRoomPage from "@/views/PracticeRoomPage";
+import CoursePage from "@/views/CoursePage";
+import LessonListCoursePage from "@/views/LessonListCoursePage";
+import CourseVideoStudyPage from "@/views/CourseVideoStudyPage";
+import ProfilePage from "@/views/ProfilePage";
+import ProgressPage from "@/views/ProgressPage";
+import CheckoutPage from "@/views/CheckoutPage";
+import MoMoCallbackPage from "@/views/MoMoCallbackPage";
 
 // Dynamic Home Route: Guests see modern LandingPage, authenticated students go straight to Dashboard
 const HomeRoute = () => {

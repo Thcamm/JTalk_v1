@@ -1,4 +1,6 @@
-import { Link } from "react-router";
+"use client";
+
+import { Link } from "@/lib/react-router-compat";
 import type { Course } from "@/types";
 import { Lock, BookOpen, ChevronRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/common/Badge";

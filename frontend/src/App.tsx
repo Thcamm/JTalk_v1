@@ -10,10 +10,8 @@ function App() {
     // Khởi tạo chế độ giao diện Dark / Light Mode
     useThemeStore.getState().initTheme();
 
-    // Khôi phục phiên làm việc và đồng bộ hạn mức quota khi tải ứng dụng
-    useAuthStore.getState().fetchMe().catch(() => {
-      // Guest mode: Không có phiên đăng nhập, tiếp tục với hạn mức theo thiết bị
-    });
+    // Khôi phục phiên làm việc êm dịu nếu đã đăng nhập trước đó
+    useAuthStore.getState().initSession();
   }, []);
 
   return (

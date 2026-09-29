@@ -23,6 +23,8 @@ export const useAuth = () => {
   }, [accessToken, user]);
 
   const isPremium = useMemo(() => {
+    // Quản trị viên (admin) có toàn quyền truy cập hệ thống mà không cần mua/gán gói premium
+    if (user?.role === "admin") return true;
     if (!user || !user.subscription) return false;
     const { tier, expiresAt } = user.subscription;
     if (tier !== "premium") return false;

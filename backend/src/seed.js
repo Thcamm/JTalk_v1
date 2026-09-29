@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 import Course from "./models/Course.js";
 import Topic from "./models/Topic.js";
 import Lesson from "./models/Lesson.js";
@@ -1820,6 +1821,45 @@ const seedData = async () => {
         completedAt: new Date(),
       });
       console.log("Đã seed xong Practice mẫu kèm đánh giá AI chi tiết!");
+    }
+
+    // 5. Đảm bảo tài khoản Quản trị viên (admin / 12345678) luôn tồn tại với quyền admin
+    const salt = await bcrypt.genSalt(10);
+    const adminHashedPassword = await bcrypt.hash("12345678", salt);
+
+    let adminUser = await User.findOne({
+      $or: [{ username: "admin" }, { email: "admin@jtalk.vn" }],
+    });
+
+    if (adminUser) {
+      adminUser.role = "admin";
+      adminUser.hashedPassword = adminHashedPassword;
+      adminUser.displayName = adminUser.displayName || "JTalk Administrator";
+      adminUser.subscription = {
+        tier: "free",
+        expiresAt: null,
+      };
+      await adminUser.save();
+      console.log("✅ Đã cập nhật tài khoản Quản trị viên: admin / 12345678 (Quyền: admin, Toàn quyền hệ thống)");
+    } else {
+      adminUser = await User.create({
+        username: "admin",
+        email: "admin@jtalk.vn",
+        hashedPassword: adminHashedPassword,
+        displayName: "JTalk Administrator",
+        role: "admin",
+        profile: {
+          targetLevel: "N1",
+          goal: "business",
+          occupation: "working",
+          dailyTargetMinutes: 30,
+        },
+        subscription: {
+          tier: "free",
+          expiresAt: null,
+        },
+      });
+      console.log("🎉 Đã tạo mới tài khoản Quản trị viên: admin / 12345678 (Quyền: admin, Toàn quyền hệ thống)");
     }
 
     await mongoose.connection.close();
