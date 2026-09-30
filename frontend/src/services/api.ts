@@ -3,7 +3,8 @@ import { useAuthStore } from "@/stores/useAuthStore";
 
 const getNormalizedApiUrl = (): string => {
   let url =
-    (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.VITE_API_URL ||
     (typeof window !== "undefined" && (window as any).__ENV__?.VITE_API_URL) ||
     "http://localhost:5001/api/v1";
 
