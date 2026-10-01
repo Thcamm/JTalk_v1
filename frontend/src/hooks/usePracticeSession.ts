@@ -176,7 +176,7 @@ export const usePracticeSession = () => {
     }
   }, []);
 
-  // Play audio for current dialogue sentence (TTS)
+  // Play audio for current dialogue sentence (Edge TTS -> Pre-recorded -> Browser SpeechSynthesis Fallback)
   const playNativeAudio = useCallback(async (text?: string) => {
     stopAudio();
 
@@ -188,15 +188,39 @@ export const usePracticeSession = () => {
 
     setIsPlayingAudio(true);
 
-    // 1. Try Voicevox Studio-Grade Deep Learning Engine first (Mã nguồn mở AI giọng Nhật số 1)
-    try {
-      const voicevoxData = await practiceService.synthesizeVoicevox({
-        text: sentenceToPlay,
-        speedScale: 0.95,
-      });
+    // 1. If static pre-rendered audioUrl exists, play directly for instant 0ms latency
+    const preRecordedUrl = !text && currentDialogue?.audioUrl ? currentDialogue.audioUrl : null;
+    if (preRecordedUrl) {
+      try {
+        const audio = new Audio(preRecordedUrl);
+        audioElementRef.current = audio;
+        audio.onended = () => {
+          setIsPlayingAudio(false);
+          audioElementRef.current = null;
+        };
+        audio.onerror = () => {
+          setIsPlayingAudio(false);
+          audioElementRef.current = null;
+        };
+        await audio.play();
+        return;
+      } catch (err) {
+        console.warn("Pre-recorded audio playback error, falling through to Edge TTS:", err);
+      }
+    }
 
-      if (voicevoxData?.audioContent) {
-        const audio = new Audio(`data:audio/wav;base64,${voicevoxData.audioContent}`);
+    // 2. Primary Studio Engine: Microsoft Edge Neural TTS (Tokyo Native Japanese)
+    try {
+      const ttsData = await practiceService.synthesizeVoice(
+        sentenceToPlay,
+        "ja-JP-NanamiNeural",
+        "FEMALE",
+        0.95
+      );
+
+      if (ttsData?.audioContent) {
+        const mimeType = ttsData.mimeType || "audio/mp3";
+        const audio = new Audio(`data:${mimeType};base64,${ttsData.audioContent}`);
         audioElementRef.current = audio;
         audio.onended = () => {
           setIsPlayingAudio(false);
@@ -209,11 +233,11 @@ export const usePracticeSession = () => {
         await audio.play();
         return;
       }
-    } catch (_) {
-      // Voicevox local engine offline or booting -> seamlessly fall through
+    } catch (edgeErr) {
+      console.warn("Backend Edge TTS error, falling back to local SpeechSynthesis:", edgeErr);
     }
 
-    // 2. High-reliability Fallback: Browser SpeechSynthesis enhanced with Bunsetsu phrasing pauses
+    // 3. Resilient Offline Fallback: Browser SpeechSynthesis with Bunsetsu phrasing pauses
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         window.speechSynthesis.cancel();
@@ -224,14 +248,14 @@ export const usePracticeSession = () => {
         const naturalPhrasedText = formatJapaneseForSpeech(sentenceToPlay);
         const utterance = new SpeechSynthesisUtterance(naturalPhrasedText);
         utterance.lang = "ja-JP";
-        utterance.rate = 0.9; // Clear pacing for Japanese learners
+        utterance.rate = 0.9;
         utterance.pitch = 1.0;
 
         // Prevent Chrome GC from prematurely canceling audio
         currentUtteranceRef.current = utterance;
         (window as unknown as { __jtalkUtterance: SpeechSynthesisUtterance }).__jtalkUtterance = utterance;
 
-        // Pick Japanese voice if available
+        // Pick Japanese voice if available on user device
         const voices = window.speechSynthesis.getVoices();
         const jaVoice = voices.find(
           (v) =>
@@ -256,29 +280,8 @@ export const usePracticeSession = () => {
         window.speechSynthesis.speak(utterance);
         return;
       } catch (e) {
-        console.warn("SpeechSynthesis error, falling back to backend TTS:", e);
+        console.warn("Browser SpeechSynthesis fallback error:", e);
       }
-    }
-
-    // 3. Fallback: Call Google Cloud TTS backend endpoint
-    try {
-      const ttsData = await practiceService.synthesizeVoice(sentenceToPlay);
-      if (ttsData?.audioContent) {
-        const audio = new Audio(`data:audio/mp3;base64,${ttsData.audioContent}`);
-        audioElementRef.current = audio;
-        audio.onended = () => {
-          setIsPlayingAudio(false);
-          audioElementRef.current = null;
-        };
-        audio.onerror = () => {
-          setIsPlayingAudio(false);
-          audioElementRef.current = null;
-        };
-        await audio.play();
-        return;
-      }
-    } catch (e) {
-      console.error("Backend TTS synthesis error:", e);
     }
 
     setIsPlayingAudio(false);

@@ -78,13 +78,19 @@ export const practiceService = {
   },
 
   /**
-   * Text-to-speech generation (Google Cloud TTS / fallback)
+   * Text-to-speech generation (Microsoft Edge Neural TTS / Studio-grade native audio)
    */
-  synthesizeVoice: async (text: string, voiceName?: string, gender?: "FEMALE" | "MALE") => {
+  synthesizeVoice: async (
+    text: string,
+    voiceName?: string,
+    gender?: "FEMALE" | "MALE",
+    rate?: number
+  ): Promise<{ audioContent: string; mimeType: string; voice: string; cached?: boolean }> => {
     const res = await api.post("/practices/text-to-speech", {
       text,
       voiceName,
       gender,
+      rate,
     });
     return res.data?.data || res.data;
   },
