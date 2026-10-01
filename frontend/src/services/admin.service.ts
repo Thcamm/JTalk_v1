@@ -182,4 +182,38 @@ export const adminService = {
     const res = await api.post<{ data: Topic }>("/admin/topics", payload);
     return res.data.data;
   },
+
+  // 6. YouTube Transcript Extractor
+  getYoutubeTranscript: async (
+    urlOrVideoId: string
+  ): Promise<{
+    videoId: string;
+    title: string;
+    channelName: string;
+    duration: string;
+    language: string;
+    subtitles: VideoSubtitle[];
+  }> => {
+    const res = await api.get<{
+      data: {
+        videoId: string;
+        title: string;
+        channelName: string;
+        duration: string;
+        language: string;
+        subtitles: VideoSubtitle[];
+      };
+    }>("/admin/youtube/transcript", {
+      params: { url: urlOrVideoId },
+    });
+    return res.data.data;
+  },
+
+  // 7. AI Subtitle Enrichment (Furigana, Romaji, Vietnamese translation)
+  enrichSubtitles: async (subtitles: VideoSubtitle[]): Promise<VideoSubtitle[]> => {
+    const res = await api.post<{ data: VideoSubtitle[] }>("/admin/subtitles/enrich", {
+      subtitles,
+    });
+    return res.data.data;
+  },
 };
