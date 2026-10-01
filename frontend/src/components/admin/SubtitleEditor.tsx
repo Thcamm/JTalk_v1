@@ -19,6 +19,7 @@ import {
   ChevronDown,
   FolderOpen,
   Loader2,
+  Save,
 } from "lucide-react";
 
 interface SubtitleEditorProps {
@@ -26,6 +27,9 @@ interface SubtitleEditorProps {
   onChange: (subs: VideoSubtitle[]) => void;
   onAutoFetchYouTube?: () => void;
   isLoadingYouTube?: boolean;
+  onSave?: () => void;
+  submitting?: boolean;
+  isEditMode?: boolean;
 }
 
 // Convert seconds (e.g. 75.5) to MM:SS string
@@ -120,6 +124,9 @@ export default function SubtitleEditor({
   onChange,
   onAutoFetchYouTube,
   isLoadingYouTube,
+  onSave,
+  submitting,
+  isEditMode,
 }: SubtitleEditorProps) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState("");
@@ -409,6 +416,29 @@ export default function SubtitleEditor({
             <Plus size={14} />
             <span>+ Thêm câu</span>
           </button>
+
+          {/* Quick Save / Create Button in toolbar */}
+          {onSave && (
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={submitting}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-600/30 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+              title={isEditMode ? "Lưu cập nhật bài giảng ngay" : "Tạo bài giảng mới ngay"}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-white" />
+                  <span>Đang lưu...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={13} className="text-white" />
+                  <span>{isEditMode ? "Lưu Cập Nhật" : "Tạo Bài Giảng"}</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -448,25 +478,25 @@ export default function SubtitleEditor({
                     <Clock size={12} className="text-slate-500" />
                     <input
                       type="number"
-                      step="0.5"
+                      step="any"
                       min="0"
                       value={sub.startTime}
                       onChange={(e) =>
                         handleUpdateField(index, "startTime", parseFloat(e.target.value) || 0)
                       }
-                      className="w-14 bg-transparent text-center font-mono font-bold text-indigo-300 focus:outline-hidden"
+                      className="w-16 bg-transparent text-center font-mono font-bold text-indigo-300 focus:outline-hidden"
                       title="Thời gian bắt đầu (giây)"
                     />
                     <span className="text-slate-600">→</span>
                     <input
                       type="number"
-                      step="0.5"
+                      step="any"
                       min="0"
                       value={sub.endTime}
                       onChange={(e) =>
                         handleUpdateField(index, "endTime", parseFloat(e.target.value) || 0)
                       }
-                      className="w-14 bg-transparent text-center font-mono font-bold text-indigo-300 focus:outline-hidden"
+                      className="w-16 bg-transparent text-center font-mono font-bold text-indigo-300 focus:outline-hidden"
                       title="Thời gian kết thúc (giây)"
                     />
                     <span className="text-[10px] text-slate-400 font-mono pl-1 border-l border-slate-800">
