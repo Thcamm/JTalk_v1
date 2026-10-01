@@ -30,7 +30,7 @@ export default function SpeakingPracticePage() {
     speakAiTurn(0);
   }, []);
 
-  const speakAiTurn = (index: number) => {
+  const speakAiTurn = async (index: number) => {
     const text = conversation[index].ai;
 
     setMessages((prev) => [
@@ -41,12 +41,37 @@ export default function SpeakingPracticePage() {
       },
     ]);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ja-JP";
+    // 1. Try Microsoft Edge Neural TTS first for high quality speech
+    try {
+      const ttsData = await practiceService.synthesizeVoice(
+        text,
+        "ja-JP-NanamiNeural",
+        "FEMALE",
+        0.95
+      );
 
-    utterance.onend = () => setStep("user");
+      if (ttsData?.audioContent) {
+        const mimeType = ttsData.mimeType || "audio/mp3";
+        const audio = new Audio(`data:${mimeType};base64,${ttsData.audioContent}`);
+        audio.onended = () => setStep("user");
+        audio.onerror = () => setStep("user");
+        await audio.play();
+        return;
+      }
+    } catch (_) {
+      // Fallback to browser synthesis
+    }
 
-    speechSynthesis.speak(utterance);
+    // 2. Fallback: Browser Web Speech API
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "ja-JP";
+      utterance.onend = () => setStep("user");
+      utterance.onerror = () => setStep("user");
+      speechSynthesis.speak(utterance);
+    } else {
+      setStep("user");
+    }
   };
 
   const finishPracticeSession = async () => {

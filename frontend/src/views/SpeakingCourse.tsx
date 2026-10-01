@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Volume2 } from "lucide-react";
 
 import { lesson1 } from "@/data/speaking";
 import PremiumModal from "@/components/course/PremiumModal";
+import { practiceService } from "@/services/practice.service";
 
 export default function SpeakingCourse() {
     const [currentScene, setCurrentScene] =
@@ -45,18 +46,35 @@ export default function SpeakingCourse() {
             totalSentences) *
         100;
 
-    const speakJapanese = () => {
-        const utterance =
-            new SpeechSynthesisUtterance(
-                currentText
-            );
+    const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-        utterance.lang = "ja-JP";
-        utterance.rate = 0.85;
-        utterance.pitch = 1;
+    const speakJapanese = async () => {
+        // 1. Try Microsoft Edge Neural TTS
+        try {
+            const ttsData = await practiceService.synthesizeVoice(currentText, "ja-JP-NanamiNeural", "FEMALE", 0.9);
+            if (ttsData?.audioContent) {
+                if (audioPlayerRef.current) {
+                    audioPlayerRef.current.pause();
+                }
+                const audio = new Audio(`data:${ttsData.mimeType || "audio/mp3"};base64,${ttsData.audioContent}`);
+                audioPlayerRef.current = audio;
+                await audio.play();
+                return;
+            }
+        } catch (_) {
+            // Fallback to browser synthesis
+        }
 
-        speechSynthesis.cancel();
-        speechSynthesis.speak(utterance);
+        // 2. Fallback: Browser Web Speech API
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            const utterance = new SpeechSynthesisUtterance(currentText);
+            utterance.lang = "ja-JP";
+            utterance.rate = 0.85;
+            utterance.pitch = 1;
+
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utterance);
+        }
     };
 
     const nextSentence = () => {
