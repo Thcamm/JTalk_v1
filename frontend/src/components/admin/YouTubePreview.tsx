@@ -78,10 +78,17 @@ export default function YouTubePreview({ youtubeId, title }: YouTubePreviewProps
       {/* Video Details & Meta */}
       <div className="p-4 flex items-center justify-between gap-3 text-xs bg-slate-900/95 border-t border-slate-800">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 px-2 py-0.8 rounded-lg bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 font-bold shrink-0">
-            <CheckCircle2 size={13} />
-            <span>ID hợp lệ</span>
-          </div>
+          {/^[a-zA-Z0-9_-]{11}$/.test(cleanId) ? (
+            <div className="flex items-center gap-1.5 px-2 py-0.8 rounded-lg bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 font-bold shrink-0">
+              <CheckCircle2 size={13} />
+              <span>ID hợp lệ</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2 py-0.8 rounded-lg bg-rose-950/60 border border-rose-800/80 text-rose-400 font-bold shrink-0">
+              <AlertCircle size={13} />
+              <span>ID không hợp lệ</span>
+            </div>
+          )}
           <span className="font-mono text-slate-300 text-[11px] truncate">
             {cleanId}
           </span>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { VideoSubtitle } from "@/types";
+import { adminService } from "@/services/admin.service";
 import {
   Plus,
   Trash2,
@@ -16,11 +17,15 @@ import {
   Sparkles,
   ChevronUp,
   ChevronDown,
+  FolderOpen,
+  Loader2,
 } from "lucide-react";
 
 interface SubtitleEditorProps {
   subtitles: VideoSubtitle[];
   onChange: (subs: VideoSubtitle[]) => void;
+  onAutoFetchYouTube?: () => void;
+  isLoadingYouTube?: boolean;
 }
 
 // Convert seconds (e.g. 75.5) to MM:SS string
@@ -31,25 +36,120 @@ function formatSeconds(sec: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-// Simple SRT time format "00:01:25,500" -> seconds
+// Flexible timestamp parser supporting SRT (00:01:25,500) and WebVTT (01:25.500 or 00:01:25.500)
 function srtTimeToSeconds(srtTime: string): number {
-  const match = srtTime.trim().match(/(\d+):(\d+):(\d+)[,\.](\d+)/);
-  if (!match) return 0;
-  const [, h, m, s, ms] = match;
-  return (
-    parseInt(h, 10) * 3600 +
-    parseInt(m, 10) * 60 +
-    parseInt(s, 10) +
-    parseInt(ms.padEnd(3, "0").slice(0, 3), 10) / 1000
-  );
+  const trimmed = srtTime.trim();
+  // Format: (HH:)?MM:SS[,.]mmm
+  const match = trimmed.match(/(?:(?:(\d+):)?(\d+):)?(\d+)[,\.](\d+)/);
+  if (match) {
+    const hours = match[1] ? parseInt(match[1], 10) : 0;
+    const minutes = match[2] ? parseInt(match[2], 10) : 0;
+    const seconds = match[3] ? parseInt(match[3], 10) : 0;
+    const msStr = match[4] || "0";
+    const milliseconds = parseInt(msStr.padEnd(3, "0").slice(0, 3), 10) / 1000;
+    return hours * 3600 + minutes * 60 + seconds + milliseconds;
+  }
+  const floatSec = parseFloat(trimmed);
+  return isNaN(floatSec) ? 0 : floatSec;
 }
 
-export default function SubtitleEditor({ subtitles, onChange }: SubtitleEditorProps) {
+// Universal parser for JSON, SRT, and WebVTT strings
+export function parseSubtitlesContent(raw: string): VideoSubtitle[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  // 1. JSON Array
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => ({
+        startTime: Number(item.startTime) || 0,
+        endTime: Number(item.endTime) || (Number(item.startTime) || 0) + 3,
+        japanese: String(item.japanese || item.jp || item.text || ""),
+        furigana: item.furigana ? String(item.furigana) : undefined,
+        romaji: item.romaji ? String(item.romaji) : undefined,
+        translation: item.translation ? String(item.translation) : item.vi ? String(item.vi) : "",
+      }));
+    }
+  }
+
+  // 2. SRT or WebVTT
+  // Strip WebVTT headers & metadata comments
+  const cleanText = trimmed
+    .replace(/^WEBVTT[^\n]*\n+/i, "")
+    .replace(/NOTE[^\n]*\n+/g, "");
+
+  const blocks = cleanText.split(/\r?\n\s*\r?\n/);
+  const parsedSubs: VideoSubtitle[] = [];
+
+  for (const block of blocks) {
+    const lines = block.trim().split(/\r?\n/);
+    if (lines.length === 0) continue;
+
+    const timeLineIndex = lines.findIndex((l) => l.includes("-->"));
+    if (timeLineIndex !== -1) {
+      const timeParts = lines[timeLineIndex].split("-->");
+      const startTime = srtTimeToSeconds(timeParts[0]);
+      const endTime = srtTimeToSeconds(timeParts[1]);
+
+      // Subtitle dialogue lines
+      const textLines = lines
+        .slice(timeLineIndex + 1)
+        .map((l) => l.trim().replace(/<[^>]+>/g, "")) // Remove VTT voice tags like <v Voice> or <b>
+        .filter(Boolean);
+
+      const japanese = textLines[0] || "";
+      const translation = textLines.slice(1).join(" ") || "";
+
+      if (japanese) {
+        parsedSubs.push({
+          startTime: +startTime.toFixed(2),
+          endTime: +(endTime || startTime + 3).toFixed(2),
+          japanese,
+          translation,
+        });
+      }
+    }
+  }
+
+  return parsedSubs;
+}
+
+export default function SubtitleEditor({
+  subtitles,
+  onChange,
+  onAutoFetchYouTube,
+  isLoadingYouTube,
+}: SubtitleEditorProps) {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
   const [copied, setCopied] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichNotice, setEnrichNotice] = useState<string | null>(null);
+
+  // Automatically enrich subtitles with Furigana, Romaji and Vietnamese translation using AI
+  const handleEnrichWithAi = async () => {
+    if (subtitles.length === 0) return;
+    try {
+      setEnriching(true);
+      setEnrichNotice(null);
+      const enriched = await adminService.enrichSubtitles(subtitles);
+      if (enriched && enriched.length > 0) {
+        onChange(enriched);
+        setEnrichNotice(`✨ Đã dịch và tạo Furigana/Romaji tự động cho toàn bộ ${enriched.length} câu thoại!`);
+        setTimeout(() => setEnrichNotice(null), 6000);
+      }
+    } catch (err: any) {
+      console.error("AI Enrich Error:", err);
+      setEnrichNotice("Không thể gọi AI dịch lúc này. Vui lòng kiểm tra lại kết nối.");
+      setTimeout(() => setEnrichNotice(null), 6000);
+    } finally {
+      setEnriching(false);
+    }
+  };
 
   // Play Japanese speech via Web Speech API
   const playSpeech = (text: string, index: number) => {
@@ -135,76 +235,48 @@ export default function SubtitleEditor({ subtitles, onChange }: SubtitleEditorPr
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Import JSON or SRT
+  // Handle direct file upload (.srt, .vtt, .json)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setImportError("");
+      const text = await file.text();
+      const parsed = parseSubtitlesContent(text);
+      if (parsed.length > 0) {
+        onChange(parsed);
+        setShowImportModal(false);
+        setImportText("");
+      } else {
+        setImportError("Không tìm thấy dòng phụ đề hợp lệ trong file này (.srt, .vtt hoặc .json).");
+      }
+    } catch (err: any) {
+      setImportError(`Không thể đọc file: ${err.message || "Lỗi không xác định"}`);
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  // Import JSON, SRT or WebVTT
   const handleProcessImport = () => {
     setImportError("");
     const trimmed = importText.trim();
     if (!trimmed) {
-      setImportError("Vui lòng dán nội dung JSON hoặc SRT.");
+      setImportError("Vui lòng dán nội dung JSON, SRT hoặc WebVTT.");
       return;
     }
 
     try {
-      // 1. Try parsing JSON
-      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          const validated: VideoSubtitle[] = parsed.map((item, idx) => ({
-            startTime: Number(item.startTime) || 0,
-            endTime: Number(item.endTime) || (Number(item.startTime) || 0) + 3,
-            japanese: String(item.japanese || item.jp || item.text || ""),
-            furigana: item.furigana ? String(item.furigana) : undefined,
-            romaji: item.romaji ? String(item.romaji) : undefined,
-            translation: item.translation ? String(item.translation) : item.vi ? String(item.vi) : "",
-          }));
-
-          onChange(validated);
-          setShowImportModal(false);
-          setImportText("");
-          return;
-        }
-      }
-
-      // 2. Try parsing SRT format
-      // Format:
-      // 1
-      // 00:00:01,000 --> 00:00:04,000
-      // こんにちは
-      const srtBlocks = trimmed.split(/\n\s*\n/);
-      const parsedSrt: VideoSubtitle[] = [];
-
-      for (const block of srtBlocks) {
-        const lines = block.trim().split("\n");
-        if (lines.length >= 2) {
-          // Find time line (contains "-->")
-          const timeLineIndex = lines.findIndex((l) => l.includes("-->"));
-          if (timeLineIndex !== -1) {
-            const timeParts = lines[timeLineIndex].split("-->");
-            const startTime = srtTimeToSeconds(timeParts[0]);
-            const endTime = srtTimeToSeconds(timeParts[1]);
-            const textLines = lines.slice(timeLineIndex + 1).map((l) => l.trim()).filter(Boolean);
-
-            const japanese = textLines[0] || "";
-            const translation = textLines[1] || "";
-
-            parsedSrt.push({
-              startTime,
-              endTime,
-              japanese,
-              translation,
-            });
-          }
-        }
-      }
-
-      if (parsedSrt.length > 0) {
-        onChange(parsedSrt);
+      const parsed = parseSubtitlesContent(trimmed);
+      if (parsed.length > 0) {
+        onChange(parsed);
         setShowImportModal(false);
         setImportText("");
         return;
       }
-
-      setImportError("Không thể nhận diện định dạng JSON hoặc SRT hợp lệ.");
+      setImportError("Không thể nhận diện định dạng JSON, SRT hoặc WebVTT hợp lệ.");
     } catch (err: any) {
       setImportError(`Lỗi phân tích: ${err.message || "Định dạng không hợp lệ"}`);
     }
@@ -212,6 +284,15 @@ export default function SubtitleEditor({ subtitles, onChange }: SubtitleEditorPr
 
   return (
     <div className="space-y-4">
+      {/* Hidden file input for uploading .srt, .vtt, .json */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".srt,.vtt,.json,text/plain"
+        className="hidden"
+        onChange={handleFileUpload}
+      />
+
       {/* Top Controls Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-900 border border-slate-800">
         <div className="flex items-center gap-3">
@@ -231,15 +312,72 @@ export default function SubtitleEditor({ subtitles, onChange }: SubtitleEditorPr
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Import JSON/SRT Button */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* AI Auto-Enrich Button (Furigana, Romaji, Vietnamese) */}
+          {subtitles.length > 0 && (
+            <button
+              type="button"
+              onClick={handleEnrichWithAi}
+              disabled={enriching}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-black shadow-md shadow-purple-600/30 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+              title="Dùng AI tự động tạo Furigana, Romaji và Bản dịch tiếng Việt cho toàn bộ câu"
+            >
+              {enriching ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-white" />
+                  <span>AI đang dịch & tạo Furigana...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={13} className="text-amber-300" />
+                  <span>✨ AI Dịch & Tạo Furigana</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Quick YouTube fetch button if parent provided the handler */}
+          {onAutoFetchYouTube && (
+            <button
+              type="button"
+              onClick={onAutoFetchYouTube}
+              disabled={isLoadingYouTube}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-black shadow-md shadow-red-600/30 transition-all cursor-pointer disabled:opacity-50"
+              title="Lấy phụ đề tự động từ video YouTube"
+            >
+              {isLoadingYouTube ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Đang bóc tách...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={13} className="text-amber-300" />
+                  <span>⚡ Tải từ YouTube</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Direct File Upload button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+            title="Tải file phụ đề (.srt, .vtt, .json) trực tiếp từ máy"
+          >
+            <FolderOpen size={13} className="text-amber-400" />
+            <span>Tải file</span>
+          </button>
+
+          {/* Import JSON/SRT/VTT Button */}
           <button
             type="button"
             onClick={() => setShowImportModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors cursor-pointer"
           >
             <Upload size={13} className="text-emerald-400" />
-            <span>Import JSON / SRT</span>
+            <span>Nhập văn bản</span>
           </button>
 
           {/* Export JSON Button */}
@@ -273,6 +411,14 @@ export default function SubtitleEditor({ subtitles, onChange }: SubtitleEditorPr
           </button>
         </div>
       </div>
+
+      {/* AI Enrichment Notice */}
+      {enrichNotice && (
+        <div className="p-3.5 rounded-2xl bg-indigo-950/80 border border-indigo-800 text-indigo-200 text-xs flex items-center gap-2.5 shadow-sm animate-fade-in">
+          <Sparkles size={16} className="text-amber-300 shrink-0" />
+          <span className="font-medium">{enrichNotice}</span>
+        </div>
+      )}
 
       {/* Subtitles List */}
       {subtitles.length === 0 ? (
@@ -447,7 +593,7 @@ export default function SubtitleEditor({ subtitles, onChange }: SubtitleEditorPr
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Upload size={18} className="text-emerald-400" />
-                <h3 className="text-base font-black text-white">Import Phụ Đề JSON hoặc SRT</h3>
+                <h3 className="text-base font-black text-white">Import Phụ Đề JSON, SRT hoặc WebVTT</h3>
               </div>
               <button
                 type="button"
@@ -458,13 +604,27 @@ export default function SubtitleEditor({ subtitles, onChange }: SubtitleEditorPr
               </button>
             </div>
 
+            <div className="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-200">Hoặc chọn file từ máy tính của bạn:</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Hỗ trợ các định dạng .srt, .vtt, .json xuất từ YouTube</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0"
+              >
+                <FolderOpen size={14} />
+                <span>Chọn file máy tính</span>
+              </button>
+            </div>
+
             <p className="text-xs text-slate-400 mt-3">
-              Dán nội dung mảng JSON (các trường: <code>startTime</code>, <code>endTime</code>,{" "}
-              <code>japanese</code>, <code>translation</code>) hoặc file <strong>SRT</strong> trích xuất từ YouTube/phần mềm dựng video:
+              Hoặc dán trực tiếp nội dung văn bản (mảng JSON, nội dung file <strong>.SRT</strong> hoặc <strong>.VTT</strong>):
             </p>
 
             <textarea
-              rows={10}
+              rows={9}
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder={`[
@@ -474,8 +634,12 @@ export default function SubtitleEditor({ subtitles, onChange }: SubtitleEditorPr
     "japanese": "初めまして、よろしくお願いします。",
     "translation": "Rất vui được gặp bạn, mong bạn giúp đỡ."
   }
-]`}
-              className="mt-3 w-full rounded-2xl bg-slate-950 border border-slate-800 p-3.5 font-mono text-xs text-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden"
+]
+-- HOẶC dán định dạng SRT / WebVTT: --
+00:00:01,000 --> 00:00:04,500
+初めまして、よろしくお願いします。
+Rất vui được gặp bạn, mong bạn giúp đỡ.`}
+              className="mt-2 w-full rounded-2xl bg-slate-950 border border-slate-800 p-3.5 font-mono text-xs text-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden"
             />
 
             {importError && (
