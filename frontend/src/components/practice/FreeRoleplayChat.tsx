@@ -85,7 +85,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
     }
   }, []);
 
-  // Audio Speech Synthesis function (VOICEVOX first, then Bunsetsu SpeechSynthesis)
+  // Audio Speech Synthesis function (Microsoft Edge Neural TTS first, then Browser SpeechSynthesis)
   const speakText = useCallback(async (text: string, msgId?: string) => {
     if (!text) return;
 
@@ -105,15 +105,18 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
 
     if (msgId) setPlayingMessageId(msgId);
 
-    // 2. Try Voicevox Studio-Grade Deep Learning Engine first
+    // 2. Primary Engine: Microsoft Edge Neural TTS (Studio-grade Tokyo Japanese)
     try {
-      const voicevoxData = await practiceService.synthesizeVoicevox({
+      const ttsData = await practiceService.synthesizeVoice(
         text,
-        speedScale: 0.95,
-      });
+        "ja-JP-NanamiNeural",
+        "FEMALE",
+        0.95
+      );
 
-      if (voicevoxData?.audioContent) {
-        const audio = new Audio(`data:audio/wav;base64,${voicevoxData.audioContent}`);
+      if (ttsData?.audioContent) {
+        const mimeType = ttsData.mimeType || "audio/mp3";
+        const audio = new Audio(`data:${mimeType};base64,${ttsData.audioContent}`);
         audioElementRef.current = audio;
         audio.onended = () => {
           setPlayingMessageId(null);
@@ -127,7 +130,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
         return;
       }
     } catch (_) {
-      // Voicevox local engine offline -> fallback smoothly
+      // Backend TTS offline -> fallback to local browser SpeechSynthesis
     }
 
     // 3. Fallback: Browser SpeechSynthesis with Bunsetsu phrasing pauses
