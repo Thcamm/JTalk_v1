@@ -17,6 +17,9 @@ import {
   RotateCcw,
   CheckCircle2,
   ChevronDown,
+  Maximize2,
+  Minimize2,
+  Gauge,
 } from "lucide-react";
 import { toast } from "sonner";
 import { practiceService } from "@/services/practice.service";
@@ -800,6 +803,112 @@ function formatLessonToDemo(lesson: Lesson): DemoLesson {
   };
 }
 
+// Helper: Convert Katakana to Hiragana for accurate phonetic alignment
+function kataToHira(str: string): string {
+  return str.replace(/[ァ-ヶ]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) - 0x60)
+  );
+}
+
+const KANJI_REGEX = /[一-龯㐀-䶿]/;
+
+/**
+ * Intelligent phonetic alignment algorithm:
+ * Automatically matches Kanji segments in `japanese` with Hiragana in `furigana`
+ * to produce structured { kanji, furigana } words for browser <ruby><rt> rendering.
+ */
+export function buildFuriganaWords(
+  japanese: string,
+  furigana?: string
+): Array<{ kanji: string; furigana: string }> {
+  if (!japanese) return [];
+  if (!furigana || !furigana.trim() || !KANJI_REGEX.test(japanese)) {
+    return [{ kanji: japanese, furigana: "" }];
+  }
+
+  const cleanJp = japanese.trim();
+  const cleanFuri = furigana.trim();
+
+  // If already identical or no Kanji found
+  if (cleanJp === cleanFuri || kataToHira(cleanJp) === kataToHira(cleanFuri)) {
+    return [{ kanji: cleanJp, furigana: "" }];
+  }
+
+  // Tokenize `japanese` into alternating segments of Kanji and non-Kanji
+  const tokens: Array<{ text: string; isKanji: boolean }> = [];
+  let currText = "";
+  let currIsKanji = KANJI_REGEX.test(cleanJp[0]);
+
+  for (let i = 0; i < cleanJp.length; i++) {
+    const isK = KANJI_REGEX.test(cleanJp[i]);
+    if (isK === currIsKanji) {
+      currText += cleanJp[i];
+    } else {
+      tokens.push({ text: currText, isKanji: currIsKanji });
+      currText = cleanJp[i];
+      currIsKanji = isK;
+    }
+  }
+  if (currText) {
+    tokens.push({ text: currText, isKanji: currIsKanji });
+  }
+
+  const result: Array<{ kanji: string; furigana: string }> = [];
+  let furiIdx = 0;
+  const hiraFuri = kataToHira(cleanFuri);
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+
+    if (!token.isKanji) {
+      // Non-kanji token (Hiragana, Katakana, Punctuation, particles)
+      const hiraToken = kataToHira(token.text).replace(/\s+/g, "");
+
+      while (furiIdx < cleanFuri.length && /\s/.test(cleanFuri[furiIdx])) {
+        furiIdx++;
+      }
+
+      if (hiraFuri.startsWith(hiraToken, furiIdx)) {
+        result.push({ kanji: token.text, furigana: "" });
+        furiIdx += hiraToken.length;
+      } else {
+        const found = hiraFuri.indexOf(hiraToken, furiIdx);
+        if (found !== -1 && found - furiIdx < 20) {
+          furiIdx = found + hiraToken.length;
+          result.push({ kanji: token.text, furigana: "" });
+        } else {
+          result.push({ kanji: token.text, furigana: "" });
+        }
+      }
+    } else {
+      // Kanji token: match against furigana until next non-kanji token begins
+      while (furiIdx < cleanFuri.length && /\s/.test(cleanFuri[furiIdx])) {
+        furiIdx++;
+      }
+
+      const nextNonKanji = tokens[i + 1];
+      if (nextNonKanji) {
+        const nextHira = kataToHira(nextNonKanji.text).replace(/\s+/g, "");
+        const matchIdx = hiraFuri.indexOf(nextHira, furiIdx);
+        if (matchIdx !== -1 && matchIdx >= furiIdx) {
+          const matchedReading = cleanFuri.slice(furiIdx, matchIdx).trim();
+          result.push({ kanji: token.text, furigana: matchedReading });
+          furiIdx = matchIdx;
+        } else {
+          result.push({ kanji: token.text, furigana: "" });
+        }
+      } else {
+        // Last token is Kanji: takes remaining furigana reading
+        const remainingReading = cleanFuri.slice(furiIdx).trim();
+        result.push({ kanji: token.text, furigana: remainingReading });
+        furiIdx = cleanFuri.length;
+      }
+    }
+  }
+
+  return result.length > 0 ? result : [{ kanji: cleanJp, furigana: "" }];
+}
+
 export const CourseVideoStudyPage = () => {
   const { courseId, lessonId } = useParams<{ courseId?: string; lessonId: string }>();
   const navigate = useNavigate();
@@ -823,6 +932,7 @@ export const CourseVideoStudyPage = () => {
   const [showFurigana, setShowFurigana] = useState(true);
   const [isAbRepeat, setIsAbRepeat] = useState(false);
   const [showLessonDropdown, setShowLessonDropdown] = useState(false);
+  const [videoSize, setVideoSize] = useState<"compact" | "cinema">("compact");
 
   // Shadowing & Speech Recognition states
   const [isRecording, setIsRecording] = useState(false);
@@ -1159,12 +1269,23 @@ export const CourseVideoStudyPage = () => {
             } catch (_) {}
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onPlaybackRateChange: (event: any) => {
+            if (typeof event.data === "number") {
+              setPlaybackRate(event.data);
+              playbackRateRef.current = event.data;
+            }
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onStateChange: (event: any) => {
             if (event.data === 1) { // PLAYING
               isPlayingRef.current = true;
               setIsPlaying(true);
               stopAllAudio();
               startYouTubeTimeSync();
+              // Re-enforce playback rate when video starts playing
+              try {
+                event.target.setPlaybackRate(playbackRateRef.current);
+              } catch (_) {}
             } else if (event.data === 2 || event.data === 0) { // PAUSED or ENDED
               isPlayingRef.current = false;
               setIsPlaying(false);
@@ -1280,11 +1401,46 @@ export const CourseVideoStudyPage = () => {
   const handleSetPlaybackRate = (rate: number) => {
     setPlaybackRate(rate);
     playbackRateRef.current = rate;
-    if (ytPlayerRef.current?.setPlaybackRate) {
+
+    // 1. Set via YouTube Player API
+    if (ytPlayerRef.current) {
       try {
-        ytPlayerRef.current.setPlaybackRate(rate);
-      } catch (_) {}
+        if (typeof ytPlayerRef.current.setPlaybackRate === "function") {
+          ytPlayerRef.current.setPlaybackRate(rate);
+        }
+      } catch (err) {
+        console.warn("YouTube setPlaybackRate error:", err);
+      }
     }
+
+    // 2. Direct postMessage fallback to YouTube IFrame
+    try {
+      const iframe =
+        (ytPlayerRef.current?.getIframe?.() as HTMLIFrameElement | null) ||
+        (document.getElementById("jtalk-yt-player") as HTMLIFrameElement | null) ||
+        (document.querySelector("#jtalk-yt-player iframe") as HTMLIFrameElement | null);
+
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: "setPlaybackRate",
+            args: [rate],
+          }),
+          "*"
+        );
+      }
+    } catch (_) {}
+
+    // 3. Fallback for any HTML5 <video> elements
+    try {
+      const videos = document.querySelectorAll("video");
+      videos.forEach((v) => {
+        v.playbackRate = rate;
+      });
+    } catch (_) {}
+
+    toast.info(`Tốc độ phát video: ${rate}x`);
   };
 
   const handlePrevSubtitle = () => {
@@ -1416,35 +1572,52 @@ export const CourseVideoStudyPage = () => {
     }, 400);
   }, [currentSub, userTranscript]);
 
-  // Clean segment words for Furigana rendering
+  // Clean segment words for Furigana rendering with Ruby text on top of Kanji
   const renderFuriganaSentence = (sub: VideoSubtitle) => {
-    if (sub.words && sub.words.length > 0) {
+    // If sub.words is pre-populated use it; otherwise dynamically build from sub.japanese and sub.furigana
+    const words =
+      sub.words && sub.words.length > 0
+        ? sub.words
+        : buildFuriganaWords(sub.japanese, sub.furigana);
+
+    // If user specifically toggled off [Phụ đề] (Kanji) but left [Furigana] ON:
+    if (!showSubtitles && showFurigana && sub.furigana) {
       return (
-        <div className="flex flex-wrap items-end justify-center gap-x-0.5 gap-y-1 font-jp leading-relaxed">
-          {sub.words.map((w, idx) => {
-            const hasFuri = showFurigana && w.furigana && w.furigana.trim().length > 0;
-            if (hasFuri) {
-              return (
-                <ruby key={idx} className="text-lg sm:text-2xl font-black text-white hover:text-rose-300 transition-colors">
-                  {w.kanji}
-                  <rt className="text-rose-400 font-bold">{w.furigana}</rt>
-                </ruby>
-              );
-            }
-            return (
-              <span key={idx} className="text-lg sm:text-2xl font-black text-white hover:text-rose-200 transition-colors">
-                {w.kanji}
-              </span>
-            );
-          })}
-        </div>
+        <p className="text-lg sm:text-2xl font-black text-rose-400 dark:text-rose-300 font-jp text-center leading-relaxed">
+          {sub.furigana}
+        </p>
       );
     }
 
+    if (!showSubtitles) return null;
+
     return (
-      <p className="text-lg sm:text-2xl font-black text-white font-jp text-center leading-relaxed">
-        {sub.japanese}
-      </p>
+      <div className="flex flex-wrap items-end justify-center gap-x-0.5 gap-y-1 font-jp leading-relaxed">
+        {words.map((w, idx) => {
+          const hasFuri = showFurigana && w.furigana && w.furigana.trim().length > 0;
+          if (hasFuri) {
+            return (
+              <ruby
+                key={idx}
+                className="text-lg sm:text-2xl font-black text-white hover:text-rose-300 transition-colors"
+              >
+                {w.kanji}
+                <rt className="text-rose-400 font-bold text-xs sm:text-sm select-none">
+                  {w.furigana}
+                </rt>
+              </ruby>
+            );
+          }
+          return (
+            <span
+              key={idx}
+              className="text-lg sm:text-2xl font-black text-white hover:text-rose-200 transition-colors"
+            >
+              {w.kanji}
+            </span>
+          );
+        })}
+      </div>
     );
   };
 
@@ -1577,43 +1750,84 @@ export const CourseVideoStudyPage = () => {
       {/* ============================================================ */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         {/* LEFT COLUMN: CINEMA YOUTUBE PLAYER & DOCKED INTERACTIVE SUBTITLE DOCK */}
-        <div className="flex-1 flex flex-col p-3 sm:p-5 lg:p-6 overflow-y-auto space-y-4">
-          {/* Video Metadata Header */}
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                {isPlaying && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                )}
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                {selectedLesson.channelName || "Video Bài Giảng Bản Xứ"}
-              </span>
-              <span className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
-                HD 1080p
-              </span>
+        <div className="flex-1 flex flex-col items-center p-3 sm:p-4 lg:p-5 overflow-y-auto">
+          <div
+            className={`w-full flex flex-col space-y-2.5 sm:space-y-3 transition-all duration-300 ${
+              videoSize === "compact"
+                ? "max-w-4xl xl:max-w-[960px]"
+                : "max-w-none"
+            }`}
+          >
+            {/* Video Metadata Header */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-2.5 w-2.5">
+                  {isPlaying && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                  )}
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
+                </span>
+                <span className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                  HD 1080p
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Current Playback Rate Badge */}
+                <span
+                  className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-1 select-none"
+                  title="Tốc độ phát hiện tại"
+                >
+                  <Gauge className="w-3 h-3 text-rose-500" />
+                  <span>{playbackRate}x</span>
+                </span>
+
+                {/* Toggle Video Compact / Cinema Size Button */}
+                <button
+                  onClick={() => setVideoSize((prev) => (prev === "compact" ? "cinema" : "compact"))}
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-3xs font-extrabold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                  title={videoSize === "compact" ? "Mở rộng khung video (Cinema mode)" : "Thu gọn vừa vặn màn hình (Compact mode)"}
+                >
+                  {videoSize === "compact" ? (
+                    <>
+                      <Maximize2 className="w-3 h-3 text-rose-500" />
+                      <span>Mở rộng</span>
+                    </>
+                  ) : (
+                    <>
+                      <Minimize2 className="w-3 h-3 text-rose-500" />
+                      <span>Vừa màn hình</span>
+                    </>
+                  )}
+                </button>
+
+                <span className="text-3xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+                  Câu {activeSubIndex + 1}/{totalSubtitles}
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-3xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
-                Câu {activeSubIndex + 1}/{totalSubtitles}
-              </span>
+            {/* 1. YouTube Player (Responsive & Viewport Bounded to avoid hiding Subtitle/Shadowing) */}
+            <div className="w-full shrink-0 flex justify-center">
+              <div
+                className={`relative aspect-video rounded-2xl overflow-hidden bg-black shadow-xl border border-slate-800 transition-all duration-300 w-full ${
+                  videoSize === "compact"
+                    ? "max-h-[calc(100vh-300px)] min-h-[260px]"
+                    : ""
+                }`}
+              >
+                <div id="jtalk-yt-player" className="w-full h-full" />
+              </div>
             </div>
-          </div>
-
-          {/* 1. Cinema 16:9 YouTube Player */}
-          <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl border border-slate-800 shrink-0">
-            <div id="jtalk-yt-player" className="w-full h-full" />
-          </div>
 
           {/* 2. Docked Interactive Subtitle Bar */}
-          <div className="w-full bg-slate-950/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl space-y-3 shrink-0">
+          <div className="w-full bg-slate-950/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-2 shrink-0">
             {/* Furigana Sentence & Vietnamese Translation */}
-            <div className="text-center space-y-2 py-1">
-              {showSubtitles && (
+            <div className="text-center space-y-1.5 py-0.5">
+              {showSubtitles || showFurigana || (showTranslation && currentSub.translation) ? (
                 <>
-                  <div className="min-h-[50px] flex items-center justify-center">
+                  <div className="min-h-[44px] flex items-center justify-center">
                     {renderFuriganaSentence(currentSub)}
                   </div>
                   {showTranslation && currentSub.translation && (
@@ -1622,6 +1836,10 @@ export const CourseVideoStudyPage = () => {
                     </p>
                   )}
                 </>
+              ) : (
+                <div className="min-h-[44px] flex items-center justify-center text-xs text-slate-500 italic">
+                  Phụ đề đang tắt (Bấm nút "Phụ đề" hoặc "Furigana" bên dưới để hiển thị)
+                </div>
               )}
             </div>
 
@@ -1727,18 +1945,22 @@ export const CourseVideoStudyPage = () => {
                   A-B
                 </button>
 
-                {/* Speed Chips */}
-                <div className="flex items-center bg-slate-900/80 border border-slate-700 rounded-full px-1.5 py-0.5">
-                  {[0.8, 1.0, 1.2].map((spd) => (
+                {/* Speed Controls (0.5x, 0.75x, 1x, 1.25x, 1.5x) */}
+                <div className="flex items-center bg-slate-900/80 border border-slate-700 rounded-full px-1.5 py-0.5 gap-0.5">
+                  <span className="text-4xs text-slate-400 font-bold px-1 select-none flex items-center gap-0.5" title="Tốc độ phát video">
+                    <Gauge className="w-2.5 h-2.5 text-rose-400" />
+                  </span>
+                  {[0.5, 0.75, 1.0, 1.25, 1.5].map((spd) => (
                     <button
                       key={spd}
                       onClick={() => handleSetPlaybackRate(spd)}
                       type="button"
-                      className={`px-1.5 py-0.5 text-3xs font-extrabold rounded-full transition-colors cursor-pointer ${
+                      className={`px-1.5 py-0.5 text-3xs font-extrabold rounded-full transition-all cursor-pointer ${
                         playbackRate === spd
-                          ? "bg-rose-600 text-white font-black"
+                          ? "bg-rose-600 text-white font-black shadow-xs"
                           : "text-slate-400 hover:text-slate-200"
                       }`}
+                      title={`Đặt tốc độ phát ${spd}x`}
                     >
                       {spd}x
                     </button>
@@ -1749,7 +1971,7 @@ export const CourseVideoStudyPage = () => {
           </div>
 
           {/* 3. Docked Shadowing Practice Deck */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 shrink-0">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs space-y-2 shrink-0">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5">
@@ -1763,13 +1985,18 @@ export const CourseVideoStudyPage = () => {
                 <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-jp line-clamp-1">
                   {currentSub.japanese}
                 </p>
+                {showFurigana && currentSub.furigana && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold font-jp line-clamp-1">
+                    {currentSub.furigana}
+                  </p>
+                )}
               </div>
 
               {/* Big Prominent Microphone Button */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 type="button"
-                className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-md ${
+                className={`inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-md ${
                   isRecording
                     ? "bg-rose-600 hover:bg-rose-700 text-white animate-pulse shadow-rose-600/30 scale-105"
                     : "bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 text-white shadow-rose-600/20 active:scale-95"
@@ -1813,6 +2040,7 @@ export const CourseVideoStudyPage = () => {
                 )}
               </div>
             )}
+          </div>
           </div>
         </div>
 
