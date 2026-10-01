@@ -87,6 +87,16 @@ export const LessonListCoursePage = () => {
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               },
+              {
+                _id: "topic-keigo",
+                name: "Video Kính ngữ thực chiến (Sambon Juku)",
+                description: "Phân biệt Tôn kính ngữ, Khiêm nhường ngữ và Thể lịch sự qua video bài giảng chuẩn bản xứ.",
+                level: "N4",
+                isPublished: true,
+                isPremiumOnly: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
             ];
           }
 
@@ -123,48 +133,138 @@ export const LessonListCoursePage = () => {
           if (data && data.length > 0) {
             setLessons(data);
           } else {
-            // Default fallback lessons
-            setLessons([
-              {
-                _id: `${selectedTopicId}-lesson-1`,
-                topicId: selectedTopicId,
-                title: "Bài 1: Lần đầu gặp gỡ (Hajimemashite)",
-                sampleSentence: "はじめまして、ナムと申します。どうぞよろしくお願いします。",
-                translation: "Rất vui được gặp bạn, tôi tên là Nam. Mong được giúp đỡ.",
-                level: "N5",
-                duration: "5 phút",
-                isPublished: true,
-                isPremiumOnly: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-              {
-                _id: `${selectedTopicId}-lesson-2`,
-                topicId: selectedTopicId,
-                title: "Bài 2: Giới thiệu quê quán và nghề nghiệp",
-                sampleSentence: "私はベトナムから来ました。エンジニアです。",
-                translation: "Tôi đến từ Việt Nam. Tôi là một kỹ sư.",
-                level: "N5",
-                duration: "7 phút",
-                isPublished: true,
-                isPremiumOnly: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-              {
-                _id: `${selectedTopicId}-lesson-3`,
-                topicId: selectedTopicId,
-                title: "Bài 3: Trò chuyện về sở thích (Shumi)",
-                sampleSentence: "私の趣味は音楽を聴くことと旅行です。",
-                translation: "Sở thích của tôi là nghe nhạc và đi du lịch.",
-                level: "N5",
-                duration: "10 phút",
-                isPublished: true,
-                isPremiumOnly: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            ]);
+            // Topic-specific fallback lessons
+            if (selectedTopicId === "topic-2" || selectedTopicId.includes("an-uong") || selectedTopicId.includes("nha-hang")) {
+              setLessons([
+                {
+                  _id: "lesson-ramen",
+                  topicId: selectedTopicId,
+                  title: "Bài 1: Gọi món và Giao tiếp tại Nhà hàng Nhật Bản (Chuumon & Kaiwa)",
+                  sampleSentence: "おすすめのとんこつラーメンセットをひとつお願いします。",
+                  translation: "Cho tôi một phần set ramen tonkotsu được gợi ý với ạ.",
+                  level: "N5",
+                  duration: "3 phút",
+                  isPublished: true,
+                  isPremiumOnly: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+                {
+                  _id: "topic-2-lesson-2",
+                  topicId: selectedTopicId,
+                  title: "Bài 2: Tùy chỉnh khẩu vị Ramen & Nước dùng đậm đà",
+                  sampleSentence: "麺のかたさはかためで、スープはこってりでお願いします。",
+                  translation: "Độ cứng sợi mì cho tôi loại dai cứng, còn nước súp thì đậm đà béo nhé.",
+                  level: "N5",
+                  duration: "4 phút",
+                  isPublished: true,
+                  isPremiumOnly: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+                {
+                  _id: "topic-2-lesson-3",
+                  topicId: selectedTopicId,
+                  title: "Bài 3: Gọi thanh toán & Trả tiền bằng PayPay hoặc Tiền mặt",
+                  sampleSentence: "すみません、お会計をお願いします。PayPayで支払えますか？",
+                  translation: "Xin lỗi, cho tôi thanh toán với. Quán có nhận PayPay không ạ?",
+                  level: "N5",
+                  duration: "3 phút",
+                  isPublished: true,
+                  isPremiumOnly: true,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ]);
+            } else if (selectedTopicId === "topic-3" || selectedTopicId.includes("tau-dien") || selectedTopicId.includes("shinjuku")) {
+              setLessons([
+                {
+                  _id: "lesson-shinjuku",
+                  topicId: selectedTopicId,
+                  title: "Bài 1: Hỏi đường & Chuyển tuyến tàu điện Shinjuku",
+                  sampleSentence: "すみません、新宿駅に行きたいんですが、どの電車に乗ればいいですか？",
+                  translation: "Xin lỗi, tôi muốn đi ga Shinjuku thì nên lên tàu nào ạ?",
+                  level: "N5",
+                  duration: "4 phút",
+                  isPublished: true,
+                  isPremiumOnly: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+                {
+                  _id: "topic-3-lesson-2",
+                  topicId: selectedTopicId,
+                  title: "Bài 2: Nạp thẻ Suica & Hướng dẫn qua cổng soát vé tự động",
+                  sampleSentence: "改札口の横にある券売機で、Suicaのチャージも簡単にできます。",
+                  translation: "Tại máy bán vé bên cạnh cổng soát vé, bạn cũng có thể nạp thẻ Suica dễ dàng.",
+                  level: "N5",
+                  duration: "3 phút",
+                  isPublished: true,
+                  isPremiumOnly: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ]);
+            } else if (selectedTopicId === "topic-keigo" || selectedTopicId.includes("keigo")) {
+              setLessons([
+                {
+                  _id: "lesson-keigo",
+                  topicId: selectedTopicId,
+                  title: "Bài 1: 敬語って何？ - Khái niệm Kính ngữ & 3 phân loại chính",
+                  sampleSentence: "みなさん、こんにちは！今回は敬語についてお話ししましょう。",
+                  translation: "Xin chào các bạn! Hôm nay chúng ta hãy cùng trò chuyện về Kính ngữ nhé.",
+                  level: "N4",
+                  duration: "5 phút",
+                  youtubeId: "1iDoq9sGX1s",
+                  isPublished: true,
+                  isPremiumOnly: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ]);
+            } else {
+              setLessons([
+                {
+                  _id: "lesson-baito",
+                  topicId: selectedTopicId,
+                  title: "Bài 1: Phỏng vấn xin việc thêm tại Combini & Chào hỏi khách hàng",
+                  sampleSentence: "はじめまして、本日は面接のお時間をいただきありがとうございます。",
+                  translation: "Rất vui được gặp anh/chị, cảm ơn anh/chị đã dành thời gian phỏng vấn hôm nay.",
+                  level: "N5",
+                  duration: "4 phút",
+                  isPublished: true,
+                  isPremiumOnly: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+                {
+                  _id: "topic-1-lesson-2",
+                  topicId: selectedTopicId,
+                  title: "Bài 2: Tự giới thiệu quê quán và nghề nghiệp (Jikoshoukai)",
+                  sampleSentence: "私はベトナムから来ました。エンジニアです。",
+                  translation: "Tôi đến từ Việt Nam. Tôi là một kỹ sư.",
+                  level: "N5",
+                  duration: "5 phút",
+                  isPublished: true,
+                  isPremiumOnly: false,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+                {
+                  _id: "topic-1-lesson-3",
+                  topicId: selectedTopicId,
+                  title: "Bài 3: Trò chuyện về sở thích (Shumi)",
+                  sampleSentence: "私の趣味は音楽を聴くことと旅行です。",
+                  translation: "Sở thích của tôi là nghe nhạc và đi du lịch.",
+                  level: "N5",
+                  duration: "5 phút",
+                  isPublished: true,
+                  isPremiumOnly: true,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              ]);
+            }
           }
         }
       } catch (err) {

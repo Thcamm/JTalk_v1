@@ -12,6 +12,8 @@ import {
   deleteAdminCourse,
   getAdminTopics,
   createAdminTopic,
+  getYoutubeTranscript,
+  enrichSubtitlesWithAi,
 } from "../controllers/admin.controller.js";
 import {
   createLesson,
@@ -34,7 +36,9 @@ router.patch("/users/:id/role", updateUserRole);
 router.patch("/users/:id/subscription", updateUserSubscription);
 router.delete("/users/:id", deleteUser);
 
-// 3. Lesson & Video Management
+// 3. Lesson & Video Management & YouTube Transcript Extraction
+router.get("/youtube/transcript", getYoutubeTranscript);
+router.post("/subtitles/enrich", enrichSubtitlesWithAi);
 router.get("/lessons", getAdminLessons);
 router.post("/lessons", createLesson);
 router.patch("/lessons/:id", updateLesson);

@@ -10,7 +10,7 @@ import {
 import { lessonService } from "@/services/lesson.service";
 import type { Topic, VideoSubtitle } from "@/types";
 import YouTubePreview from "@/components/admin/YouTubePreview";
-import SubtitleEditor from "@/components/admin/SubtitleEditor";
+import SubtitleEditor, { parseSubtitlesContent } from "@/components/admin/SubtitleEditor";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { YouTubeIcon } from "@/components/common/YouTubeIcon";
 import {
@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   FileText,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 interface AdminLessonFormPageProps {
@@ -35,7 +36,7 @@ function extractYouTubeId(urlOrId: string): string {
   const match = trimmed.match(
     /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
   );
-  return match ? match[1] : trimmed;
+  return match ? match[1] : "";
 }
 
 export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLessonFormPageProps) {
@@ -114,6 +115,84 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
     setRawVideoInput(val);
     const parsedId = extractYouTubeId(val);
     setYoutubeId(parsedId);
+  };
+
+  // State for automatic YouTube transcript fetch
+  const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [transcriptNotice, setTranscriptNotice] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // Automatically fetch Japanese transcript and metadata from YouTube
+  const handleAutoFetchTranscript = async () => {
+    const input = rawVideoInput.trim() || youtubeId.trim();
+    if (!input) {
+      setTranscriptNotice({
+        type: "error",
+        text: "Vui lòng nhập đường dẫn YouTube hoặc ID video trước khi lấy phụ đề.",
+      });
+      return;
+    }
+
+    try {
+      setLoadingTranscript(true);
+      setTranscriptNotice(null);
+      const data = await adminService.getYoutubeTranscript(input);
+
+      if (data) {
+        if (data.videoId) {
+          setYoutubeId(data.videoId);
+          if (!rawVideoInput) {
+            setRawVideoInput(`https://www.youtube.com/watch?v=${data.videoId}`);
+          }
+        }
+        if (data.title && (!title || title.trim() === "")) {
+          setTitle(data.title);
+        }
+        if (data.channelName && (!channelName || channelName.trim() === "")) {
+          setChannelName(data.channelName);
+        }
+        if (data.duration && (!duration || duration === "05:00")) {
+          setDuration(data.duration);
+        }
+        if (data.subtitles && data.subtitles.length > 0) {
+          setSubtitles(data.subtitles);
+          setTranscriptNotice({
+            type: "success",
+            text: `Đã tự động tải thành công ${data.subtitles.length} câu phụ đề từ YouTube! (${data.language || "ja"})`,
+          });
+        } else {
+          setTranscriptNotice({
+            type: "error",
+            text: "Video này không có phụ đề tiếng Nhật tự động. Bạn có thể sử dụng nút 'Tải file' để nạp phụ đề SRT/VTT.",
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error("Lỗi trích xuất YouTube:", err);
+      // Auto-populate video metadata if backend returned it with 404
+      const meta = err?.response?.data?.data;
+      if (meta) {
+        if (meta.title && (!title || title.trim() === "")) {
+          setTitle(meta.title);
+        }
+        if (meta.channelName && (!channelName || channelName.trim() === "")) {
+          setChannelName(meta.channelName);
+        }
+        if (meta.duration && (!duration || duration === "05:00")) {
+          setDuration(meta.duration);
+        }
+      }
+
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Video này không có sẵn phụ đề tự động hoặc phụ đề tiếng Nhật trên YouTube. Bạn có thể sử dụng chức năng 'Tải file' hoặc 'Nhập văn bản' ở mục 3 bên dưới để nạp phụ đề.";
+      setTranscriptNotice({ type: "error", text: msg });
+    } finally {
+      setLoadingTranscript(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -317,6 +396,80 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
                 <p className="text-[11px] text-slate-500 mt-1">
                   Hệ thống tự động nhận diện ID từ mọi định dạng link: <code>youtube.com/watch?v=...</code>, <code>youtu.be/...</code> hoặc <code>embed/...</code>.
                 </p>
+
+                {/* Warning if user mistakenly pasted JSON or SRT into YouTube link */}
+                {(rawVideoInput.trim().startsWith("[") ||
+                  rawVideoInput.trim().startsWith("{") ||
+                  rawVideoInput.includes("-->")) && (
+                  <div className="mt-2 p-3.5 rounded-2xl bg-amber-950/70 border border-amber-800 text-amber-300 text-xs flex items-start gap-2.5 shadow-sm">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-400" />
+                    <div>
+                      <p className="font-bold text-amber-200">
+                        Bạn đang dán mã phụ đề JSON/SRT vào ô link YouTube!
+                      </p>
+                      <p className="text-[11px] text-amber-300/80 mt-1 leading-relaxed">
+                        Ô này chỉ nhận đường dẫn video YouTube (ví dụ: <code>https://www.youtube.com/watch?v=1iDoq9sGX1s</code>). Hãy <strong>cuộn chuột xuống mục "3. Danh Sách Phụ Đề Tương Tác"</strong> bên dưới rồi bấm nút <strong>"Nhập văn bản"</strong> để dán mã phụ đề này vào nhé.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const parsed = parseSubtitlesContent(rawVideoInput);
+                          if (parsed.length > 0) {
+                            setSubtitles(parsed);
+                            setRawVideoInput("");
+                            setYoutubeId("");
+                            setTranscriptNotice({
+                              type: "success",
+                              text: `Đã nạp thành công ${parsed.length} câu phụ đề vào Mục 3 bên dưới! Hãy dán link video YouTube vào ô trên.`,
+                            });
+                          }
+                        }}
+                        className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[11px] shadow-sm cursor-pointer transition-all active:scale-95"
+                      >
+                        <span>⬇ Bấm vào đây để tự động nạp đoạn mã này vào Mục 3</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Auto fetch button & status notice */}
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleAutoFetchTranscript}
+                    disabled={loadingTranscript || (!rawVideoInput.trim() && !youtubeId.trim())}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-indigo-600 hover:from-red-500 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-red-600/25 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {loadingTranscript ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin text-white" />
+                        <span>Đang trích xuất phụ đề YouTube...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={14} className="text-amber-300" />
+                        <span>⚡ Lấy Phụ Đề & Thông Tin Tự Động Từ YouTube</span>
+                      </>
+                    )}
+                  </button>
+
+                  {transcriptNotice && (
+                    <div
+                      className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+                        transcriptNotice.type === "success"
+                          ? "bg-emerald-950/60 border-emerald-800 text-emerald-300"
+                          : "bg-rose-950/60 border-rose-800 text-rose-300"
+                      }`}
+                    >
+                      {transcriptNotice.type === "success" ? (
+                        <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
+                      ) : (
+                        <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-400" />
+                      )}
+                      <span>{transcriptNotice.text}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -423,7 +576,12 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
             </div>
           </div>
 
-          <SubtitleEditor subtitles={subtitles} onChange={setSubtitles} />
+          <SubtitleEditor
+            subtitles={subtitles}
+            onChange={setSubtitles}
+            onAutoFetchYouTube={handleAutoFetchTranscript}
+            isLoadingYouTube={loadingTranscript}
+          />
         </div>
 
         {/* Bottom Action Bar */}

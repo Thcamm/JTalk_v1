@@ -4,6 +4,7 @@ import Topic from "../models/Topic.js";
 import Lesson from "../models/Lesson.js";
 import Practice from "../models/Practice.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
+import { AiService } from "../services/ai.service.js";
 import mongoose from "mongoose";
 
 /**
@@ -440,6 +441,300 @@ export const createAdminTopic = async (req, res, next) => {
     });
 
     return successResponse(res, topic, "Tạo chủ đề thành công!", 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/admin/youtube/transcript
+ * Extract timed subtitles directly from a YouTube video
+ */
+export const getYoutubeTranscript = async (req, res, next) => {
+  try {
+    const { url, videoId: rawVideoId } = req.query;
+    const input = url || rawVideoId;
+    if (!input) {
+      return errorResponse(res, "Vui lòng cung cấp URL hoặc videoId YouTube.", 400);
+    }
+
+    // Extract 11-char YouTube ID
+    let videoId = String(input).trim();
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      const match = videoId.match(
+        /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
+      );
+      if (match) {
+        videoId = match[1];
+      }
+    }
+
+    if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      return errorResponse(res, "ID video YouTube không hợp lệ (cần đúng 11 ký tự).", 400);
+    }
+
+    // 1. Fetch YouTube watch page HTML
+    const pageUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const pageRes = await fetch(pageUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+      },
+    });
+
+    if (!pageRes.ok) {
+      return errorResponse(res, `Không thể truy cập video YouTube (HTTP ${pageRes.status}).`, 400);
+    }
+
+    const html = await pageRes.text();
+
+    // 2. Extract ytInitialPlayerResponse
+    let playerResponse = null;
+    const match =
+      html.match(/ytInitialPlayerResponse\s*=\s*({.+?});(?:var|\n|<\/script>)/s) ||
+      html.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
+    if (match) {
+      try {
+        playerResponse = JSON.parse(match[1]);
+      } catch (_) {}
+    }
+
+    let videoTitle = playerResponse?.videoDetails?.title || "";
+    let channelName = playerResponse?.videoDetails?.author || "";
+    let lengthSeconds = parseInt(playerResponse?.videoDetails?.lengthSeconds, 10) || 0;
+
+    let captionTracks =
+      playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+
+    // Fallback: If watch page HTML was blocked or didn't yield captionTracks, query Innertube API
+    if (!captionTracks || captionTracks.length === 0) {
+      try {
+        const innertubeRes = await fetch("https://www.youtube.com/youtubei/v1/player", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip",
+            "X-YouTube-Client-Name": "3",
+            "X-YouTube-Client-Version": "19.09.37",
+          },
+          body: JSON.stringify({
+            videoId,
+            context: {
+              client: {
+                clientName: "ANDROID",
+                clientVersion: "19.09.37",
+                hl: "ja",
+                gl: "JP",
+              },
+            },
+          }),
+        });
+
+        if (innertubeRes.ok) {
+          const innertubeData = await innertubeRes.json();
+          if (!videoTitle && innertubeData?.videoDetails?.title) {
+            videoTitle = innertubeData.videoDetails.title;
+          }
+          if (!channelName && innertubeData?.videoDetails?.author) {
+            channelName = innertubeData.videoDetails.author;
+          }
+          if (!lengthSeconds && innertubeData?.videoDetails?.lengthSeconds) {
+            lengthSeconds = parseInt(innertubeData.videoDetails.lengthSeconds, 10) || 0;
+          }
+          const tracks = innertubeData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+          if (Array.isArray(tracks) && tracks.length > 0) {
+            captionTracks = tracks;
+          }
+        }
+      } catch (innerErr) {
+        console.error("Innertube fallback fetch error:", innerErr.message);
+      }
+    }
+
+    const durationFormatted = `${Math.floor(lengthSeconds / 60)
+      .toString()
+      .padStart(2, "0")}:${(lengthSeconds % 60).toString().padStart(2, "0")}`;
+
+    if (!captionTracks || captionTracks.length === 0) {
+      return errorResponse(
+        res,
+        "Video này không có sẵn phụ đề tự động hoặc phụ đề tiếng Nhật trên YouTube. Bạn có thể sử dụng chức năng 'Nhập file SRT / VTT' để nạp phụ đề.",
+        404,
+        { videoId, title: videoTitle, channelName, duration: durationFormatted }
+      );
+    }
+
+    // Prefer Japanese track (native or auto), fallback to first available
+    const chosenTrack =
+      captionTracks.find((t) => t.languageCode === "ja" && !t.vssId?.startsWith("a.")) ||
+      captionTracks.find((t) => t.languageCode === "ja") ||
+      captionTracks.find((t) => t.vssId?.includes("ja")) ||
+      captionTracks[0];
+
+    let timedtextUrl = chosenTrack.baseUrl;
+    if (!timedtextUrl.includes("fmt=")) {
+      timedtextUrl += "&fmt=json3";
+    }
+
+    const subRes = await fetch(timedtextUrl);
+    if (!subRes.ok) {
+      return errorResponse(res, "Không thể tải nội dung phụ đề từ YouTube.", 502);
+    }
+
+    const rawText = await subRes.text();
+    const subtitles = [];
+
+    // Try parsing json3 format first
+    try {
+      const data = JSON.parse(rawText);
+      if (data.events && Array.isArray(data.events)) {
+        for (const ev of data.events) {
+          if (!ev.segs || ev.segs.length === 0) continue;
+          const text = ev.segs
+            .map((s) => s.utf8 || "")
+            .join("")
+            .replace(/[\n\r]+/g, " ")
+            .trim();
+          if (!text || text === "[音楽]" || text === "[Applause]" || text === "[Music]") {
+            continue;
+          }
+
+          const startTime = +(ev.tStartMs / 1000).toFixed(2);
+          const duration = +((ev.dDurationMs || 3000) / 1000).toFixed(2);
+          const endTime = +(startTime + duration).toFixed(2);
+
+          subtitles.push({
+            startTime,
+            endTime,
+            japanese: text,
+            translation: "",
+          });
+        }
+      }
+    } catch (_) {
+      // Fallback XML parsing if fmt=json3 was ignored
+      const xmlMatches = [
+        ...rawText.matchAll(/<text start="([\d.]+)" dur="([\d.]+)"[^>]*>(.*?)<\/text>/g),
+      ];
+      for (const m of xmlMatches) {
+        const startTime = parseFloat(m[1]);
+        const duration = parseFloat(m[2]);
+        const text = m[3]
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/[\n\r]+/g, " ")
+          .trim();
+        if (text && text !== "[音楽]" && text !== "[Applause]" && text !== "[Music]") {
+          subtitles.push({
+            startTime: +startTime.toFixed(2),
+            endTime: +(startTime + duration).toFixed(2),
+            japanese: text,
+            translation: "",
+          });
+        }
+      }
+    }
+
+    return successResponse(
+      res,
+      {
+        videoId,
+        title: videoTitle,
+        channelName,
+        duration: durationFormatted,
+        language: chosenTrack.name?.simpleText || chosenTrack.languageCode || "ja",
+        subtitles,
+      },
+      `Trích xuất thành công ${subtitles.length} câu phụ đề từ YouTube!`
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/admin/subtitles/enrich
+ * Automatically generate Furigana, Romaji and Vietnamese translation for Japanese subtitles using AI
+ */
+export const enrichSubtitlesWithAi = async (req, res, next) => {
+  try {
+    const { subtitles } = req.body;
+    if (!Array.isArray(subtitles) || subtitles.length === 0) {
+      return errorResponse(res, "Danh sách phụ đề trống.", 400);
+    }
+
+    const sentencesToTranslate = subtitles
+      .map((s, idx) => ({
+        index: idx,
+        japanese: s.japanese || "",
+      }))
+      .filter((s) => s.japanese.trim().length > 0);
+
+    if (sentencesToTranslate.length === 0) {
+      return successResponse(res, subtitles, "Không có câu nào cần xử lý.");
+    }
+
+    const prompt = `You are a professional Japanese language educator and translator.
+I have a list of Japanese dialogue sentences extracted from a conversation video.
+For each sentence in the array, generate:
+1. "furigana": The full reading in Hiragana (for example "今日は" -> "きょうは").
+2. "romaji": The standard Hepburn Romaji transliteration.
+3. "translation": A natural, fluent Vietnamese translation suited for conversational context.
+
+Input sentences:
+${JSON.stringify(sentencesToTranslate, null, 2)}
+
+Return ONLY a valid JSON array of objects with the exact structure:
+[
+  {
+    "index": number,
+    "furigana": string,
+    "romaji": string,
+    "translation": string
+  }
+]`;
+
+    let enrichedData = [];
+    try {
+      const aiResponseText = await AiService.callGemini({
+        prompt,
+        temperature: 0.2,
+        isJson: true,
+      });
+
+      const parsed = JSON.parse(aiResponseText);
+      enrichedData = Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      console.warn("AI Enrich call failed, attempting fallback:", err.message);
+    }
+
+    const enrichedMap = new Map();
+    for (const item of enrichedData) {
+      enrichedMap.set(item.index, item);
+    }
+
+    const result = subtitles.map((sub, idx) => {
+      const match = enrichedMap.get(idx);
+      if (match) {
+        return {
+          ...sub,
+          furigana: sub.furigana || match.furigana || "",
+          romaji: sub.romaji || match.romaji || "",
+          translation: sub.translation || match.translation || "",
+        };
+      }
+      return sub;
+    });
+
+    return successResponse(
+      res,
+      result,
+      `Đã dịch và tạo Furigana/Romaji tự động cho ${enrichedData.length} câu phụ đề!`
+    );
   } catch (error) {
     next(error);
   }
