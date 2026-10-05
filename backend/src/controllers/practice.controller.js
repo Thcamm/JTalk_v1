@@ -306,6 +306,30 @@ export const aiRoleplayChat = async (req, res, next) => {
 };
 
 /**
+ * POST /api/v1/practices/roleplay-suggestions
+ * Generates dynamic, context-aware suggestions for learners to respond to AI
+ */
+export const getRoleplaySuggestions = async (req, res, next) => {
+  try {
+    const userId = req.user?._id;
+    const { lessonId, scenarioTitle, level, aiMessage, conversationHistory } = req.body;
+
+    const result = await PracticeService.handleRoleplaySuggestions({
+      userId,
+      lessonId,
+      scenarioTitle,
+      level,
+      aiMessage,
+      conversationHistory,
+    });
+
+    return successResponse(res, result, "Tạo gợi ý câu đối đáp thành công!");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * POST /api/v1/practices/voicevox
  * Synthesizes studio-grade native Japanese audio via Voicevox Engine (Local)
  * with transparent auto-fallback to Microsoft Edge Neural TTS on Web Production.

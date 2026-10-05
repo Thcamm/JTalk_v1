@@ -787,6 +787,29 @@ export const PracticeRoomPage = () => {
                   }
                 : undefined
             }
+            initialSuggestedAnswers={
+              session.dialogues?.[1] && session.dialogues[1].speaker === "user"
+                ? [
+                    {
+                      japanese: session.dialogues[1].japanese,
+                      furigana: session.dialogues[1].furigana,
+                      romaji: session.dialogues[1].romaji,
+                      translation: session.dialogues[1].translation,
+                    },
+                    ...(session.dialogues[1].expectedAnswer &&
+                    session.dialogues[1].expectedAnswer !== session.dialogues[1].japanese
+                      ? [
+                          {
+                            japanese: session.dialogues[1].expectedAnswer,
+                            furigana: session.dialogues[1].expectedAnswer,
+                            romaji: "",
+                            translation: "Gợi ý thêm từ bài học",
+                          },
+                        ]
+                      : []),
+                  ]
+                : undefined
+            }
             showFurigana={showFurigana}
             showRomaji={showRomaji}
             showTranslation={showTranslation}

@@ -10,6 +10,7 @@ import {
   updatePractice,
   deletePractice,
   aiRoleplayChat,
+  getRoleplaySuggestions,
   synthesizeVoicevox,
   getVoicevoxStatus,
 } from "../controllers/practice.controller.js";
@@ -56,6 +57,12 @@ router.post("/process-voice", checkPracticeQuota, handleAudioUpload("audio"), pr
  * Hội thoại tương tác trực tiếp với gia sư AI
  */
 router.post("/roleplay-chat", aiRoleplayChat);
+
+/**
+ * POST /api/v1/practices/roleplay-suggestions
+ * Tạo gợi ý câu đối đáp theo ngữ cảnh thực tế bằng AI
+ */
+router.post("/roleplay-suggestions", getRoleplaySuggestions);
 
 /**
  * POST /api/v1/practices/save
