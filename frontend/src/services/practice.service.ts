@@ -183,6 +183,27 @@ export const practiceService = {
     const res = await api.post("/practices/roleplay-chat", payload);
     return res.data?.data || res.data;
   },
+
+  /**
+   * Get dynamic, context-aware suggestions for responding to AI
+   */
+  getRoleplaySuggestions: async (payload: {
+    lessonId?: string;
+    scenarioTitle?: string;
+    level?: string;
+    aiMessage?: string;
+    conversationHistory?: RoleplayMessage[];
+  }): Promise<{
+    suggestedAnswers: Array<{
+      japanese: string;
+      furigana?: string;
+      romaji?: string;
+      translation?: string;
+    }>;
+  }> => {
+    const res = await api.post("/practices/roleplay-suggestions", payload);
+    return res.data?.data || res.data;
+  },
 };
 
 export default practiceService;

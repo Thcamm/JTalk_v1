@@ -27,6 +27,12 @@ interface FreeRoleplayChatProps {
     romaji?: string;
     translation?: string;
   };
+  initialSuggestedAnswers?: Array<{
+    japanese: string;
+    furigana?: string;
+    romaji?: string;
+    translation?: string;
+  }>;
   showFurigana: boolean;
   showRomaji: boolean;
   showTranslation: boolean;
@@ -35,11 +41,259 @@ interface FreeRoleplayChatProps {
   onToggleTranslation: () => void;
 }
 
+/**
+ * Intelligent instant contextual suggestions generator for zero-latency roleplay
+ */
+const getContextualRoleplaySuggestions = (
+  scenarioTitle: string = "",
+  aiText: string = "",
+  _level: string = "N5"
+): Array<{ japanese: string; furigana?: string; romaji?: string; translation?: string }> => {
+  const titleLower = scenarioTitle.toLowerCase();
+  const textLower = aiText.toLowerCase();
+
+  // 1. Bakery / Bánh mì / Tiệm bánh (e.g. Mua bánh mì ở tiệm bánh Nhật Bản)
+  if (
+    titleLower.includes("bánh mì") ||
+    titleLower.includes("tiệm bánh") ||
+    titleLower.includes("bánh") ||
+    titleLower.includes("bakery") ||
+    titleLower.includes("パン") ||
+    textLower.includes("パン")
+  ) {
+    if (
+      textLower.includes("こんにちは") ||
+      textLower.includes("いらっしゃい") ||
+      textLower.includes("おはよう") ||
+      textLower.includes("皆さん")
+    ) {
+      return [
+        {
+          japanese: "こんにちは！美味しそうなパンですね。",
+          furigana: "こんにちは！おいしそうなパンですね。",
+          romaji: "Konnichiwa! Oishisou na pan desu ne.",
+          translation: "Chào bạn! Bánh mì trông ngon quá.",
+        },
+        {
+          japanese: "こんにちは！おすすめのパンは何ですか？",
+          furigana: "こんにちは！おすすめのパンはなんですか？",
+          romaji: "Konnichiwa! Osusume no pan wa nan desu ka?",
+          translation: "Chào bạn! Bánh mì gợi ý đặc biệt là gì vậy ạ?",
+        },
+        {
+          japanese: "焼きたてのパンはありますか？",
+          furigana: "やきたてのパンはありますか？",
+          romaji: "Yakitate no pan wa arimasu ka?",
+          translation: "Tiệm có bánh mì mới ra lò không ạ?",
+        },
+      ];
+    }
+    return [
+      {
+        japanese: "このクロワッサンを二つください。",
+        furigana: "このクロワッサンをふたつください。",
+        romaji: "Kono kurowassan o futatsu kudasai.",
+        translation: "Cho tôi 2 chiếc bánh sừng bò này nhé.",
+      },
+      {
+        japanese: "持ち帰りでお願いします。",
+        furigana: "もちかえりでおねがいします。",
+        romaji: "Mochikaeri de onegaishimasu.",
+        translation: "Cho tôi mang về ạ.",
+      },
+    ];
+  }
+
+  // 2. Cafe / Cà phê / Đồ uống
+  if (
+    titleLower.includes("cafe") ||
+    titleLower.includes("cà phê") ||
+    titleLower.includes("カフェ") ||
+    titleLower.includes("uống") ||
+    textLower.includes("コーヒー") ||
+    textLower.includes("ラテ")
+  ) {
+    if (
+      textLower.includes("こんにちは") ||
+      textLower.includes("いらっしゃい") ||
+      textLower.includes("皆さん")
+    ) {
+      return [
+        {
+          japanese: "こんにちは！アイスカフェラテをお願いします。",
+          furigana: "こんにちは！アイスカフェラテをおねがいします。",
+          romaji: "Konnichiwa! Aisu kaferate o onegaishimasu.",
+          translation: "Chào bạn! Cho tôi một ly cà phê latte đá nhé.",
+        },
+        {
+          japanese: "おすすめのドリンクは何ですか？",
+          furigana: "おすすめのドリンクはなんですか？",
+          romaji: "Osusume no dorinku wa nan desu ka?",
+          translation: "Đồ uống gợi ý của quán là gì vậy ạ?",
+        },
+      ];
+    }
+    return [
+      {
+        japanese: "店内でお願いします。",
+        furigana: "てんないでおねがいします。",
+        romaji: "Tennai de onegaishimasu.",
+        translation: "Dùng tại quán ạ.",
+      },
+      {
+        japanese: "持ち帰りでお願いします。",
+        furigana: "もちかえりでおねがいします。",
+        romaji: "Mochikaeri de onegaishimasu.",
+        translation: "Mang về ạ.",
+      },
+    ];
+  }
+
+  // 3. Convenience Store / Siêu thị
+  if (
+    titleLower.includes("tiện lợi") ||
+    titleLower.includes("siêu thị") ||
+    titleLower.includes("mua") ||
+    titleLower.includes("combini") ||
+    titleLower.includes("コンビニ") ||
+    titleLower.includes("スーパー")
+  ) {
+    return [
+      {
+        japanese: "袋は大丈夫です。",
+        furigana: "ふくろはだいじょうぶです。",
+        romaji: "Fukuro wa daijoubu desu.",
+        translation: "Tôi không cần túi ni-lông ạ.",
+      },
+      {
+        japanese: "Suicaで支払います。",
+        furigana: "スイカでしはらいます。",
+        romaji: "Suica de shiharaimasu.",
+        translation: "Tôi thanh toán bằng thẻ Suica.",
+      },
+    ];
+  }
+
+  // 4. Asking directions / Station / Tàu điện
+  if (
+    titleLower.includes("đường") ||
+    titleLower.includes("ga") ||
+    titleLower.includes("tàu") ||
+    titleLower.includes("駅") ||
+    titleLower.includes("道") ||
+    textLower.includes("駅")
+  ) {
+    return [
+      {
+        japanese: "すみません、新宿駅へはどう行けばいいですか？",
+        furigana: "すみません、しんじゅくえきへはどういけばいいですか？",
+        romaji: "Sumimasen, Shinjuku-eki e wa dou ikeba ii desu ka?",
+        translation: "Xin lỗi, làm thế nào để đi đến ga Shinjuku ạ?",
+      },
+      {
+        japanese: "切符売り場はどこにありますか？",
+        furigana: "きっぷうりばはどこにありますか？",
+        romaji: "Kippu uriba wa doko ni arimasu ka?",
+        translation: "Quầy bán vé ở đâu vậy ạ?",
+      },
+    ];
+  }
+
+  // 5. Self-introduction / Meeting new people / Giới thiệu bản thân
+  if (
+    titleLower.includes("chào hỏi") ||
+    titleLower.includes("giới thiệu") ||
+    titleLower.includes("lớp học") ||
+    titleLower.includes("自己紹介") ||
+    textLower.includes("名前") ||
+    textLower.includes("初めまして")
+  ) {
+    return [
+      {
+        japanese: "初めまして！どうぞよろしくお願いします。",
+        furigana: "はじめまして！どうぞよろしくおねがいします。",
+        romaji: "Hajimemashite! Douzo yoroshiku onegaishimasu.",
+        translation: "Rất vui được gặp bạn! Rất mong được giúp đỡ.",
+      },
+      {
+        japanese: "こんにちは！ベトナムから来ました。",
+        furigana: "こんにちは！ベトナムからきました。",
+        romaji: "Konnichiwa! Betonamu kara kimashita.",
+        translation: "Xin chào! Tôi đến từ Việt Nam.",
+      },
+    ];
+  }
+
+  // 6. Job interview / Business / Công sở
+  if (
+    titleLower.includes("phỏng vấn") ||
+    titleLower.includes("công việc") ||
+    titleLower.includes("báo cáo") ||
+    titleLower.includes("面接") ||
+    titleLower.includes("ビジネス")
+  ) {
+    return [
+      {
+        japanese: "本日はお時間をいただきありがとうございます。",
+        furigana: "ほんじつはおじかんをいただきありがとうございます。",
+        romaji: "Honjitsu wa ojikan o itadaki arigatou gozaimasu.",
+        translation: "Cảm ơn quý công ty đã dành thời gian hôm nay ạ.",
+      },
+      {
+        japanese: "どうぞよろしくお願いいたします。",
+        furigana: "どうぞよろしくおねがいいたします。",
+        romaji: "Douzo yoroshiku onegai itashimasu.",
+        translation: "Kính mong được sự quan tâm và giúp đỡ ạ.",
+      },
+    ];
+  }
+
+  // 7. General greeting match (e.g. 皆さんこんにちは, こんにちは)
+  if (
+    textLower.includes("こんにちは") ||
+    textLower.includes("おはよう") ||
+    textLower.includes("こんばんは") ||
+    textLower.includes("皆さん")
+  ) {
+    return [
+      {
+        japanese: "こんにちは！よろしくお願いします。",
+        furigana: "こんにちは！よろしくおねがいします。",
+        romaji: "Konnichiwa! Yoroshiku onegaishimasu.",
+        translation: "Xin chào bạn! Rất mong được giúp đỡ.",
+      },
+      {
+        japanese: "こんにちは！今日もよろしくお願いします。",
+        furigana: "こんにちは！きょうもよろしくおねがいします。",
+        romaji: "Konnichiwa! Kyou mo yoroshiku onegaishimasu.",
+        translation: "Xin chào! Hôm nay cũng nhờ bạn giúp đỡ nhé.",
+      },
+    ];
+  }
+
+  // 8. Default fallback
+  return [
+    {
+      japanese: "はい、分かりました。",
+      furigana: "はい、わかりました。",
+      romaji: "Hai, wakarimashita.",
+      translation: "Vâng, tôi hiểu rồi ạ.",
+    },
+    {
+      japanese: "詳しく教えていただけますか？",
+      furigana: "くわしくおしえていただけますか？",
+      romaji: "Kuwashiku oshiete itadakemasu ka?",
+      translation: "Bạn có thể chỉ rõ hơn giúp tôi được không ạ?",
+    },
+  ];
+};
+
 export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
   lessonId,
   scenarioTitle,
   level = "N5",
   initialAiDialogue,
+  initialSuggestedAnswers,
   showFurigana,
   showRomaji,
   showTranslation,
@@ -56,7 +310,8 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
   const [autoPlayAudio, setAutoPlayAudio] = useState(true);
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [isRefreshingSuggestions, setIsRefreshingSuggestions] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -210,6 +465,11 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
       translation: "Xin chào quý khách! Tôi có thể giúp gì cho bạn ạ?",
     };
 
+    const initialSuggestions =
+      initialSuggestedAnswers && initialSuggestedAnswers.length > 0
+        ? initialSuggestedAnswers
+        : getContextualRoleplaySuggestions(scenarioTitle, defaultOpening.japanese, level);
+
     const firstMessage: RoleplayMessage = {
       id: `ai-init-${Date.now()}`,
       sender: "ai",
@@ -218,25 +478,34 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
       romaji: defaultOpening.romaji,
       translation: defaultOpening.translation,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      suggestedAnswers: [
-        {
-          japanese: "はい、お願いします。",
-          furigana: "はい、おねがいします。",
-          romaji: "Hai, onegaishimasu.",
-          translation: "Vâng, nhờ bạn giúp đỡ.",
-        },
-        {
-          japanese: "おすすめは何ですか？",
-          furigana: "おすすめはなんですか？",
-          romaji: "Osusume wa nan desu ka?",
-          translation: "Món gợi ý đặc biệt là gì vậy ạ?",
-        },
-      ],
+      suggestedAnswers: initialSuggestions,
     };
 
     setMessages([firstMessage]);
+    setShowSuggestions(true);
     setInputVal("");
     setLiveTranscript("");
+
+    // Asynchronously fetch fresh AI-generated contextual suggestions for opening dialogue
+    practiceService
+      .getRoleplaySuggestions({
+        lessonId,
+        scenarioTitle,
+        level,
+        aiMessage: defaultOpening.japanese,
+      })
+      .then((res) => {
+        if (res?.suggestedAnswers && res.suggestedAnswers.length > 0) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === firstMessage.id ? { ...m, suggestedAnswers: res.suggestedAnswers } : m
+            )
+          );
+        }
+      })
+      .catch((err) => {
+        console.warn("Using local contextual suggestions for opening dialogue:", err);
+      });
 
     // Auto-play initial greeting if enabled
     if (autoPlayAudio) {
@@ -244,7 +513,15 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
         speakText(defaultOpening.japanese, firstMessage.id);
       }, 500);
     }
-  }, [initialAiDialogue, autoPlayAudio, speakText]);
+  }, [
+    initialAiDialogue,
+    initialSuggestedAnswers,
+    scenarioTitle,
+    level,
+    lessonId,
+    autoPlayAudio,
+    speakText,
+  ]);
 
   useEffect(() => {
     initConversation();
@@ -398,6 +675,11 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
         }
 
         const aiMsgId = `ai-${Date.now()}`;
+        const dynamicSuggestions =
+          response.suggestedAnswers && response.suggestedAnswers.length > 0
+            ? response.suggestedAnswers
+            : getContextualRoleplaySuggestions(scenarioTitle, response.aiReply.japanese, level);
+
         const aiMsg: RoleplayMessage = {
           id: aiMsgId,
           sender: "ai",
@@ -405,11 +687,12 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
           furigana: response.aiReply.furigana,
           romaji: response.aiReply.romaji,
           translation: response.aiReply.translation,
-          suggestedAnswers: response.suggestedAnswers,
+          suggestedAnswers: dynamicSuggestions,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
 
         setMessages((prev) => [...prev, aiMsg]);
+        setShowSuggestions(true);
 
         // Auto play audio response from AI
         if (autoPlayAudio) {
@@ -422,6 +705,12 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
       console.error("Roleplay chat API error:", err);
       toast.error("Không thể kết nối tới gia sư AI. Đang hiển thị phản hồi mẫu.");
 
+      const fallbackSuggestions = getContextualRoleplaySuggestions(
+        scenarioTitle,
+        "なるほど、分かりました！",
+        level
+      );
+
       // Friendly fallback message
       const fallbackAiMsg: RoleplayMessage = {
         id: `ai-err-${Date.now()}`,
@@ -431,23 +720,11 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
         romaji: "Naruhodo, wakarimashita! Totemo jouzu na nihongo desu ne. Hoka ni nanika iitai koto wa arimasu ka?",
         translation: "Tôi hiểu rồi! Bạn nói tiếng Nhật rất tốt đó. Bạn còn điều gì muốn chia sẻ nữa không?",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        suggestedAnswers: [
-          {
-            japanese: "はい、もっと話したいです。",
-            furigana: "はい、もっとはなしたいです。",
-            romaji: "Hai, motto hanashitai desu.",
-            translation: "Vâng, tôi muốn trò chuyện thêm.",
-          },
-          {
-            japanese: "今日はこれで終わります。",
-            furigana: "きょうはこれでおわります。",
-            romaji: "Kyou wa kore de owarimasu.",
-            translation: "Hôm nay đến đây thôi ạ.",
-          },
-        ],
+        suggestedAnswers: fallbackSuggestions,
       };
 
       setMessages((prev) => [...prev, fallbackAiMsg]);
+      setShowSuggestions(true);
       if (autoPlayAudio) {
         speakText(fallbackAiMsg.japanese, fallbackAiMsg.id);
       }
@@ -459,6 +736,35 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
   // Get current suggested answers from the last AI message
   const lastAiMessage = [...messages].reverse().find((m) => m.sender === "ai");
   const suggestedReplies = lastAiMessage?.suggestedAnswers || [];
+
+  // Refresh suggestions with AI for the current active AI dialogue
+  const handleRefreshSuggestions = async () => {
+    if (!lastAiMessage || isRefreshingSuggestions) return;
+    setIsRefreshingSuggestions(true);
+    try {
+      const res = await practiceService.getRoleplaySuggestions({
+        lessonId,
+        scenarioTitle,
+        level,
+        aiMessage: lastAiMessage.japanese,
+        conversationHistory: messages,
+      });
+      if (res?.suggestedAnswers && res.suggestedAnswers.length > 0) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === lastAiMessage.id ? { ...m, suggestedAnswers: res.suggestedAnswers } : m
+          )
+        );
+        setShowSuggestions(true);
+        toast.success("Đã làm mới câu gợi ý phản xạ!");
+      }
+    } catch (err) {
+      console.warn("Could not refresh suggestions:", err);
+      toast.error("Chưa thể làm mới câu gợi ý lúc này.");
+    } finally {
+      setIsRefreshingSuggestions(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] max-h-[820px] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xs overflow-hidden transition-colors">
@@ -702,17 +1008,37 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
         {suggestedReplies.length > 0 && !isLoading && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setShowSuggestions((prev) => !prev)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100/80 dark:hover:bg-amber-900/60 border border-amber-200/90 dark:border-amber-900 rounded-full text-2xs font-bold text-amber-800 dark:text-amber-300 transition-colors cursor-pointer"
-              >
-                <Lightbulb className="w-3 h-3 text-amber-500 animate-spin-slow" />
-                <span>Gợi ý câu đối đáp ({suggestedReplies.length})</span>
-                {showSuggestions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSuggestions((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100/80 dark:hover:bg-amber-900/60 border border-amber-200/90 dark:border-amber-900 rounded-full text-2xs font-bold text-amber-800 dark:text-amber-300 transition-colors cursor-pointer"
+                >
+                  <Lightbulb className="w-3 h-3 text-amber-500 animate-spin-slow" />
+                  <span>Gợi ý câu đối đáp ({suggestedReplies.length})</span>
+                  {showSuggestions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRefreshSuggestions}
+                  disabled={isRefreshingSuggestions}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-2xs font-bold text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                  title="Tạo gợi ý mới chuẩn ngữ cảnh bằng AI"
+                >
+                  <Sparkles
+                    className={`w-3 h-3 text-amber-500 ${isRefreshingSuggestions ? "animate-spin" : ""}`}
+                  />
+                  <span>
+                    {isRefreshingSuggestions ? "Đang tạo..." : "Đổi gợi ý AI"}
+                  </span>
+                </button>
+              </div>
+
               {showSuggestions && (
-                <span className="text-3xs text-slate-400 dark:text-slate-500">Bấm câu để điền nhanh & nghe giọng đọc</span>
+                <span className="text-3xs text-slate-400 dark:text-slate-500 hidden sm:inline">
+                  Bấm câu để điền nhanh & nghe giọng đọc
+                </span>
               )}
             </div>
 
