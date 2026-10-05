@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import type { VideoSubtitle } from "@/types";
 import { adminService } from "@/services/admin.service";
+import { practiceService } from "@/services/practice.service";
 import {
   Plus,
   Trash2,
@@ -158,20 +159,66 @@ export default function SubtitleEditor({
     }
   };
 
-  // Play Japanese speech via Web Speech API
-  const playSpeech = (text: string, index: number) => {
-    if (!text || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
+  const speechAudioRef = useRef<HTMLAudioElement | null>(null);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ja-JP";
-    utterance.rate = 0.9;
+  // Play Japanese speech via Microsoft Edge Neural TTS (with SpeechSynthesis fallback)
+  const playSpeech = async (text: string, index: number) => {
+    if (!text) return;
+
+    if (speechAudioRef.current) {
+      try {
+        speechAudioRef.current.pause();
+        speechAudioRef.current.currentTime = 0;
+      } catch (_) {}
+      speechAudioRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+    }
 
     setSpeakingIndex(index);
-    utterance.onend = () => setSpeakingIndex(null);
-    utterance.onerror = () => setSpeakingIndex(null);
 
-    window.speechSynthesis.speak(utterance);
+    // 1. Try Microsoft Edge Neural Studio TTS
+    try {
+      const ttsData = await practiceService.synthesizeVoice(
+        text,
+        "ja-JP-NanamiNeural",
+        "FEMALE",
+        0.95
+      );
+      if (ttsData?.audioContent) {
+        const audio = new Audio(`data:${ttsData.mimeType || "audio/mp3"};base64,${ttsData.audioContent}`);
+        speechAudioRef.current = audio;
+        audio.onended = () => {
+          setSpeakingIndex(null);
+          speechAudioRef.current = null;
+        };
+        audio.onerror = () => {
+          setSpeakingIndex(null);
+          speechAudioRef.current = null;
+        };
+        await audio.play();
+        return;
+      }
+    } catch (_) {
+      // Fallback
+    }
+
+    // 2. Fallback: Browser Web Speech API
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "ja-JP";
+      utterance.rate = 0.9;
+
+      utterance.onend = () => setSpeakingIndex(null);
+      utterance.onerror = () => setSpeakingIndex(null);
+
+      window.speechSynthesis.speak(utterance);
+    } else {
+      setSpeakingIndex(null);
+    }
   };
 
   // Add a new subtitle line

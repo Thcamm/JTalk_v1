@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { playHankoStampAudio } from "@/components/gamification/HankoStampCard";
+import { practiceService } from "@/services/practice.service";
 
 export default function LandingPage() {
   const { isDark, toggleTheme } = useThemeStore();
@@ -44,26 +45,71 @@ export default function LandingPage() {
   const sampleJapaneseQuestion = "初めまして！お名前と、日本で挑戦したいことを教えてください。";
   const sampleTranslationQuestion = "Rất vui được gặp bạn! Hãy cho tôi biết tên của bạn và điều bạn muốn thử thách tại Nhật Bản nhé.";
   const sampleAnswer = "初めまして、ナムと申します。ITエンジニアとして日本の技術を学びたいです！";
+  const landingAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // TTS speak function
-  const speakJapanese = useCallback((text: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  // TTS speak function (Microsoft Edge Neural TTS first -> Browser Web Speech API fallback)
+  const speakJapanese = useCallback(async (text: string) => {
+    if (landingAudioRef.current) {
+      try {
+        landingAudioRef.current.pause();
+        landingAudioRef.current.currentTime = 0;
+      } catch (_) {}
+      landingAudioRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+    }
+
+    setIsPlayingAudio(true);
+
+    // 1. Try Microsoft Edge Neural Studio TTS
     try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "ja-JP";
-      utterance.rate = 0.95;
+      const ttsData = await practiceService.synthesizeVoice(
+        text,
+        "ja-JP-NanamiNeural",
+        "FEMALE",
+        0.95
+      );
+      if (ttsData?.audioContent) {
+        const audio = new Audio(`data:${ttsData.mimeType || "audio/mp3"};base64,${ttsData.audioContent}`);
+        landingAudioRef.current = audio;
+        audio.onended = () => {
+          setIsPlayingAudio(false);
+          landingAudioRef.current = null;
+        };
+        audio.onerror = () => {
+          setIsPlayingAudio(false);
+          landingAudioRef.current = null;
+        };
+        await audio.play();
+        return;
+      }
+    } catch (_) {
+      // Fallback
+    }
 
-      const voices = window.speechSynthesis.getVoices();
-      const jpVoice = voices.find((v) => v.lang.startsWith("ja"));
-      if (jpVoice) utterance.voice = jpVoice;
+    // 2. Fallback: Browser Web Speech API
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "ja-JP";
+        utterance.rate = 0.95;
 
-      utterance.onstart = () => setIsPlayingAudio(true);
-      utterance.onend = () => setIsPlayingAudio(false);
-      utterance.onerror = () => setIsPlayingAudio(false);
+        const voices = window.speechSynthesis.getVoices();
+        const jpVoice = voices.find((v) => v.lang.startsWith("ja"));
+        if (jpVoice) utterance.voice = jpVoice;
 
-      window.speechSynthesis.speak(utterance);
-    } catch {
+        utterance.onstart = () => setIsPlayingAudio(true);
+        utterance.onend = () => setIsPlayingAudio(false);
+        utterance.onerror = () => setIsPlayingAudio(false);
+
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        setIsPlayingAudio(false);
+      }
+    } else {
       setIsPlayingAudio(false);
     }
   }, []);
@@ -71,6 +117,11 @@ export default function LandingPage() {
   // Cleanup audio
   useEffect(() => {
     return () => {
+      if (landingAudioRef.current) {
+        try {
+          landingAudioRef.current.pause();
+        } catch (_) {}
+      }
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
