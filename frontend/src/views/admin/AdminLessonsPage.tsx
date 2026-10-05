@@ -7,7 +7,7 @@ import {
   type AdminLessonsResponse,
   type AdminLessonsQuery,
 } from "@/services/admin.service";
-import type { Topic } from "@/types";
+import type { Topic, Course } from "@/types";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import {
   Video,
@@ -22,16 +22,38 @@ import {
   AlertTriangle,
   Play,
   Layers,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
+
+const TOPIC_VN_MAP: Record<string, string> = {
+  "新しいクラスでの自己紹介": "Tự giới thiệu bản thân trong lớp học mới",
+  "毎日の生活について": "Hoạt động & Thói quen đời sống thường nhật",
+  "病院で診察を受ける": "Khám bệnh & Miêu tả triệu chứng tại phòng khám",
+  "カフェで飲み物を注文する": "Gọi đồ uống & Giao tiếp tại quán cà phê",
+  "駅で道を尋ねる・乗換案内": "Hỏi đường và chuyển tuyến tàu điện ngầm",
+  "採用面接・志望動機": "Phỏng vấn xin việc & Nêu nguyện vọng ứng tuyển",
+  "ビジネス会話・進捗報告": "Đàm thoại công sở & Báo cáo tiến độ HORENSO",
+  "居酒屋で乾杯・食事の誘い": "Rủ đồng nghiệp đi ăn & Nâng ly tại quán nhậu",
+  "Minna no Nihongo - Video Hội thoại Đời sống": "Giáo trình Minna – Tình huống giao tiếp thực tế",
+  "敬語マスター - Làm chủ Kính ngữ giao tiếp": "Làm chủ Kính ngữ giao tiếp thực chiến",
+};
+
+const formatTopicName = (name?: string): string => {
+  if (!name) return "Chưa gắn chủ đề";
+  return TOPIC_VN_MAP[name] || name;
+};
 
 export default function AdminLessonsPage() {
   const [lessonsData, setLessonsData] = useState<AdminLessonsResponse | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Filters & Pagination
   const [search, setSearch] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedTopic, setSelectedTopic] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
   const [videoFilter, setVideoFilter] = useState("");
@@ -40,13 +62,43 @@ export default function AdminLessonsPage() {
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
 
-  // Fetch topics for dropdown
+  const handleCleanDuplicates = async () => {
+    if (
+      !confirm(
+        "Hệ thống sẽ quét CSDL, xóa các bài học lặp lại video Sambon Juku (1iDoq9sGX1s) và khôi phục video chuẩn cho Minna no Nihongo. Bạn có chắc chắn muốn thực hiện?"
+      )
+    ) {
+      return;
+    }
+    try {
+      setCleaning(true);
+      const res = await adminService.cleanDuplicateVideos();
+      alert(
+        `🎉 Dọn dẹp hoàn tất!\n- Khôi phục video Minna: ${res.restoredMinnaCount || 0}\n- Đã xóa bài trùng lặp: ${
+          res.deletedDuplicatesCount || 0
+        }`
+      );
+      await fetchLessons();
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Lỗi khi dọn dẹp video trùng lặp.");
+    } finally {
+      setCleaning(false);
+    }
+  };
+
+  // Fetch topics and courses for dropdown
   useEffect(() => {
-    adminService
-      .getTopics()
-      .then((data) => setTopics(data))
-      .catch((err) => console.error("Lỗi khi tải topics:", err));
+    Promise.all([
+      adminService.getTopics(),
+      adminService.getCourses(),
+    ])
+      .then(([topicsData, coursesData]) => {
+        setTopics(topicsData);
+        setCourses(coursesData);
+      })
+      .catch((err) => console.error("Lỗi khi tải topics/courses:", err));
   }, []);
 
   const fetchLessons = useCallback(async () => {
@@ -56,6 +108,7 @@ export default function AdminLessonsPage() {
         page,
         limit: 10,
         search: search || undefined,
+        courseId: selectedCourse || undefined,
         topicId: selectedTopic || undefined,
         level: selectedLevel || undefined,
         hasVideo: videoFilter || undefined,
@@ -69,7 +122,7 @@ export default function AdminLessonsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, selectedTopic, selectedLevel, videoFilter]);
+  }, [page, search, selectedCourse, selectedTopic, selectedLevel, videoFilter]);
 
   useEffect(() => {
     fetchLessons();
@@ -99,17 +152,34 @@ export default function AdminLessonsPage() {
             <span>Quản Lý Video & Bài Học</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Thêm video YouTube, soạn thảo phụ đề song ngữ, phiên âm Furigana và phân cấp độ JLPT cho học viên.
+            Thêm video YouTube, soạn thảo phụ đề song ngữ, phiên âm Furigana và phân loại bài học cho học viên.
           </p>
         </div>
 
-        <Link
-          href="/admin/lessons/new"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-black shadow-lg shadow-indigo-600/30 active:scale-95 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus size={16} />
-          <span>+ Thêm Video Mới</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleCleanDuplicates}
+            disabled={cleaning}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs sm:text-sm font-bold active:scale-95 transition-all shrink-0 cursor-pointer disabled:opacity-50"
+            title="Quét và xóa bỏ các video lặp lại link của Sambon Juku"
+          >
+            {cleaning ? (
+              <RefreshCw size={15} className="animate-spin text-amber-400" />
+            ) : (
+              <Sparkles size={15} className="text-amber-400" />
+            )}
+            <span>{cleaning ? "Đang dọn dẹp..." : "Dọn video trùng lặp"}</span>
+          </button>
+
+          <Link
+            href="/admin/lessons/new"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-black shadow-lg shadow-indigo-600/30 active:scale-95 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>+ Thêm Video Mới</span>
+          </Link>
+        </div>
       </div>
 
       {/* Filter Toolbar */}
@@ -129,6 +199,23 @@ export default function AdminLessonsPage() {
           />
         </div>
 
+        {/* Course Filter */}
+        <select
+          value={selectedCourse}
+          onChange={(e) => {
+            setSelectedCourse(e.target.value);
+            setPage(1);
+          }}
+          className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 focus:border-indigo-500 outline-hidden"
+        >
+          <option value="">Tất cả khóa học</option>
+          {courses.map((c) => (
+            <option key={c._id} value={c._id}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+
         {/* Topic Filter */}
         <select
           value={selectedTopic}
@@ -141,7 +228,7 @@ export default function AdminLessonsPage() {
           <option value="">Tất cả chủ đề</option>
           {topics.map((t) => (
             <option key={t._id} value={t._id}>
-              {t.name}
+              {formatTopicName(t.name)}
             </option>
           ))}
         </select>
@@ -215,7 +302,7 @@ export default function AdminLessonsPage() {
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
                   <th className="py-3.5 px-4">Bài học & Video</th>
-                  <th className="py-3.5 px-4">Cấp độ & Chủ đề</th>
+                  <th className="py-3.5 px-4">Khóa học & Chủ đề</th>
                   <th className="py-3.5 px-4">Phụ đề & Thời lượng</th>
                   <th className="py-3.5 px-4">Trạng thái</th>
                   <th className="py-3.5 px-4 text-right">Thao tác</th>
@@ -240,17 +327,48 @@ export default function AdminLessonsPage() {
                             <div className="absolute inset-0 bg-red-600/20 flex items-center justify-center">
                               <Play size={12} className="fill-white text-white drop-shadow" />
                             </div>
+                            <div className="absolute bottom-0 right-0 bg-black/80 px-1 text-[9px] font-mono text-white">
+                              #{lesson.episodeNumber || lesson.orderIndex || 1}
+                            </div>
                           </div>
                         ) : (
-                          <div className="w-14 h-9 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 shrink-0">
-                            <Video size={16} />
+                          <div className="w-14 h-9 rounded-lg bg-slate-800 flex flex-col items-center justify-center text-slate-400 shrink-0">
+                            <span className="text-[9px] uppercase font-bold text-slate-500">Tập</span>
+                            <span className="text-xs font-bold text-white leading-none">
+                              {lesson.episodeNumber || lesson.orderIndex || 1}
+                            </span>
                           </div>
                         )}
 
                         <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 font-mono text-[9px] font-bold">
+                              Tập #{lesson.episodeNumber || lesson.orderIndex || 1}
+                            </span>
+                            {lesson.sourceType === "jtalk" ? (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-800 text-amber-300 text-[9px] font-bold">
+                                ⚡ JTalk
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-[9px] font-bold">
+                                🌐 Cộng đồng
+                              </span>
+                            )}
+                            {lesson.lessonType && (
+                              <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[9px] font-semibold">
+                                {lesson.lessonType === "video"
+                                  ? "Video Shadowing"
+                                  : lesson.lessonType === "exam_review"
+                                  ? "Chữa đề"
+                                  : lesson.lessonType === "situation"
+                                  ? "Tình huống"
+                                  : lesson.lessonType}
+                              </span>
+                            )}
+                          </div>
                           <Link
                             href={`/admin/lessons/${lesson._id}`}
-                            className="font-bold text-white hover:text-indigo-400 transition-colors block truncate max-w-xs"
+                            className="font-bold text-white hover:text-indigo-400 transition-colors block truncate max-w-xs mt-0.5"
                             title={lesson.title}
                           >
                             {lesson.title}
@@ -271,14 +389,22 @@ export default function AdminLessonsPage() {
                       </div>
                     </td>
 
-                    {/* Column 2: Level & Topic */}
+                    {/* Column 2: Course & Topic */}
                     <td className="py-3.5 px-4">
                       <div className="space-y-1">
-                        <span className="inline-block px-2 py-0.5 rounded bg-indigo-950/80 border border-indigo-800/80 text-indigo-300 font-black text-[10px]">
-                          {lesson.level || "N5"}
-                        </span>
-                        <div className="text-slate-300 font-medium truncate max-w-[180px]">
-                          {lesson.topicId?.name || "Chưa gắn chủ đề"}
+                        {/* Course Name if available */}
+                        {typeof lesson.courseId === "object" && lesson.courseId ? (
+                          <div className="text-indigo-300 font-bold text-xs truncate max-w-[200px] flex items-center gap-1">
+                            <span className="text-indigo-400">📚</span>
+                            <span>{(lesson.courseId as any).title}</span>
+                          </div>
+                        ) : (
+                          <div className="text-slate-500 font-semibold text-[11px]">
+                            Chưa gắn khóa học
+                          </div>
+                        )}
+                        <div className="text-slate-300 font-medium text-[11px] truncate max-w-[200px]">
+                          {formatTopicName(lesson.topicId?.name)}
                         </div>
                       </div>
                     </td>

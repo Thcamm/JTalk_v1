@@ -288,121 +288,123 @@ export const HankoStampCard: React.FC<HankoStampCardProps> = ({
         </div>
       </div>
 
-      {/* 7-Day Grid Layout */}
-      <div className="mt-5 grid grid-cols-7 gap-2 sm:gap-3.5 relative z-10">
-        {weekDays.map((day) => {
-          const isStamped = day.hasPracticed;
-          const isInteractive = day.isToday && !isStamped;
+      {/* 7-Day Grid Layout (Horizontally scrollable on narrow mobile screens) */}
+      <div className="mt-5 overflow-x-auto no-scrollbar pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-3.5 min-w-[340px] sm:min-w-0 relative z-10">
+          {weekDays.map((day) => {
+            const isStamped = day.hasPracticed;
+            const isInteractive = day.isToday && !isStamped;
 
-          return (
-            <div
-              key={day.dayNumber}
-              onClick={() => setSelectedDay(day)}
-              className={`group relative flex flex-col items-center justify-between rounded-2xl p-2 sm:p-3 border transition-all duration-300 cursor-pointer select-none ${
-                day.isToday
-                  ? "bg-white dark:bg-slate-800/95 border-rose-400 dark:border-rose-500 ring-2 ring-rose-400/20 shadow-md"
-                  : isStamped
-                  ? "bg-white/80 dark:bg-slate-800/60 border-rose-200/80 dark:border-rose-900/50 hover:border-rose-300 shadow-2xs"
-                  : day.isPast
-                  ? "bg-slate-100/60 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 opacity-70"
-                  : "bg-slate-50/50 dark:bg-slate-900/20 border-dashed border-slate-300 dark:border-slate-800 opacity-60"
-              }`}
-            >
-              {/* Day Header - Clean, non-redundant, modern */}
-              <div className="text-center w-full">
-                <span
-                  className={`text-xs sm:text-sm font-black block tracking-tight leading-tight ${
-                    day.isToday
-                      ? "text-rose-600 dark:text-rose-400"
-                      : isStamped
-                      ? "text-slate-800 dark:text-slate-200"
-                      : "text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {day.shortLabel}
-                </span>
-                <span
-                  className={`text-3xs sm:text-2xs font-semibold block leading-tight mt-0.5 ${
-                    day.isToday
-                      ? "text-rose-500/80 dark:text-rose-400/80 font-bold"
-                      : "text-slate-400 dark:text-slate-500"
-                  }`}
-                >
-                  {day.dateFormatted}
-                </span>
-              </div>
-
-              {/* Central Stamp Area */}
-              <div className="h-13 sm:h-16 flex items-center justify-center my-1 relative w-full">
-                {isStamped ? (
-                  /* Red Vermilion Stamp Visual (Pure Vietnamese, high-contrast ink seal) */
-                  <div
-                    style={{ transform: `rotate(${day.stampTilt}deg)` }}
-                    className={`relative w-11 h-11 sm:w-14 sm:h-14 rounded-full border-2 border-rose-600 dark:border-rose-500 bg-rose-100/90 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 flex flex-col items-center justify-center font-sans shadow-sm shadow-rose-500/10 dark:shadow-rose-950/40 select-none ${
-                      day.isToday && justStamped
-                        ? "animate-bounce scale-110"
-                        : "transition-transform group-hover:scale-105"
+            return (
+              <div
+                key={day.dayNumber}
+                onClick={() => setSelectedDay(day)}
+                className={`group relative flex flex-col items-center justify-between rounded-2xl p-1.5 sm:p-3 border transition-all duration-300 cursor-pointer select-none ${
+                  day.isToday
+                    ? "bg-white dark:bg-slate-800/95 border-rose-400 dark:border-rose-500 ring-2 ring-rose-400/20 shadow-md"
+                    : isStamped
+                    ? "bg-white/80 dark:bg-slate-800/60 border-rose-200/80 dark:border-rose-900/50 hover:border-rose-300 shadow-2xs"
+                    : day.isPast
+                    ? "bg-slate-100/60 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 opacity-70"
+                    : "bg-slate-50/50 dark:bg-slate-900/20 border-dashed border-slate-300 dark:border-slate-800 opacity-60"
+                }`}
+              >
+                {/* Day Header - Clean, non-redundant, modern */}
+                <div className="text-center w-full">
+                  <span
+                    className={`text-xs sm:text-sm font-black block tracking-tight leading-tight ${
+                      day.isToday
+                        ? "text-rose-600 dark:text-rose-400"
+                        : isStamped
+                        ? "text-slate-800 dark:text-slate-200"
+                        : "text-slate-600 dark:text-slate-400"
                     }`}
                   >
-                    {/* Inner seal circle */}
-                    <div className="absolute inset-0.5 sm:inset-1 rounded-full border border-rose-500/50 dark:border-rose-400/40 pointer-events-none" />
-
-                    {/* Checkmark icon */}
-                    <CheckCircle2
-                      size={14}
-                      className="sm:w-4 sm:h-4 text-rose-600 dark:text-rose-400 stroke-[2.5]"
-                    />
-
-                    {/* Single line, strictly whitespace-nowrap, never overflows */}
-                    <span className="text-[9px] sm:text-[10px] font-black tracking-wider uppercase whitespace-nowrap text-rose-700 dark:text-rose-300 leading-none mt-0.5">
-                      ĐÃ HỌC
-                    </span>
-
-                    {/* Sparkle badge for today */}
-                    {day.isToday && (
-                      <div className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-amber-400 text-amber-950 flex items-center justify-center shadow-xs">
-                        <Sparkles size={8} className="sm:w-2.5 sm:h-2.5" />
-                      </div>
-                    )}
-                  </div>
-                ) : isInteractive ? (
-                  /* Today Pending: Prompting to Practice */
-                  <Link
-                    to="/speaking"
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-10 h-10 sm:w-13 sm:h-13 rounded-full border-2 border-dashed border-rose-400 dark:border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 flex flex-col items-center justify-center font-bold hover:scale-105 active:scale-95 transition-transform shadow-xs animate-pulse"
-                    title="Luyện nói ngay để điểm danh hôm nay!"
+                    {day.shortLabel}
+                  </span>
+                  <span
+                    className={`text-3xs sm:text-2xs font-semibold block leading-tight mt-0.5 ${
+                      day.isToday
+                        ? "text-rose-500/80 dark:text-rose-400/80 font-bold"
+                        : "text-slate-400 dark:text-slate-500"
+                    }`}
                   >
-                    <span className="text-3xs sm:text-2xs font-black leading-none">Học</span>
-                    <span className="text-4xs sm:text-3xs font-extrabold text-rose-500 dark:text-rose-400 leading-none mt-0.5">ngay</span>
-                  </Link>
-                ) : (
-                  /* Empty Dashed Circle for other days */
-                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-center text-slate-400 dark:text-slate-500 text-2xs sm:text-xs font-bold">
-                    <span>{day.dayOfMonth}</span>
-                  </div>
-                )}
-              </div>
+                    {day.dateFormatted}
+                  </span>
+                </div>
 
-              {/* Day Bottom Status */}
-              <div className="w-full text-center">
-                {isStamped ? (
-                  <span className="inline-block text-3xs sm:text-2xs font-black text-rose-700 dark:text-rose-300 bg-rose-100/90 dark:bg-rose-950/80 border border-rose-200/80 dark:border-rose-900/60 px-1.5 py-0.5 rounded-md leading-none">
-                    {day.minutesSpent > 0 ? `${day.minutesSpent}p` : "Đạt"}
-                  </span>
-                ) : day.isToday ? (
-                  <span className="inline-block text-3xs sm:text-2xs font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/80 border border-amber-200/80 dark:border-amber-900/60 px-1.5 py-0.5 rounded-md leading-none animate-pulse">
-                    Hôm nay
-                  </span>
-                ) : (
-                  <span className="text-3xs sm:text-2xs font-medium text-slate-400 dark:text-slate-600 leading-none">
-                    --
-                  </span>
-                )}
+                {/* Central Stamp Area */}
+                <div className="h-11 sm:h-16 flex items-center justify-center my-1 relative w-full">
+                  {isStamped ? (
+                    /* Red Vermilion Stamp Visual (Pure Vietnamese, high-contrast ink seal) */
+                    <div
+                      style={{ transform: `rotate(${day.stampTilt}deg)` }}
+                      className={`relative w-9 h-9 sm:w-14 sm:h-14 rounded-full border-2 border-rose-600 dark:border-rose-500 bg-rose-100/90 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 flex flex-col items-center justify-center font-sans shadow-sm shadow-rose-500/10 dark:shadow-rose-950/40 select-none ${
+                        day.isToday && justStamped
+                          ? "animate-bounce scale-110"
+                          : "transition-transform group-hover:scale-105"
+                      }`}
+                    >
+                      {/* Inner seal circle */}
+                      <div className="absolute inset-0.5 sm:inset-1 rounded-full border border-rose-500/50 dark:border-rose-400/40 pointer-events-none" />
+
+                      {/* Checkmark icon */}
+                      <CheckCircle2
+                        size={12}
+                        className="sm:w-4 sm:h-4 text-rose-600 dark:text-rose-400 stroke-[2.5]"
+                      />
+
+                      {/* Single line, strictly whitespace-nowrap, never overflows */}
+                      <span className="text-[8px] sm:text-[10px] font-black tracking-wider uppercase whitespace-nowrap text-rose-700 dark:text-rose-300 leading-none mt-0.5">
+                        ĐÃ HỌC
+                      </span>
+
+                      {/* Sparkle badge for today */}
+                      {day.isToday && (
+                        <div className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-amber-400 text-amber-950 flex items-center justify-center shadow-xs">
+                          <Sparkles size={8} className="sm:w-2.5 sm:h-2.5" />
+                        </div>
+                      )}
+                    </div>
+                  ) : isInteractive ? (
+                    /* Today Pending: Prompting to Practice */
+                    <Link
+                      to="/speaking"
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-8 h-8 sm:w-13 sm:h-13 rounded-full border-2 border-dashed border-rose-400 dark:border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 flex flex-col items-center justify-center font-bold hover:scale-105 active:scale-95 transition-transform shadow-xs animate-pulse"
+                      title="Luyện nói ngay để điểm danh hôm nay!"
+                    >
+                      <span className="text-3xs sm:text-2xs font-black leading-none">Học</span>
+                      <span className="text-4xs sm:text-3xs font-extrabold text-rose-500 dark:text-rose-400 leading-none mt-0.5">ngay</span>
+                    </Link>
+                  ) : (
+                    /* Empty Dashed Circle for other days */
+                    <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-full border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-center text-slate-400 dark:text-slate-500 text-2xs sm:text-xs font-bold">
+                      <span>{day.dayOfMonth}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Day Bottom Status */}
+                <div className="w-full text-center">
+                  {isStamped ? (
+                    <span className="inline-block text-3xs sm:text-2xs font-black text-rose-700 dark:text-rose-300 bg-rose-100/90 dark:bg-rose-950/80 border border-rose-200/80 dark:border-rose-900/60 px-1.5 py-0.5 rounded-md leading-none">
+                      {day.minutesSpent > 0 ? `${day.minutesSpent}p` : "Đạt"}
+                    </span>
+                  ) : day.isToday ? (
+                    <span className="inline-block text-3xs sm:text-2xs font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/80 border border-amber-200/80 dark:border-amber-900/60 px-1.5 py-0.5 rounded-md leading-none animate-pulse">
+                      Hôm nay
+                    </span>
+                  ) : (
+                    <span className="text-3xs sm:text-2xs font-medium text-slate-400 dark:text-slate-600 leading-none">
+                      --
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Weekly Progress Bar & Reward Milestone */}

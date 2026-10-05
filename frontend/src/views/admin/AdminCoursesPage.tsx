@@ -36,6 +36,9 @@ export default function AdminCoursesPage() {
   const [courseDesc, setCourseDesc] = useState("");
   const [courseLevel, setCourseLevel] = useState("N5");
   const [courseThumbnail, setCourseThumbnail] = useState("");
+  const [courseSourceType, setCourseSourceType] = useState<"community" | "jtalk">("community");
+  const [courseChannelName, setCourseChannelName] = useState("");
+  const [courseChannelUrl, setCourseChannelUrl] = useState("");
   const [courseIsPremium, setCourseIsPremium] = useState(false);
   const [courseOrder, setCourseOrder] = useState(0);
 
@@ -80,6 +83,9 @@ export default function AdminCoursesPage() {
       setCourseDesc(course.description || "");
       setCourseLevel(course.level || "N5");
       setCourseThumbnail(course.thumbnail || "");
+      setCourseSourceType(course.sourceType || "community");
+      setCourseChannelName(course.channelName || "");
+      setCourseChannelUrl(course.channelUrl || "");
       setCourseIsPremium(Boolean(course.isPremiumOnly));
       setCourseOrder(course.orderIndex || 0);
     } else {
@@ -88,6 +94,9 @@ export default function AdminCoursesPage() {
       setCourseDesc("");
       setCourseLevel("N5");
       setCourseThumbnail("");
+      setCourseSourceType("community");
+      setCourseChannelName("");
+      setCourseChannelUrl("");
       setCourseIsPremium(false);
       setCourseOrder(courses.length);
     }
@@ -106,6 +115,9 @@ export default function AdminCoursesPage() {
         description: courseDesc.trim(),
         level: courseLevel,
         thumbnail: courseThumbnail.trim() || undefined,
+        sourceType: courseSourceType,
+        channelName: courseChannelName.trim() || undefined,
+        channelUrl: courseChannelUrl.trim() || undefined,
         isPremiumOnly: courseIsPremium,
         orderIndex: Number(courseOrder) || 0,
       };
@@ -186,11 +198,11 @@ export default function AdminCoursesPage() {
             <span>Quản Lý Khóa Học & Chủ Đề</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Quy hoạch giáo trình theo cấp độ JLPT, phân nhóm chủ đề đàm thoại thực tế và quản lý thứ tự hiển thị.
+            Quy hoạch giáo trình video giao tiếp, phân nhóm chủ đề đàm thoại thực tế và quản lý thứ tự hiển thị.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
             onClick={() => openCourseModal()}
@@ -212,7 +224,7 @@ export default function AdminCoursesPage() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab("courses")}
@@ -278,10 +290,16 @@ export default function AdminCoursesPage() {
                     </div>
                   )}
 
-                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-indigo-950/90 border border-indigo-700 text-indigo-300 font-black text-xs shadow-md">
-                      {course.level || "N5"}
-                    </span>
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
+                    {course.sourceType === "jtalk" ? (
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-500/90 text-amber-950 font-black text-[10px] shadow-md uppercase">
+                        ⚡ JTalk
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-lg bg-emerald-600/90 text-white font-black text-[10px] shadow-md uppercase">
+                        🌐 Cộng đồng
+                      </span>
+                    )}
                     {course.isPremiumOnly && (
                       <span className="px-2 py-0.5 rounded-lg bg-amber-500 text-amber-950 font-black text-[10px] shadow-md uppercase">
                         Premium
@@ -290,6 +308,11 @@ export default function AdminCoursesPage() {
                   </div>
                 </div>
 
+                {course.channelName && (
+                  <div className="text-[11px] font-semibold text-rose-400 font-mono mb-1 truncate">
+                    📺 {course.channelName}
+                  </div>
+                )}
                 <h3 className="text-base font-black text-white group-hover:text-amber-400 transition-colors line-clamp-1">
                   {course.title}
                 </h3>
@@ -340,7 +363,7 @@ export default function AdminCoursesPage() {
               <option value="">Tất cả khóa học</option>
               {courses.map((c) => (
                 <option key={c._id} value={c._id}>
-                  {c.title} ({c.level})
+                  {c.title}
                 </option>
               ))}
             </select>
@@ -464,6 +487,48 @@ export default function AdminCoursesPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Phân loại nguồn video
+                  </label>
+                  <select
+                    value={courseSourceType}
+                    onChange={(e) => setCourseSourceType(e.target.value as "community" | "jtalk")}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-amber-500 outline-hidden font-bold"
+                  >
+                    <option value="community">🌐 Cộng đồng (YouTube - Miễn phí)</option>
+                    <option value="jtalk">⚡ JTalk Độc quyền (AI Studio)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Tên kênh / Tác giả
+                  </label>
+                  <input
+                    type="text"
+                    value={courseChannelName}
+                    onChange={(e) => setCourseChannelName(e.target.value)}
+                    placeholder="ví dụ: 三本塾 -Sambon Juku-"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-amber-500 outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  URL Kênh / Video gốc (YouTube)
+                </label>
+                <input
+                  type="text"
+                  value={courseChannelUrl}
+                  onChange={(e) => setCourseChannelUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/@..."
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-amber-500 outline-hidden"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1.5">
                   Link ảnh Thumbnail
@@ -559,7 +624,7 @@ export default function AdminCoursesPage() {
                   <option value="">-- Chọn khóa học --</option>
                   {courses.map((c) => (
                     <option key={c._id} value={c._id}>
-                      {c.title} ({c.level})
+                      {c.title}
                     </option>
                   ))}
                 </select>

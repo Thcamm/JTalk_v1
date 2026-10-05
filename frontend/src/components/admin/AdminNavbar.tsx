@@ -51,11 +51,11 @@ export default function AdminNavbar() {
         {/* Quick Action: New YouTube Lesson */}
         <Link
           href="/admin/lessons/new"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer"
         >
           <Video size={14} className="text-red-300" />
-          <span className="hidden xs:inline">+ Thêm Video YouTube</span>
-          <span className="xs:hidden">+ Video</span>
+          <span className="hidden sm:inline">+ Thêm Video YouTube</span>
+          <span className="sm:hidden">+ Video</span>
         </Link>
 
         {/* View Student Site Link */}

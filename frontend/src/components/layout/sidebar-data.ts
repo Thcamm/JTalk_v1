@@ -1,7 +1,7 @@
 import {
   Home,
   Mic,
-  GraduationCap,
+  Video,
   ChartNoAxesColumn,
   User,
   Sparkles,
@@ -14,8 +14,8 @@ export const sidebarItems = [
     to: "/dashboard",
   },
   {
-    icon: GraduationCap,
-    text: "Khóa học",
+    icon: Video,
+    text: "Thư viện Video",
     to: "/courses",
   },
   {

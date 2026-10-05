@@ -132,9 +132,15 @@ export interface Course {
   description?: string;
   level: string;
   category?: string;
+  courseType?: "video_series" | "ai_kaiwa" | "grammar_curriculum";
+  sourceType?: "community" | "jtalk";
   thumbnail?: string;
   channelName?: string;
+  channelUrl?: string;
   totalLessons?: number;
+  totalVideos?: number;
+  totalDurationMinutes?: number;
+  tags?: string[];
   isPublished: boolean;
   isPremiumOnly: boolean;
   orderIndex: number;
@@ -167,6 +173,7 @@ export interface Topic {
   level: string;
   image?: string;
   category?: string;
+  unitNumber?: number;
   isPremiumOnly?: boolean;
   isPublished: boolean;
   orderIndex?: number;
@@ -197,16 +204,22 @@ export interface VocabularyItem {
 
 export interface Lesson {
   _id: string;
+  courseId?: string | Course;
   topicId: string | Topic;
   title: string;
   description?: string;
   level: string;
+  episodeNumber?: number;
+  orderIndex?: number;
+  lessonType?: string;
   sampleSentence?: string;
   translation?: string;
   image?: string;
   youtubeId?: string;
   videoUrl?: string;
+  sourceType?: "community" | "jtalk";
   channelName?: string;
+  channelUrl?: string;
   subtitles?: VideoSubtitle[];
   duration?: string;
   durationMinutes?: number;

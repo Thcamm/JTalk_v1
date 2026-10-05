@@ -15,15 +15,22 @@ import {
   Lock,
   Play,
   BookOpen,
-  GraduationCap,
+  Video,
+  Clock,
+  Tv,
+  Globe,
+  Zap,
+  ExternalLink,
 } from "lucide-react";
+
+type SourceFilterType = "ALL" | "COMMUNITY" | "JTALK";
 
 export const CoursePage = () => {
   const { isPremium } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [levelFilter, setLevelFilter] = useState<string>("ALL");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilterType>("ALL");
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   useEffect(() => {
@@ -36,51 +43,94 @@ export const CoursePage = () => {
         if (isMounted && data && data.length > 0) {
           setCourses(data);
         } else if (isMounted) {
-          // Default initial courses matching Image 4 reference
+          // Default initial courses matching verified reference
           setCourses([
             {
-              _id: "c-minna-n5",
-              title: "Minna no Nihongo I – N5",
-              description: "Giáo trình sơ cấp 1: 25 bài, mỗi bài gồm Từ vựng, Ngữ pháp, Hội thoại, Hán tự và Kiểm tra.",
-              level: "N5",
-              category: "Giao tiếp hằng ngày • Luyện thi",
+              _id: "c-keigo-sambon",
+              title: "Kính ngữ và Văn hóa Giao tiếp Chuẩn Nhật",
+              description: "Tuyển tập video bài giảng Kính ngữ thực tế: Thể lịch sự (Teineigo), Tôn kính ngữ (Sonkeigo), Khiêm nhường ngữ (Kenjougo) và luyện phản xạ tự nhiên.",
+              level: "N4",
+              category: "Kính ngữ • Văn hóa ứng xử",
+              courseType: "video_series",
+              sourceType: "community",
+              channelName: "三本塾 -Sambon Juku-",
+              channelUrl: "https://www.youtube.com/@SambonJuku",
               thumbnail: "https://images.unsplash.com/photo-1528164344705-475426879c0d?w=400&auto=format&fit=crop&q=80",
               isPublished: true,
               isPremiumOnly: false,
+              totalLessons: 2,
+              totalVideos: 2,
+              totalDurationMinutes: 10,
               orderIndex: 1,
             },
             {
-              _id: "c-pm-interview",
-              title: "Near-line PM interview",
-              description: "Khoá học luyện phỏng vấn và trao đổi yêu cầu dự án dành cho Project Manager / Team Leader.",
+              _id: "c-n5-beginner",
+              title: "Giao tiếp Nhập môn – Phản xạ Cơ bản",
+              description: "Luyện tập phản xạ giao tiếp đời sống hàng ngày từ con số 0 cùng trợ lý AI.",
               level: "N5",
-              category: "Công sở • Kinh doanh",
-              thumbnail: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&auto=format&fit=crop&q=80",
+              category: "Giao tiếp đời sống • Luyện nói phản xạ",
+              courseType: "ai_kaiwa",
+              sourceType: "jtalk",
+              channelName: "JTalk AI Studio",
+              thumbnail: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&auto=format&fit=crop&q=80",
               isPublished: true,
-              isPremiumOnly: false,
+              isPremiumOnly: true,
+              totalLessons: 3,
+              totalVideos: 0,
+              totalDurationMinutes: 15,
               orderIndex: 2,
             },
             {
-              _id: "c-ba-brse",
-              title: "BA / BRSE Interview & Kaiwa",
-              description: "Luyện đối đáp giao tiếp kỹ thuật và phỏng vấn vị trí Kỹ sư cầu nối BRSE và Business Analyst.",
-              level: "N5",
-              category: "Kinh doanh • Công sở • Phỏng vấn • Thuyết trình",
-              thumbnail: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=400&auto=format&fit=crop&q=80",
+              _id: "c-n4-intermediate",
+              title: "Giao tiếp Đời sống và Tình huống Công sở",
+              description: "Kịch bản giao tiếp đời sống mở rộng, gọi món nhà hàng, khám bệnh và phỏng vấn cơ bản.",
+              level: "N4",
+              category: "Công sở • Nhà hàng • Phỏng vấn",
+              courseType: "ai_kaiwa",
+              sourceType: "jtalk",
+              channelName: "JTalk AI Studio",
+              thumbnail: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=400&auto=format&fit=crop&q=80",
               isPublished: true,
               isPremiumOnly: true,
+              totalLessons: 3,
+              totalVideos: 0,
+              totalDurationMinutes: 15,
               orderIndex: 3,
             },
             {
-              _id: "c-it-comtor",
-              title: "IT COMTOR Interview",
-              description: "Khoá học luyện phỏng vấn các câu hỏi xoay quanh nghiệp vụ Thông dịch viên Công nghệ thông tin IT Comtor.",
-              level: "N4",
-              category: "Phỏng vấn • Công sở IT",
-              thumbnail: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&auto=format&fit=crop&q=80",
+              _id: "c-business-n3",
+              title: "Tiếng Nhật Doanh nghiệp và Làm việc",
+              description: "Kịch bản giao tiếp công sở chuyên sâu, quy tắc báo cáo HORENSO, trao đổi dự án và làm việc cùng đối tác.",
+              level: "N3",
+              category: "Công sở • Báo cáo công việc • Đàm phán",
+              courseType: "ai_kaiwa",
+              sourceType: "jtalk",
+              channelName: "JTalk AI Studio",
+              thumbnail: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=400&auto=format&fit=crop&q=80",
               isPublished: true,
               isPremiumOnly: true,
+              totalLessons: 2,
+              totalVideos: 0,
+              totalDurationMinutes: 10,
               orderIndex: 4,
+            },
+            {
+              _id: "c-minna-n5",
+              title: "Giáo trình Minna – 25 Tình huống Giao tiếp Thực tế",
+              description: "Giáo trình sơ cấp 1: 25 bài video hội thoại, mỗi bài gồm Từ vựng, Ngữ pháp, Hội thoại, Hán tự và Luyện phản xạ tự nhiên.",
+              level: "N5",
+              category: "Tình huống thực tế • Ngữ pháp",
+              courseType: "video_series",
+              sourceType: "community",
+              channelName: "Dũng Mori / Nihongo no Mori",
+              channelUrl: "https://www.youtube.com/@dungmori",
+              thumbnail: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&auto=format&fit=crop&q=80",
+              isPublished: true,
+              isPremiumOnly: false,
+              totalLessons: 1,
+              totalVideos: 1,
+              totalDurationMinutes: 5,
+              orderIndex: 5,
             },
           ]);
         }
@@ -98,37 +148,103 @@ export const CoursePage = () => {
     };
   }, []);
 
+  const formatCourseTitle = (title: string): string => {
+    let t = title || "";
+    if (t.includes("Kính ngữ") || t.includes("Sambon")) {
+      return "Kính ngữ và Văn hóa Giao tiếp Chuẩn Nhật";
+    }
+    if (t.includes("Beginner") || t.includes("Nhập môn")) {
+      return "Giao tiếp Nhập môn – Phản xạ Cơ bản";
+    }
+    if (t.includes("Intermediate") || t.includes("Đời sống")) {
+      return "Giao tiếp Đời sống và Tình huống Công sở";
+    }
+    if (t.includes("Business") || t.includes("Doanh nghiệp")) {
+      return "Tiếng Nhật Doanh nghiệp và Làm việc";
+    }
+    if (t.includes("Minna")) {
+      return "Giáo trình Minna – 25 Tình huống Giao tiếp Thực tế";
+    }
+    return t
+      .replace(/\s*\([^)]*\)/g, "")
+      .replace(/Kaiwa/gi, "Giao tiếp")
+      .replace(/Tokyo Accent/gi, "")
+      .replace(/Beginner/gi, "Nhập môn")
+      .replace(/Intermediate/gi, "Trung cấp")
+      .replace(/Business Japanese/gi, "Tiếng Nhật Doanh nghiệp")
+      .replace(/\s*N[1-5]\b/gi, "")
+      .trim();
+  };
+
+  const formatCategoryTag = (cat: string): string => {
+    const trimmed = cat.trim();
+    if (trimmed === "kaiwa") return "Giao tiếp";
+    if (trimmed === "daily") return "Đời sống";
+    if (trimmed === "business") return "Công sở";
+    if (trimmed === "grammar") return "Ngữ pháp";
+    return trimmed
+      .replace(/kaiwa/gi, "Giao tiếp")
+      .replace(/daily/gi, "Đời sống")
+      .replace(/business/gi, "Công sở")
+      .replace(/shadowing/gi, "Phản xạ");
+  };
+
+  const getSourceType = (c: Course): "community" | "jtalk" => {
+    if (c.sourceType === "jtalk") return "jtalk";
+    if (c.channelName && c.channelName.toLowerCase().includes("jtalk")) return "jtalk";
+    if (c.courseType === "ai_kaiwa") return "jtalk";
+    if (c.isPremiumOnly) return "jtalk";
+    const titleLower = (c.title || "").toLowerCase();
+    if (
+      titleLower.includes("nhập môn") ||
+      titleLower.includes("doanh nghiệp") ||
+      titleLower.includes("beginner") ||
+      titleLower.includes("intermediate") ||
+      titleLower.includes("business")
+    ) {
+      return "jtalk";
+    }
+    return c.sourceType || "community";
+  };
+
   const filteredCourses = courses.filter((c) => {
+    const sType = getSourceType(c);
+    const displayTitle = formatCourseTitle(c.title);
+    const matchesSource =
+      sourceFilter === "ALL" ||
+      (sourceFilter === "COMMUNITY" && sType === "community") ||
+      (sourceFilter === "JTALK" && sType === "jtalk");
+
     const matchesSearch =
+      displayTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.category?.toLowerCase().includes(searchQuery.toLowerCase());
+      c.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.channelName?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesLevel =
-      levelFilter === "ALL" ||
-      c.level?.toUpperCase() === levelFilter ||
-      (levelFilter === "IT" && (c.title.includes("IT") || c.title.includes("PM") || c.title.includes("BRSE")));
-
-    return matchesSearch && matchesLevel;
+    return matchesSource && matchesSearch;
   });
+
+  const communityCount = courses.filter((c) => getSourceType(c) === "community").length;
+  const jtalkCount = courses.filter((c) => getSourceType(c) === "jtalk").length;
 
   return (
     <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] p-4 sm:p-6 lg:p-8 font-sans transition-colors duration-200">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* 1. Header & Bento Hero for Courses */}
+      <div className="max-w-7xl mx-auto space-y-7">
+        {/* 1. Header & Bento Hero for Video Library */}
         <div className="relative overflow-hidden bg-gradient-to-br from-rose-500/10 via-amber-500/5 to-rose-500/10 dark:from-rose-950/40 dark:via-slate-900/60 dark:to-amber-950/30 border border-rose-200/80 dark:border-rose-800/60 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/90 dark:bg-slate-800/90 border border-rose-200 dark:border-rose-800/80 rounded-full text-2xs font-extrabold text-rose-800 dark:text-rose-300 shadow-2xs">
-              <GraduationCap className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 animate-float" />
-              <span>Khoá Học Video & Phản Xạ Kaiwa</span>
+              <Video className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 animate-float" />
+              <span>Thư Viện Video & Shadowing Thực Tế</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              Lộ trình bài giảng Kaiwa 5 phút
+              Thư viện Video Giao tiếp Nhật Bản
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-              Thiết kế dạng micro-learning tối ưu cho sinh viên: Mỗi video bài giảng kéo dài 5 phút, phụ đề phân tích Furigana từng chữ và tích hợp bài tập Shadowing luyện nói ngay tại chỗ.
+              Kho video thực tế phong phú từ cộng đồng bản xứ (miễn phí 100%) và các lộ trình video bài giảng độc quyền tích hợp phòng luyện nói AI 1-1 từ JTalk.
             </p>
           </div>
 
@@ -143,94 +259,162 @@ export const CoursePage = () => {
           </div>
         </div>
 
-        {/* 2. Top Search & Filter Pills */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative w-full sm:w-96">
+        {/* 2. Source Type Selector Tabs (Cộng đồng vs JTalk Độc quyền) */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-4">
+          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 no-scrollbar">
+            <button
+              onClick={() => setSourceFilter("ALL")}
+              type="button"
+              className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shadow-2xs whitespace-nowrap ${
+                sourceFilter === "ALL"
+                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              <span>🌟 Tất cả</span>
+              <span className="px-1.5 py-0.2 rounded-full text-3xs font-mono bg-slate-700/20 dark:bg-slate-200/20">
+                {courses.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSourceFilter("COMMUNITY")}
+              type="button"
+              className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shadow-2xs whitespace-nowrap ${
+                sourceFilter === "COMMUNITY"
+                  ? "bg-emerald-600 dark:bg-emerald-500 text-white shadow-emerald-600/20 shadow-md"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              <Globe size={14} className={sourceFilter === "COMMUNITY" ? "text-emerald-100" : "text-emerald-600"} />
+              <span>Video từ Cộng đồng</span>
+              <span className="px-1.5 py-0.2 rounded-full text-3xs font-extrabold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                Free
+              </span>
+              <span className="px-1.5 py-0.2 rounded-full text-3xs font-mono opacity-80">
+                {communityCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSourceFilter("JTALK")}
+              type="button"
+              className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shadow-2xs whitespace-nowrap ${
+                sourceFilter === "JTALK"
+                  ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-rose-600/20 shadow-md"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              <Zap size={14} className={sourceFilter === "JTALK" ? "text-amber-200" : "text-amber-500"} />
+              <span>JTalk Độc quyền</span>
+              <span className="px-1.5 py-0.2 rounded-full text-3xs font-extrabold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 flex items-center gap-0.5">
+                <Lock size={9} />
+                PRO
+              </span>
+              <span className="px-1.5 py-0.2 rounded-full text-3xs font-mono opacity-80">
+                {jtalkCount}
+              </span>
+            </button>
+          </div>
+
+          <div className="text-2xs font-semibold text-slate-500 dark:text-slate-400">
+            {sourceFilter === "COMMUNITY" && (
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                ✓ Video YouTube chuẩn bản xứ, nhúng trực tiếp và hoàn toàn miễn phí
+              </span>
+            )}
+            {sourceFilter === "JTALK" && (
+              <span className="text-amber-600 dark:text-amber-400 font-bold">
+                ★ Chuỗi bài giảng AI Studio độc quyền, kèm phòng luyện nói tương tác
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 3. Search Bar */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative w-full max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Tìm bài học Minna, phỏng vấn IT, BrSE..."
+              placeholder="Tìm kiếm chủ đề, kênh YouTube, Minna, giao tiếp..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-full text-xs font-medium dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 dark:focus:border-rose-400 transition-all shadow-2xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
 
-          {/* Level Filter Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 self-start sm:self-auto w-full sm:w-auto no-scrollbar">
-            {[
-              { id: "ALL", label: "Tất cả" },
-              { id: "N5", label: "N5 Sơ cấp" },
-              { id: "N4", label: "N4 Trung cấp" },
-              { id: "N3", label: "N3 Thượng cấp" },
-              { id: "IT", label: "Công sở & IT" },
-            ].map((lvl) => (
-              <button
-                key={lvl.id}
-                onClick={() => setLevelFilter(lvl.id)}
-                type="button"
-                className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
-                  levelFilter === lvl.id
-                    ? "bg-rose-600 dark:bg-rose-500 text-white shadow-rose-600/20"
-                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-              >
-                {lvl.label}
-              </button>
-            ))}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+            <span>Thiết kế dành riêng cho người mới học phản xạ giao tiếp</span>
           </div>
         </div>
 
-        {/* 3. Section: Chủ đề phổ biến with Verified Badge */}
+        {/* 4. Video Topics Grid */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                Chủ đề biên soạn chuẩn
+                {sourceFilter === "COMMUNITY"
+                  ? "Video từ Cộng đồng & Kênh YouTube"
+                  : sourceFilter === "JTALK"
+                  ? "Chủ đề Độc quyền JTalk AI Studio"
+                  : "Tất cả chủ đề video"}
               </h2>
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-300/80 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-2xs font-extrabold">
-                <CheckCircle2 size={12} className="text-rose-600 dark:text-rose-400 animate-bounce" />
-                <span>Tokyo Accent</span>
-              </div>
             </div>
 
             <span className="text-xs font-bold text-slate-400">
-              {filteredCourses.length} khóa học
+              {filteredCourses.length} chủ đề video
             </span>
           </div>
 
           {/* Bento Course Cards Grid */}
           {loading ? (
             <div className="py-24 flex justify-center">
-              <LoadingSpinner size="lg" label="Đang tải danh mục khóa học..." />
+              <LoadingSpinner size="lg" label="Đang tải danh mục thư viện video..." />
             </div>
           ) : filteredCourses.length === 0 ? (
             <div className="text-center py-16 bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-8 space-y-3">
               <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
               <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                Không tìm thấy khóa học nào phù hợp với bộ lọc
+                Không tìm thấy chủ đề video nào phù hợp với bộ lọc hiện tại
               </p>
               <button
                 onClick={() => {
                   setSearchQuery("");
-                  setLevelFilter("ALL");
+                  setSourceFilter("ALL");
                 }}
                 className="text-xs font-black text-rose-600 dark:text-rose-400 underline underline-offset-4 cursor-pointer"
               >
-                Xóa bộ lọc tìm kiếm
+                Xóa toàn bộ bộ lọc
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredCourses.map((course, idx) => {
-                const isLocked = course.isPremiumOnly && !isPremium;
+                const sType = getSourceType(course);
+                const isCommunity = sType === "community";
+                const isLocked = !isCommunity && course.isPremiumOnly && !isPremium;
                 const lessonsCount = course.totalLessons || (idx === 0 ? 12 : idx === 1 ? 7 : 10);
+                const videosCount = course.totalVideos !== undefined ? course.totalVideos : (course.courseType === "video_series" ? lessonsCount : 0);
+                const durationMins = course.totalDurationMinutes || lessonsCount * 5;
                 const completedCount = 0;
 
                 const cardContent = (
-                  <div className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-xl hover:shadow-rose-500/5 transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden h-full">
+                  <div
+                    className={`group relative bg-white dark:bg-slate-900 border rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer overflow-hidden h-full ${
+                      isCommunity
+                        ? "border-slate-200/80 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 hover:shadow-emerald-500/5"
+                        : "border-slate-200/80 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500 hover:shadow-rose-500/5"
+                    }`}
+                  >
                     {/* Background Decorative Gradient */}
-                    <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-rose-500/10 via-transparent to-transparent rounded-bl-full pointer-events-none transition-transform group-hover:scale-125 duration-500" />
+                    <div
+                      className={`absolute top-0 right-0 w-36 h-36 rounded-bl-full pointer-events-none transition-transform group-hover:scale-125 duration-500 ${
+                        isCommunity
+                          ? "bg-gradient-to-bl from-emerald-500/10 via-transparent to-transparent"
+                          : "bg-gradient-to-bl from-rose-500/10 via-transparent to-transparent"
+                      }`}
+                    />
 
                     <div className="space-y-4">
                       {/* Top Thumbnail & Header */}
@@ -246,8 +430,9 @@ export const CoursePage = () => {
                             loading="lazy"
                           />
                           {isLocked ? (
-                            <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-2xs flex items-center justify-center text-amber-300">
-                              <Lock size={20} />
+                            <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-2xs flex flex-col items-center justify-center text-amber-300 gap-1 p-1 text-center">
+                              <Lock size={20} className="text-amber-400 animate-pulse" />
+                              <span className="text-[9px] font-black uppercase text-amber-200">Gói PRO</span>
                             </div>
                           ) : (
                             <div className="absolute inset-0 bg-rose-600/0 group-hover:bg-rose-600/20 transition-colors flex items-center justify-center">
@@ -258,49 +443,89 @@ export const CoursePage = () => {
                           )}
                         </div>
 
-                        {/* Title, Level, and Subtitle */}
+                        {/* Title and Source Badges */}
                         <div className="space-y-1.5 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-2.5 py-0.5 rounded-lg bg-rose-600 dark:bg-rose-500 text-white text-3xs font-black uppercase shadow-2xs">
-                              {course.level || "N5"}
-                            </span>
-                            {course.isPremiumOnly && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 text-3xs font-extrabold rounded-lg border border-amber-200 dark:border-amber-800">
-                                <Sparkles size={10} className="text-amber-500 animate-spin-slow" />
-                                PRO ONLY
+                            {/* Source Type Badge */}
+                            {isCommunity ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-3xs font-extrabold">
+                                <Globe size={11} className="text-emerald-500" />
+                                Cộng đồng (Free)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-3xs font-extrabold">
+                                <Zap size={11} className="text-amber-500" />
+                                JTalk Độc quyền
                               </span>
                             )}
-                            <span className="text-3xs font-bold text-slate-400">
-                              {lessonsCount} bài học
-                            </span>
+
+                            {/* Lock or Unlocked Badge */}
+                            {isLocked ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 text-3xs font-extrabold rounded-lg border border-amber-200 dark:border-amber-800">
+                                <Lock size={10} className="text-amber-600" />
+                                PRO ONLY
+                              </span>
+                            ) : !isCommunity && isPremium ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-3xs font-extrabold rounded-lg border border-emerald-200 dark:border-emerald-800">
+                                <Sparkles size={10} className="text-emerald-600" />
+                                Đã mở khóa
+                              </span>
+                            ) : null}
                           </div>
 
                           <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors line-clamp-1">
-                            {course.title}
+                            {formatCourseTitle(course.title)}
                           </h3>
 
+                          {course.channelName && (
+                            <div className="flex items-center gap-1.5 text-3xs font-bold text-slate-500 dark:text-slate-400">
+                              <Tv size={12} className={isCommunity ? "text-emerald-600" : "text-amber-500"} />
+                              <span>{isCommunity ? `Kênh: ${course.channelName}` : course.channelName}</span>
+                            </div>
+                          )}
+
                           <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed font-medium">
-                            {course.description}
+                            {course.description ? course.description.replace(/Khóa học/gi, "Chuỗi") : ""}
                           </p>
                         </div>
                       </div>
 
+                      {/* Quick Meta Pills: Duration, Videos, Tags */}
+                      <div className="flex items-center gap-2 flex-wrap text-3xs text-slate-500 dark:text-slate-400 font-semibold pt-1">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80">
+                          <Clock size={11} className="text-slate-400" />
+                          <span>{durationMins} phút</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80">
+                          <Video size={11} className="text-slate-400" />
+                          <span>{videosCount > 0 ? `${videosCount} video` : `${lessonsCount} bài`}</span>
+                        </span>
+                        {course.tags && course.tags.length > 0 && course.tags.slice(0, 2).map((tag, tIdx) => (
+                          <span
+                            key={tIdx}
+                            className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/60 text-3xs font-bold"
+                          >
+                            #{formatCategoryTag(tag)}
+                          </span>
+                        ))}
+                      </div>
+
                       {/* Badges / Categories */}
                       {course.category && (
-                        <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                           {course.category.split("•").map((cat, cIdx) => (
                             <span
                               key={cIdx}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-3xs font-bold"
+                              className="px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-3xs font-medium"
                             >
-                              {cat.trim()}
+                              {formatCategoryTag(cat)}
                             </span>
                           ))}
                         </div>
                       )}
                     </div>
 
-                    {/* Progress Bar & Footer */}
+                    {/* Progress Bar & Footer Action */}
                     <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
                       <div className="flex-1 space-y-1.5">
                         <div className="flex items-center justify-between text-2xs font-extrabold">
@@ -319,10 +544,17 @@ export const CoursePage = () => {
                         </div>
                       </div>
 
-                      <div className="shrink-0 flex items-center gap-1 text-xs font-black text-rose-600 dark:text-rose-400 group-hover:translate-x-1 transition-transform">
-                        <span>Vào học</span>
-                        <ChevronRight size={15} />
-                      </div>
+                      {isLocked ? (
+                        <div className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-black group-hover:bg-amber-100 transition-colors">
+                          <Lock size={13} className="text-amber-600" />
+                          <span>Mở khóa PRO</span>
+                        </div>
+                      ) : (
+                        <div className="shrink-0 flex items-center gap-1 text-xs font-black text-rose-600 dark:text-rose-400 group-hover:translate-x-1 transition-transform">
+                          <span>Vào học</span>
+                          <ChevronRight size={15} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

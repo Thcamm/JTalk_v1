@@ -8,7 +8,7 @@ import {
   type CreateLessonPayload,
 } from "@/services/admin.service";
 import { lessonService } from "@/services/lesson.service";
-import type { Topic, VideoSubtitle } from "@/types";
+import type { Topic, VideoSubtitle, Course } from "@/types";
 import YouTubePreview from "@/components/admin/YouTubePreview";
 import SubtitleEditor, { parseSubtitlesContent } from "@/components/admin/SubtitleEditor";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -23,11 +23,46 @@ import {
   FileText,
   AlertCircle,
   Loader2,
+  Plus,
+  X,
+  FolderPlus,
 } from "lucide-react";
 
 interface AdminLessonFormPageProps {
   lessonId?: string;
 }
+
+const TOPIC_VN_MAP: Record<string, string> = {
+  "新しいクラスでの自己紹介": "Tự giới thiệu bản thân trong lớp học mới",
+  "毎日の生活について": "Hoạt động & Thói quen đời sống thường nhật",
+  "病院で診察を受ける": "Khám bệnh & Miêu tả triệu chứng tại phòng khám",
+  "カフェで飲み物を注文する": "Gọi đồ uống & Giao tiếp tại quán cà phê",
+  "駅で道を尋ねる・乗換案内": "Hỏi đường và chuyển tuyến tàu điện ngầm",
+  "採用面接・志望 động cơ": "Phỏng vấn xin việc & Nêu nguyện vọng ứng tuyển",
+  "採用面接・志望動機": "Phỏng vấn xin việc & Nêu nguyện vọng ứng tuyển",
+  "ビジネス会話・進捗報告": "Đàm thoại công sở & Báo cáo tiến độ HORENSO",
+  "居酒屋で乾杯・食事の誘い": "Rủ đồng nghiệp đi ăn & Nâng ly tại quán nhậu",
+  "Minna no Nihongo - Video Hội thoại Đời sống": "Giáo trình Minna – Tình huống giao tiếp thực tế",
+  "敬語マスター - Làm chủ Kính ngữ giao tiếp": "Làm chủ Kính ngữ giao tiếp thực chiến",
+};
+
+const getTopicDisplayName = (name: string): string => {
+  return TOPIC_VN_MAP[name] || name;
+};
+
+const STANDARD_LEVELS = [
+  { value: "N5", label: "N5 - Nhập môn & Chào hỏi" },
+  { value: "N4", label: "N4 - Giao tiếp hàng ngày" },
+  { value: "N3", label: "N3 - Phỏng vấn & Cuộc sống Nhật" },
+  { value: "N2", label: "N2 - Công sở & Đàm thoại chuyên sâu" },
+  { value: "N1", label: "N1 - Thương mại & Cao cấp" },
+];
+
+const STANDARD_FORMATS = [
+  { value: "video", label: "Video Shadowing & Phản xạ" },
+  { value: "exam_review", label: "Video Chữa đề & Giải thích đề thi" },
+  { value: "situation", label: "Video Tình huống Giao tiếp thực tế" },
+];
 
 function extractYouTubeId(urlOrId: string): string {
   const trimmed = urlOrId.trim();
@@ -45,36 +80,59 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
   const lessonId = propLessonId || (params?.id as string | undefined);
   const isEditMode = Boolean(lessonId);
 
-  // Topics list for selector
+  // Topics and Courses list for selector
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [fetching, setFetching] = useState(isEditMode);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Quick inline Topic creation
+  const [showNewTopicForm, setShowNewTopicForm] = useState(false);
+  const [newTopicName, setNewTopicName] = useState("");
+  const [newTopicLevel, setNewTopicLevel] = useState("N5");
+  const [creatingTopic, setCreatingTopic] = useState(false);
+  const [topicCreateError, setTopicCreateError] = useState<string | null>(null);
+
   // Form states
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [courseId, setCourseId] = useState("");
   const [topicId, setTopicId] = useState("");
   const [level, setLevel] = useState("N5");
+  const [isCustomLevel, setIsCustomLevel] = useState(false);
+  const [customLevel, setCustomLevel] = useState("");
+  const [orderIndex, setOrderIndex] = useState<number>(1);
+  const [episodeNumber, setEpisodeNumber] = useState<number>(1);
+  const [lessonType, setLessonType] = useState<string>("video");
+  const [isCustomFormat, setIsCustomFormat] = useState(false);
+  const [customFormat, setCustomFormat] = useState("");
+  const [sourceType, setSourceType] = useState<"community" | "jtalk">("community");
   const [rawVideoInput, setRawVideoInput] = useState("");
   const [youtubeId, setYoutubeId] = useState("");
   const [channelName, setChannelName] = useState("");
+  const [channelUrl, setChannelUrl] = useState("");
   const [duration, setDuration] = useState("05:00");
   const [isPremiumOnly, setIsPremiumOnly] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
   const [subtitles, setSubtitles] = useState<VideoSubtitle[]>([]);
 
-  // Load Topics
+  // Load Topics and Courses
   useEffect(() => {
-    adminService
-      .getTopics()
-      .then((data) => {
-        setTopics(data);
-        if (!isEditMode && data.length > 0 && !topicId) {
-          setTopicId(data[0]._id);
+    Promise.all([adminService.getTopics(), adminService.getCourses()])
+      .then(([topicsData, coursesData]) => {
+        setTopics(topicsData);
+        setCourses(coursesData);
+        if (!isEditMode && topicsData.length > 0 && !topicId) {
+          setTopicId(topicsData[0]._id);
+          const firstCid =
+            typeof topicsData[0].courseId === "object" && topicsData[0].courseId
+              ? (topicsData[0].courseId as any)._id
+              : topicsData[0].courseId;
+          if (firstCid) setCourseId(firstCid);
         }
       })
-      .catch((err) => console.error("Lỗi khi tải topics:", err));
+      .catch((err) => console.error("Lỗi khi tải topics/courses:", err));
   }, [isEditMode, topicId]);
 
   // Load existing Lesson if Edit mode
@@ -87,15 +145,60 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
         const data = await lessonService.getLessonById(lessonId);
         setTitle(data.title || "");
         setDescription(data.description || "");
+        if (data.courseId) {
+          setCourseId(
+            typeof data.courseId === "object" && (data.courseId as any)._id
+              ? (data.courseId as any)._id
+              : (data.courseId as string)
+          );
+        } else if (
+          data.topicId &&
+          typeof data.topicId === "object" &&
+          (data.topicId as any).courseId
+        ) {
+          const tCid = (data.topicId as any).courseId;
+          setCourseId(typeof tCid === "object" ? tCid._id : tCid);
+        }
         setTopicId(
           typeof data.topicId === "object" && data.topicId?._id
             ? data.topicId._id
             : (data.topicId as string) || ""
         );
-        setLevel(data.level || "N5");
+
+        // Level check (standard vs custom)
+        const currentLevel = data.level || "N5";
+        const isStdLevel = STANDARD_LEVELS.some((s) => s.value === currentLevel);
+        if (isStdLevel) {
+          setLevel(currentLevel);
+          setIsCustomLevel(false);
+          setCustomLevel("");
+        } else {
+          setLevel(currentLevel);
+          setIsCustomLevel(true);
+          setCustomLevel(currentLevel);
+        }
+
+        if (data.orderIndex !== undefined) setOrderIndex(Number(data.orderIndex));
+        if (data.episodeNumber !== undefined) setEpisodeNumber(Number(data.episodeNumber));
+
+        // Format check (standard vs custom)
+        const currentFmt = data.lessonType || "video";
+        const isStdFmt = STANDARD_FORMATS.some((f) => f.value === currentFmt);
+        if (isStdFmt) {
+          setLessonType(currentFmt);
+          setIsCustomFormat(false);
+          setCustomFormat("");
+        } else {
+          setLessonType(currentFmt);
+          setIsCustomFormat(true);
+          setCustomFormat(currentFmt);
+        }
+
         setYoutubeId(data.youtubeId || "");
         setRawVideoInput(data.youtubeId ? `https://www.youtube.com/watch?v=${data.youtubeId}` : "");
+        setSourceType((data.sourceType as "community" | "jtalk") || "community");
         setChannelName(data.channelName || "");
+        setChannelUrl(data.channelUrl || "");
         setDuration(data.duration || "05:00");
         setIsPremiumOnly(Boolean(data.isPremiumOnly));
         setIsPublished(data.isPublished !== false);
@@ -109,6 +212,34 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
 
     loadLesson();
   }, [lessonId]);
+
+  // Quick topic creation handler
+  const handleCreateQuickTopic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTopicName.trim()) {
+      setTopicCreateError("Vui lòng nhập tên chủ đề bằng tiếng Việt.");
+      return;
+    }
+    try {
+      setCreatingTopic(true);
+      setTopicCreateError(null);
+      const created = await adminService.createTopic({
+        name: newTopicName.trim(),
+        courseId: courseId ? (courseId as any) : undefined,
+        level: newTopicLevel,
+        category: "video",
+        isPublished: true,
+      });
+      setTopics((prev) => [created, ...prev]);
+      setTopicId(created._id);
+      setNewTopicName("");
+      setShowNewTopicForm(false);
+    } catch (err: any) {
+      setTopicCreateError(err.response?.data?.message || "Không thể tạo chủ đề mới.");
+    } finally {
+      setCreatingTopic(false);
+    }
+  };
 
   // Auto-parse YouTube URL when typed or pasted
   const handleVideoInputChange = (val: string) => {
@@ -211,14 +342,23 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
     try {
       setSubmitting(true);
 
+      const finalLevel = isCustomLevel && customLevel.trim() ? customLevel.trim() : level || "N5";
+      const finalLessonType = isCustomFormat && customFormat.trim() ? customFormat.trim() : lessonType || "video";
+
       const payload: CreateLessonPayload = {
         title: title.trim(),
         description: description.trim(),
+        courseId: courseId || undefined,
         topicId,
-        level,
+        level: finalLevel,
+        orderIndex: Number(orderIndex) || 0,
+        episodeNumber: Number(episodeNumber) || 1,
+        lessonType: finalLessonType,
         youtubeId: youtubeId.trim() || undefined,
         videoUrl: rawVideoInput.trim() || undefined,
+        sourceType,
         channelName: channelName.trim() || undefined,
+        channelUrl: channelUrl.trim() || undefined,
         duration: duration.trim() || "05:00",
         isPremiumOnly,
         isPublished,
@@ -329,41 +469,306 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                    Chủ đề thuộc về <span className="text-rose-400">*</span>
+              {/* Course Selector (Khóa học / Bộ video lớn) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Khóa học / Bộ video lớn (Hiển thị ở Thư viện) <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={courseId}
+                  onChange={(e) => {
+                    const newCourseId = e.target.value;
+                    setCourseId(newCourseId);
+                    if (newCourseId) {
+                      const matchTopic = topics.find((t) => {
+                        const tCid =
+                          typeof t.courseId === "object" && t.courseId
+                            ? (t.courseId as any)._id
+                            : t.courseId;
+                        return tCid === newCourseId;
+                      });
+                      if (matchTopic) {
+                        setTopicId(matchTopic._id);
+                      }
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden font-medium"
+                >
+                  <option value="">-- Chọn khóa học / bộ video lớn --</option>
+                  {courses.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Chọn 1 trong các bộ video ở Thư viện (Kính ngữ, Minna 25 bài, Nhập môn, Đời sống, v.v.)
+                </p>
+              </div>
+
+              {/* Topic Selector with Vietnamese Display and Inline Create Button */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-300">
+                    Chủ đề chi tiết (Topic con)<span className="text-rose-400">*</span>
                   </label>
-                  <select
-                    required
-                    value={topicId}
-                    onChange={(e) => setTopicId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNewTopicForm(!showNewTopicForm);
+                      setTopicCreateError(null);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
                   >
-                    <option value="">-- Chọn chủ đề --</option>
-                    {topics.map((t) => (
-                      <option key={t._id} value={t._id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
+                    {showNewTopicForm ? (
+                      <>
+                        <X size={13} />
+                        <span>Đóng tạo chủ đề</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={13} />
+                        <span>+ Tạo chủ đề mới</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
+                <select
+                  required
+                  value={topicId}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    setTopicId(selectedId);
+                    const selectedTopic = topics.find((t) => t._id === selectedId);
+                    if (selectedTopic && selectedTopic.courseId) {
+                      const tCid =
+                        typeof selectedTopic.courseId === "object"
+                          ? (selectedTopic.courseId as any)._id
+                          : selectedTopic.courseId;
+                      if (tCid && !courseId) {
+                        setCourseId(tCid);
+                      }
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden font-medium"
+                >
+                  <option value="">-- Chọn chủ đề bài học --</option>
+                  {(courseId
+                    ? topics.filter((t) => {
+                        const tCid =
+                          typeof t.courseId === "object" && t.courseId
+                            ? (t.courseId as any)._id
+                            : t.courseId;
+                        return !tCid || tCid === courseId;
+                      })
+                    : topics
+                  ).map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {getTopicDisplayName(t.name)}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Inline Quick Topic Creator */}
+                {showNewTopicForm && (
+                  <div className="p-3.5 rounded-2xl bg-indigo-950/30 border border-indigo-800/80 space-y-3 mt-2 shadow-inner">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
+                      <FolderPlus size={15} />
+                      <span>Thêm chủ đề mới (Tiếng Việt)</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div className="sm:col-span-2">
+                        <input
+                          type="text"
+                          value={newTopicName}
+                          onChange={(e) => setNewTopicName(e.target.value)}
+                          placeholder="Nhập tên chủ đề tiếng Việt (ví dụ: Chữa đề thi JLPT N3 Dokkai...)"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder:text-slate-500 focus:border-indigo-400 outline-hidden"
+                        />
+                      </div>
+                      <div>
+                        <select
+                          value={newTopicLevel}
+                          onChange={(e) => setNewTopicLevel(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:border-indigo-400 outline-hidden font-bold"
+                        >
+                          <option value="N5">N5 (Nhập môn)</option>
+                          <option value="N4">N4 (Sơ cấp)</option>
+                          <option value="N3">N3 (Trung cấp)</option>
+                          <option value="N2">N2 (Thực chiến)</option>
+                          <option value="N1">N1 (Cao cấp)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {topicCreateError && (
+                      <p className="text-[11px] text-rose-400 font-semibold">{topicCreateError}</p>
+                    )}
+
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewTopicForm(false)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCreateQuickTopic}
+                        disabled={creatingTopic || !newTopicName.trim()}
+                        className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {creatingTopic ? (
+                          <>
+                            <Loader2 size={12} className="animate-spin" />
+                            <span>Đang tạo...</span>
+                          </>
+                        ) : (
+                          <span>Lưu chủ đề & Chọn ngay</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Row 2: Level (with custom option), Episode #, and Video-centric Format (with custom option) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Level Selector & Custom Level Input */}
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                    Cấp độ JLPT <span className="text-rose-400">*</span>
+                    Cấp độ bài học <span className="text-rose-400">*</span>
                   </label>
                   <select
-                    value={level}
-                    onChange={(e) => setLevel(e.target.value)}
+                    value={isCustomLevel ? "__custom__" : level}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setIsCustomLevel(true);
+                        if (!customLevel) {
+                          setCustomLevel("JLPT N3 Chữa đề");
+                          setLevel("JLPT N3 Chữa đề");
+                        } else {
+                          setLevel(customLevel);
+                        }
+                      } else {
+                        setIsCustomLevel(false);
+                        setLevel(e.target.value);
+                      }
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden font-bold"
                   >
-                    <option value="N5">N5 - Nhập môn & Chào hỏi</option>
-                    <option value="N4">N4 - Giao tiếp hàng ngày</option>
-                    <option value="N3">N3 - Phỏng vấn & Cuộc sống Nhật</option>
-                    <option value="N2">N2 - Công sở & Đàm thoại chuyên sâu</option>
-                    <option value="N1">N1 - Thương mại & Cao cấp</option>
+                    {STANDARD_LEVELS.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                    <option value="__custom__"> Nhập cấp độ tùy chỉnh...</option>
                   </select>
+
+                  {/* Inline Custom Level Input */}
+                  {isCustomLevel && (
+                    <div className="mt-2 relative">
+                      <input
+                        type="text"
+                        required
+                        value={customLevel}
+                        onChange={(e) => {
+                          setCustomLevel(e.target.value);
+                          setLevel(e.target.value);
+                        }}
+                        placeholder="ví dụ: JLPT N3 Chữa đề, N2 Tổng ôn, Sơ cấp A1..."
+                        className="w-full pl-3 pr-24 py-2 rounded-xl bg-slate-950 border border-indigo-500/80 text-xs text-white placeholder:text-slate-500 focus:ring-1 focus:ring-indigo-500 outline-hidden font-bold"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomLevel(false);
+                          setLevel("N5");
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hover:text-rose-400 font-semibold"
+                        title="Quay lại danh sách chuẩn"
+                      >
+                        Về chuẩn JLPT
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Episode Number */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Tập số (Episode #)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={episodeNumber}
+                    onChange={(e) => setEpisodeNumber(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden font-mono"
+                  />
+                </div>
+
+                {/* Video-focused Format & Custom Format Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Định dạng bài học
+                  </label>
+                  <select
+                    value={isCustomFormat ? "__custom__" : lessonType}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setIsCustomFormat(true);
+                        if (!customFormat) {
+                          setCustomFormat("Video Ngữ pháp chuyên đề");
+                          setLessonType("Video Ngữ pháp chuyên đề");
+                        } else {
+                          setLessonType(customFormat);
+                        }
+                      } else {
+                        setIsCustomFormat(false);
+                        setLessonType(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden"
+                  >
+                    {STANDARD_FORMATS.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
+                    <option value="__custom__">Nhập định dạng tùy chỉnh...</option>
+                  </select>
+
+                  {/* Inline Custom Format Input */}
+                  {isCustomFormat && (
+                    <div className="mt-2 relative">
+                      <input
+                        type="text"
+                        required
+                        value={customFormat}
+                        onChange={(e) => {
+                          setCustomFormat(e.target.value);
+                          setLessonType(e.target.value);
+                        }}
+                        placeholder="ví dụ: Video Ngữ pháp chuyên đề, Tin tức NHK..."
+                        className="w-full pl-3 pr-20 py-2 rounded-xl bg-slate-950 border border-indigo-500/80 text-xs text-white placeholder:text-slate-500 focus:ring-1 focus:ring-indigo-500 outline-hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomFormat(false);
+                          setLessonType("video");
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hover:text-rose-400 font-semibold"
+                        title="Quay lại mặc định"
+                      >
+                        Về mặc định
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -472,7 +877,21 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                    Nguồn video
+                  </label>
+                  <select
+                    value={sourceType}
+                    onChange={(e) => setSourceType(e.target.value as "community" | "jtalk")}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden font-bold"
+                  >
+                    <option value="community">🌐 Cộng đồng (YouTube - Miễn phí)</option>
+                    <option value="jtalk">⚡ JTalk Độc quyền (AI Studio)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1.5">
                     Kênh / Tác giả YouTube
@@ -481,7 +900,7 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
                     type="text"
                     value={channelName}
                     onChange={(e) => setChannelName(e.target.value)}
-                    placeholder="ví dụ: Dogen, Nihongo no Mori, Japanese Ammo"
+                    placeholder="ví dụ: Sambon Juku, Dũng Mori"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden"
                   />
                 </div>
@@ -501,6 +920,19 @@ export default function AdminLessonFormPage({ lessonId: propLessonId }: AdminLes
                     />
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  URL Kênh / Video gốc (YouTube)
+                </label>
+                <input
+                  type="text"
+                  value={channelUrl}
+                  onChange={(e) => setChannelUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/@... hoặc https://www.youtube.com/watch?v=..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:border-indigo-500 outline-hidden"
+                />
               </div>
             </div>
           </div>

@@ -131,7 +131,6 @@ export const SpeakingPage = () => {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"scenarios" | "learning" | "history" | "leaderboard">("scenarios");
-  const [selectedLevel, setSelectedLevel] = useState<string>("Tất cả");
   const [searchQuery, setSearchQuery] = useState("");
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
@@ -190,15 +189,11 @@ export const SpeakingPage = () => {
   };
 
   const filteredScenarios = allScenarios.filter((sc) => {
-    const matchesSearch =
+    return (
       sc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sc.japaneseTitle.includes(searchQuery) ||
-      sc.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesLevel =
-      selectedLevel === "Tất cả" || sc.level === selectedLevel;
-
-    return matchesSearch && matchesLevel;
+      sc.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   return (
@@ -286,22 +281,8 @@ export const SpeakingPage = () => {
             </button>
           </div>
 
-          {/* Right Level Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            {["Tất cả", "N5", "N4", "N3", "N2", "N1"].map((lvl) => (
-              <button
-                key={lvl}
-                onClick={() => setSelectedLevel(lvl)}
-                type="button"
-                className={`px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer shrink-0 ${
-                  selectedLevel === lvl
-                    ? "bg-rose-600 dark:bg-rose-500 text-white font-bold shadow-2xs"
-                    : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 font-semibold"
-                }`}
-              >
-                {lvl}
-              </button>
-            ))}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+            <span>Tình huống thực tế phản xạ tức thì</span>
           </div>
         </div>
 
@@ -340,7 +321,7 @@ export const SpeakingPage = () => {
         ) : filteredScenarios.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 space-y-2 shadow-2xs">
             <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Không tìm thấy kịch bản phù hợp</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Vui lòng chọn trình độ khác hoặc xóa từ khóa tìm kiếm</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Vui lòng xóa hoặc thay đổi từ khóa tìm kiếm</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -353,7 +334,7 @@ export const SpeakingPage = () => {
                   onClick={() => handleScenarioClick(scenario)}
                   className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500 rounded-3xl overflow-hidden shadow-2xs hover:shadow-xl hover:shadow-rose-500/5 hover:-translate-y-1.5 transition-all duration-200 flex flex-col justify-between cursor-pointer"
                 >
-                  {/* Thumbnail Image with Level badge */}
+                  {/* Thumbnail Image */}
                   <div>
                     <div className="relative h-40 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
                       <img
@@ -362,11 +343,6 @@ export const SpeakingPage = () => {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
                       />
-
-                      {/* Level badge at top left */}
-                      <div className="absolute left-3 top-3 px-2 py-0.5 bg-rose-100/90 dark:bg-rose-950/90 text-rose-800 dark:text-rose-300 backdrop-blur-2xs rounded-md text-2xs font-extrabold uppercase shadow-xs border border-rose-200/50 dark:border-rose-800/60">
-                        {scenario.level}
-                      </div>
 
                       {/* Premium badge / Lock */}
                       {scenario.isPremium && (

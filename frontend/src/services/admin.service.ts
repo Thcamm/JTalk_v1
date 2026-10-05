@@ -51,6 +51,7 @@ export interface AdminLessonsQuery {
   page?: number;
   limit?: number;
   search?: string;
+  courseId?: string;
   topicId?: string;
   level?: string;
   isPublished?: boolean | string;
@@ -77,13 +78,19 @@ export interface AdminLessonsResponse {
 }
 
 export interface CreateLessonPayload {
+  courseId?: string;
   topicId: string;
   title: string;
   description?: string;
   level?: string;
+  orderIndex?: number;
+  episodeNumber?: number;
+  lessonType?: string;
   youtubeId?: string;
   videoUrl?: string;
+  sourceType?: "community" | "jtalk";
   channelName?: string;
+  channelUrl?: string;
   subtitles?: VideoSubtitle[];
   duration?: string;
   durationMinutes?: number;
@@ -214,6 +221,20 @@ export const adminService = {
     const res = await api.post<{ data: VideoSubtitle[] }>("/admin/subtitles/enrich", {
       subtitles,
     });
+    return res.data.data;
+  },
+
+  // 8. Clean redundant / duplicate Sambon Juku videos & restore Minna
+  cleanDuplicateVideos: async (): Promise<{
+    restoredMinnaCount: number;
+    deletedDuplicatesCount: number;
+  }> => {
+    const res = await api.post<{
+      data: {
+        restoredMinnaCount: number;
+        deletedDuplicatesCount: number;
+      };
+    }>("/admin/clean-duplicate-videos");
     return res.data.data;
   },
 };

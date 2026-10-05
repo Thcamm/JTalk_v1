@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "@/lib/react-router-compat";
 import {
   Sparkles,
@@ -17,7 +17,26 @@ import { useSidebarStore } from "@/stores/useSidebarStore";
 
 export default function Sidebar() {
   const { isPremium, user } = useAuth();
-  const { isCollapsed, toggleSidebar } = useSidebarStore();
+  const { isCollapsed, toggleSidebar, setCollapsed } = useSidebarStore();
+
+  useEffect(() => {
+    // Automatically collapse sidebar into off-screen drawer on mobile/tablet viewports (< 1024px)
+    const handleResize = () => {
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        setCollapsed(true);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [setCollapsed]);
+
+  const handleMobileClose = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setCollapsed(true);
+    }
+  };
 
   return (
     <>
@@ -33,13 +52,33 @@ export default function Sidebar() {
         className={`fixed left-0 top-0 h-screen bg-white dark:bg-[#0f172a] border-r border-slate-200/80 dark:border-slate-800/80 shadow-xs z-50 flex flex-col justify-between font-sans transition-all duration-300 ${
           isCollapsed
             ? "w-20 max-lg:-translate-x-full lg:translate-x-0"
-            : "w-64 translate-x-0 shadow-2xl lg:shadow-xs"
+            : "w-64 max-w-[85vw] translate-x-0 shadow-2xl lg:shadow-xs"
         }`}
       >
-        <div className="overflow-y-auto no-scrollbar">
+        {/* Desktop Collapse toggle button (Floating on right border, never overlaps logo) */}
+        <button
+          onClick={toggleSidebar}
+          type="button"
+          className="hidden lg:flex absolute -right-3 top-6 w-6 h-6 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white items-center justify-center transition-all cursor-pointer z-50 hover:scale-110 active:scale-95"
+          title={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
+        >
+          {isCollapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+        </button>
+
+        <div className="overflow-y-auto no-scrollbar flex-1">
           {/* Top Header & Logo */}
-          <div className="h-18 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800/80 relative">
-            <Link to="/dashboard" className="flex items-center gap-2.5 min-w-0 group">
+          <div
+            className={`h-18 flex items-center border-b border-slate-100 dark:border-slate-800/80 relative transition-all ${
+              isCollapsed ? "justify-center px-2" : "justify-between px-4"
+            }`}
+          >
+            <Link
+              to="/dashboard"
+              onClick={handleMobileClose}
+              className={`flex items-center gap-2.5 min-w-0 group ${
+                isCollapsed ? "justify-center" : ""
+              }`}
+            >
               {/* Mascot / Logo avatar */}
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 via-rose-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-rose-500/20 group-hover:scale-105 group-hover:rotate-3 transition-transform shrink-0 relative overflow-hidden">
                 <div className="absolute inset-0 bg-white/10 rounded-2xl animate-pulse" />
@@ -58,20 +97,14 @@ export default function Sidebar() {
               )}
             </Link>
 
-            {/* Collapse toggle button */}
+            {/* Mobile close button (only visible when drawer is open on mobile) */}
             <button
               onClick={toggleSidebar}
               type="button"
-              className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-              title={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn"}
+              className="lg:hidden w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              title="Đóng menu"
             >
-              {/* On mobile screens when expanded, show an X button to close easily */}
-              <span className="lg:hidden">
-                <X size={14} />
-              </span>
-              <span className="hidden lg:inline-flex">
-                {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-              </span>
+              <X size={16} />
             </button>
           </div>
 
@@ -112,13 +145,18 @@ export default function Sidebar() {
             isCollapsed ? (
               <Link
                 to="/admin"
+                onClick={handleMobileClose}
                 className="w-11 h-11 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:scale-105 transition-transform"
                 title="Cổng Quản trị viên"
               >
                 <ShieldCheck size={18} />
               </Link>
             ) : (
-              <div className="rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 p-3 text-center">
+              <Link
+                to="/admin"
+                onClick={handleMobileClose}
+                className="block rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 p-3 text-center hover:bg-indigo-100/80 dark:hover:bg-indigo-900/40 transition-colors"
+              >
                 <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 flex items-center justify-center gap-1.5">
                   <ShieldCheck size={14} className="text-indigo-600 dark:text-indigo-400" />
                   <span>Quản Trị Viên</span>
@@ -126,11 +164,12 @@ export default function Sidebar() {
                 <span className="text-[10px] text-indigo-700/80 dark:text-indigo-400/80 block mt-0.5 font-bold">
                   Toàn quyền hệ thống
                 </span>
-              </div>
+              </Link>
             )
           ) : isCollapsed ? (
             <Link
               to="/checkout"
+              onClick={handleMobileClose}
               className="w-11 h-11 mx-auto rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20 hover:scale-105 transition-transform"
               title="Nâng cấp gói Premium"
             >
@@ -146,6 +185,7 @@ export default function Sidebar() {
           ) : (
             <Link
               to="/checkout"
+              onClick={handleMobileClose}
               className="w-full py-3 px-3.5 bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 hover:brightness-105 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 hover:shadow-lg active:translate-y-0.5 transition-all"
             >
               <Sparkles size={15} className="text-amber-200 animate-spin-slow" />

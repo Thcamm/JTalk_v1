@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -45,7 +46,26 @@ const adminNavItems = [
 export default function AdminSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { isCollapsed, toggleSidebar } = useSidebarStore();
+  const { isCollapsed, toggleSidebar, setCollapsed } = useSidebarStore();
+
+  useEffect(() => {
+    // Auto-collapse sidebar on mobile/tablet viewports (< 1024px)
+    const handleResize = () => {
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        setCollapsed(true);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [setCollapsed]);
+
+  const handleMobileClose = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setCollapsed(true);
+    }
+  };
 
   return (
     <>
@@ -61,13 +81,33 @@ export default function AdminSidebar() {
         className={`fixed left-0 top-0 h-screen bg-slate-900 border-r border-slate-800 text-slate-100 z-50 flex flex-col justify-between font-sans transition-all duration-300 shadow-2xl ${
           isCollapsed
             ? "w-20 max-lg:-translate-x-full lg:translate-x-0"
-            : "w-64 translate-x-0"
+            : "w-64 max-w-[85vw] translate-x-0"
         }`}
       >
-        <div className="overflow-y-auto no-scrollbar">
+        {/* Desktop Collapse toggle button (Floating on right border, never overlaps logo) */}
+        <button
+          onClick={toggleSidebar}
+          type="button"
+          className="hidden lg:flex absolute -right-3 top-6 w-6 h-6 rounded-full bg-slate-800 border border-slate-700 shadow-lg text-slate-300 hover:text-white hover:bg-slate-700 items-center justify-center transition-all cursor-pointer z-50 hover:scale-110 active:scale-95"
+          title={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
+        >
+          {isCollapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+        </button>
+
+        <div className="overflow-y-auto no-scrollbar flex-1">
           {/* Header & Logo */}
-          <div className="h-18 flex items-center justify-between px-4 border-b border-slate-800 relative bg-slate-900/90 backdrop-blur-md">
-            <Link href="/admin" className="flex items-center gap-2.5 min-w-0 group">
+          <div
+            className={`h-18 flex items-center border-b border-slate-800 relative bg-slate-900/90 backdrop-blur-md transition-all ${
+              isCollapsed ? "justify-center px-2" : "justify-between px-4"
+            }`}
+          >
+            <Link
+              href="/admin"
+              onClick={handleMobileClose}
+              className={`flex items-center gap-2.5 min-w-0 group ${
+                isCollapsed ? "justify-center" : ""
+              }`}
+            >
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 group-hover:scale-105 group-hover:rotate-3 transition-transform shrink-0">
                 <ShieldCheck size={22} className="text-white" />
               </div>
@@ -89,18 +129,14 @@ export default function AdminSidebar() {
               )}
             </Link>
 
+            {/* Mobile close button (only visible when drawer is open on mobile) */}
             <button
               onClick={toggleSidebar}
               type="button"
-              className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
-              title={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn"}
+              className="lg:hidden w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              title="Đóng menu"
             >
-              <span className="lg:hidden">
-                <X size={14} />
-              </span>
-              <span className="hidden lg:inline-flex">
-                {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-              </span>
+              <X size={16} />
             </button>
           </div>
 
@@ -126,6 +162,7 @@ export default function AdminSidebar() {
                 <Link
                   key={item.to}
                   href={item.to}
+                  onClick={handleMobileClose}
                   title={isCollapsed ? item.text : undefined}
                   className={`
                     flex items-center gap-3.5
@@ -168,6 +205,7 @@ export default function AdminSidebar() {
         <div className="p-3 border-t border-slate-800 bg-slate-900/60">
           <Link
             href="/dashboard"
+            onClick={handleMobileClose}
             title={isCollapsed ? "Về Trang học viên" : undefined}
             className={`
               flex items-center gap-3
