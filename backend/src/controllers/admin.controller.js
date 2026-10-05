@@ -5,6 +5,7 @@ import Lesson from "../models/Lesson.js";
 import Practice from "../models/Practice.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
 import { AiService } from "../services/ai.service.js";
+import CurriculumService from "../services/curriculum.service.js";
 import mongoose from "mongoose";
 
 /**
@@ -247,7 +248,7 @@ export const getAdminLessons = async (req, res, next) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 15));
     const skip = (page - 1) * limit;
 
-    const { search, topicId, level, isPublished, hasVideo } = req.query;
+    const { search, courseId, topicId, level, isPublished, hasVideo } = req.query;
     const filter = {};
 
     if (search && search.trim()) {
@@ -256,6 +257,15 @@ export const getAdminLessons = async (req, res, next) => {
         { title: regex },
         { description: regex },
         { channelName: regex },
+      ];
+    }
+
+    if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
+      const topics = await Topic.find({ courseId }).select("_id");
+      const topicIds = topics.map((t) => t._id);
+      filter.$or = [
+        { courseId },
+        { topicId: { $in: topicIds } },
       ];
     }
 
@@ -280,12 +290,13 @@ export const getAdminLessons = async (req, res, next) => {
 
     const [lessons, total] = await Promise.all([
       Lesson.find(filter)
+        .populate("courseId", "title level")
         .populate({
           path: "topicId",
           select: "name courseId",
           populate: { path: "courseId", select: "title" },
         })
-        .sort({ createdAt: -1 })
+        .sort({ orderIndex: 1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -325,7 +336,23 @@ export const getAdminCourses = async (_req, res, next) => {
  */
 export const createAdminCourse = async (req, res, next) => {
   try {
-    const { title, description, level, thumbnail, category, channelName, isPublished, isPremiumOnly, orderIndex } = req.body;
+    const {
+      title,
+      description,
+      level,
+      thumbnail,
+      category,
+      courseType,
+      sourceType,
+      channelName,
+      channelUrl,
+      totalDurationMinutes,
+      totalVideos,
+      tags,
+      isPublished,
+      isPremiumOnly,
+      orderIndex,
+    } = req.body;
 
     if (!title) {
       return errorResponse(res, "Tiêu đề khóa học là bắt buộc.", 400);
@@ -336,8 +363,14 @@ export const createAdminCourse = async (req, res, next) => {
       description: description || "",
       level: level || "N5",
       thumbnail: thumbnail || "",
-      category: category || "kaiwa",
+      category: category || "Giao tiếp",
+      courseType: courseType || "video_series",
+      sourceType: sourceType || "community",
       channelName: channelName || "",
+      channelUrl: channelUrl || "",
+      totalDurationMinutes: totalDurationMinutes || 0,
+      totalVideos: totalVideos || 0,
+      tags: tags || [],
       isPublished: isPublished !== undefined ? isPublished : true,
       isPremiumOnly: !!isPremiumOnly,
       orderIndex: orderIndex || 0,
@@ -393,6 +426,19 @@ export const deleteAdminCourse = async (req, res, next) => {
   }
 };
 
+const TOPIC_VN_MAP = {
+  "新しいクラスでの自己紹介": "Tự giới thiệu bản thân trong lớp học mới",
+  "毎日の生活について": "Hoạt động & Thói quen đời sống thường nhật",
+  "病院で診察を受ける": "Khám bệnh & Miêu tả triệu chứng tại phòng khám",
+  "カフェで飲み物を注文する": "Gọi đồ uống & Giao tiếp tại quán cà phê",
+  "駅で道を尋ねる・乗換案内": "Hỏi đường và chuyển tuyến tàu điện ngầm",
+  "採用面接・志望動機": "Phỏng vấn xin việc & Nêu nguyện vọng ứng tuyển",
+  "ビジネス会話・進捗報告": "Đàm thoại công sở & Báo cáo tiến độ HORENSO",
+  "居酒屋で乾杯・食事の誘い": "Rủ đồng nghiệp đi ăn & Nâng ly tại quán nhậu",
+  "Minna no Nihongo - Video Hội thoại Đời sống": "Giáo trình Minna – Tình huống giao tiếp thực tế",
+  "敬語マスター - Làm chủ Kính ngữ giao tiếp": "Làm chủ Kính ngữ giao tiếp thực chiến",
+};
+
 /**
  * GET /api/v1/admin/topics
  * Get topics with optional courseId filter
@@ -405,10 +451,19 @@ export const getAdminTopics = async (req, res, next) => {
       filter.courseId = courseId;
     }
 
-    const topics = await Topic.find(filter)
+    const rawTopics = await Topic.find(filter)
       .populate("courseId", "title")
       .sort({ orderIndex: 1, createdAt: -1 })
       .lean();
+
+    const topics = rawTopics.map((t) => {
+      const vnName = TOPIC_VN_MAP[t.name] || t.name;
+      return {
+        ...t,
+        name: vnName,
+        originalName: t.name,
+      };
+    });
 
     return successResponse(res, topics, "Lấy danh sách chủ đề thành công!");
   } catch (error) {
@@ -734,6 +789,23 @@ Return ONLY a valid JSON array of objects with the exact structure:
       res,
       result,
       `Đã dịch và tạo Furigana/Romaji tự động cho ${enrichedData.length} câu phụ đề!`
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/admin/clean-duplicate-videos
+ * Clean redundant & duplicate video links (such as Sambon Juku 1iDoq9sGX1s) and restore Minna
+ */
+export const cleanDuplicateVideosHandler = async (_req, res, next) => {
+  try {
+    const result = await CurriculumService.cleanDuplicateVideos();
+    return successResponse(
+      res,
+      result,
+      `Đã dọn dẹp CSDL thành công! Khôi phục Minna: ${result.restoredMinnaCount || 0}, Xóa bài trùng: ${result.deletedDuplicatesCount || 0}`
     );
   } catch (error) {
     next(error);

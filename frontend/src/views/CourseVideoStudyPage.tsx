@@ -20,6 +20,8 @@ import {
   Maximize2,
   Minimize2,
   Gauge,
+  ExternalLink,
+  Tv,
 } from "lucide-react";
 import { toast } from "sonner";
 import { practiceService } from "@/services/practice.service";
@@ -69,7 +71,7 @@ const DEMO_LESSONS: DemoLesson[] = [
     description: "Nhập môn Kính ngữ tiếng Nhật: Phân biệt Tôn kính ngữ (Sonkeigo), Khiêm nhường ngữ (Kenjougo) và Thể lịch sự (Teineigo).",
     level: "N4",
     senseiName: "Sensei Yuki",
-    senseiRole: "Tokyo Accent Specialist",
+    senseiRole: "Chuyên gia Phát âm Bản xứ",
     senseiAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80",
     duration: "4 phút",
     youtubeId: "1iDoq9sGX1s",
@@ -393,7 +395,7 @@ const DEMO_LESSONS: DemoLesson[] = [
     description: "Kỹ năng tìm đường ray, chuyển tuyến tàu Yamanote/Metro và nạp thẻ Suica tại ga đông đúc nhất thế giới.",
     level: "N5",
     senseiName: "Sensei Yuki",
-    senseiRole: "Tokyo Accent Specialist",
+    senseiRole: "Chuyên gia Phát âm Bản xứ",
     senseiAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
     duration: "3 phút",
     youtubeId: "j413wwBsPyo",
@@ -732,11 +734,6 @@ function findMatchingDemoLesson(id?: string): DemoLesson | undefined {
 }
 
 function formatLessonToDemo(lesson: Lesson): DemoLesson {
-  const isKeigo =
-    lesson.title?.toLowerCase().includes("kính ngữ") ||
-    lesson.title?.toLowerCase().includes("keigo") ||
-    lesson.title?.toLowerCase().includes("敬語");
-
   const isFoodLesson =
     lesson.title?.toLowerCase().includes("gọi món") ||
     lesson.title?.toLowerCase().includes("nhà hàng") ||
@@ -747,10 +744,7 @@ function formatLessonToDemo(lesson: Lesson): DemoLesson {
     lesson.title?.toLowerCase().includes("ăn uống") ||
     lesson.title?.toLowerCase().includes("注文");
 
-  const ytId =
-    lesson.youtubeId ||
-    extractYouTubeId(lesson.videoUrl) ||
-    (isKeigo ? "1iDoq9sGX1s" : undefined);
+  const ytId = lesson.youtubeId?.trim() || extractYouTubeId(lesson.videoUrl);
 
   let subs = lesson.subtitles || [];
   if (!subs || subs.length === 0) {
@@ -775,10 +769,6 @@ function formatLessonToDemo(lesson: Lesson): DemoLesson {
     }
   }
 
-  const defaultSubs = isFoodLesson
-    ? (DEMO_LESSONS.find((l) => l.id === "lesson-ramen")?.subtitles || DEMO_LESSONS[0].subtitles)
-    : DEMO_LESSONS[0].subtitles;
-
   return {
     id: lesson._id,
     title: lesson.title,
@@ -789,7 +779,7 @@ function formatLessonToDemo(lesson: Lesson): DemoLesson {
       ? "Video bài giảng bản xứ"
       : isFoodLesson
       ? "Baito & Restaurant Coach"
-      : "Tokyo Accent Specialist",
+      : "Chuyên gia Phát âm Bản xứ",
     senseiAvatar:
       lesson.image ||
       (isFoodLesson
@@ -799,7 +789,7 @@ function formatLessonToDemo(lesson: Lesson): DemoLesson {
     youtubeId: ytId,
     videoUrl: lesson.videoUrl,
     channelName: lesson.channelName,
-    subtitles: subs.length > 0 ? subs : defaultSubs,
+    subtitles: subs,
   };
 }
 
@@ -913,12 +903,28 @@ export const CourseVideoStudyPage = () => {
   const { courseId, lessonId } = useParams<{ courseId?: string; lessonId: string }>();
   const navigate = useNavigate();
 
-  // Find active lesson from matched demo list or fallback to first
-  const initialLesson =
-    findMatchingDemoLesson(lessonId) || DEMO_LESSONS[0];
-  const [selectedLesson, setSelectedLesson] = useState<DemoLesson>(initialLesson);
-  const [loadingLesson, setLoadingLesson] = useState<boolean>(false);
-  const [courseLessons, setCourseLessons] = useState<DemoLesson[]>(DEMO_LESSONS);
+  // Check if current lessonId matches a static demo ID
+  const directDemoMatch = DEMO_LESSONS.find((l) => l.id === lessonId);
+  const isStaticDemo = Boolean(directDemoMatch);
+
+  // Initialize selectedLesson: if static demo, use it directly. If dynamic database lesson, start in clean loading state without Sambon Juku videoId!
+  const [selectedLesson, setSelectedLesson] = useState<DemoLesson>(() => {
+    if (directDemoMatch) return directDemoMatch;
+    return {
+      id: lessonId || "loading",
+      title: "Đang tải bài học...",
+      description: "",
+      level: "N5",
+      senseiName: "Giảng viên",
+      senseiRole: "Video bài giảng",
+      senseiAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80",
+      duration: "Đang tải...",
+      youtubeId: undefined, // CRITICAL: NEVER initialize with 1iDoq9sGX1s
+      subtitles: [],
+    };
+  });
+  const [loadingLesson, setLoadingLesson] = useState<boolean>(!isStaticDemo);
+  const [courseLessons, setCourseLessons] = useState<DemoLesson[]>([]);
 
   const [studyMode, setStudyMode] = useState<StudyMode>("shadowing");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1070,6 +1076,7 @@ export const CourseVideoStudyPage = () => {
       isPlayingRef.current = false;
       setIsPlaying(false);
       stopAllAudio();
+      setLoadingLesson(false);
       return;
     }
 
@@ -1088,15 +1095,19 @@ export const CourseVideoStudyPage = () => {
           return;
         }
       } catch (err) {
-        console.warn("Could not fetch lesson from backend API, applying smart fallback:", err);
+        console.warn("Could not fetch lesson from backend API:", err);
       } finally {
         if (isMounted) setLoadingLesson(false);
       }
 
       // If API failed or returned 404 (e.g. mock ID or offline backend):
       if (isMounted) {
-        const fallbackMatch = findMatchingDemoLesson(lessonId) || DEMO_LESSONS[0];
-        setSelectedLesson(fallbackMatch);
+        const fallbackMatch = findMatchingDemoLesson(lessonId);
+        if (fallbackMatch) {
+          setSelectedLesson(fallbackMatch);
+        } else {
+          toast.error("Không tìm thấy dữ liệu video cho bài học này.");
+        }
         setActiveSubIndex(0);
         isPlayingRef.current = false;
         setIsPlaying(false);
@@ -1121,29 +1132,41 @@ export const CourseVideoStudyPage = () => {
 
     const loadCourseLessons = async () => {
       try {
-        const topics = await curriculumService.getCourseTopics(courseId);
-        if (!isMounted || !topics || topics.length === 0) {
-          setCourseLessons(DEMO_LESSONS);
-          return;
+        const [courseLessonsList, topics] = await Promise.allSettled([
+          curriculumService.getCourseLessons(courseId),
+          curriculumService.getCourseTopics(courseId),
+        ]);
+
+        let lessonsFound: Lesson[] = [];
+        if (
+          courseLessonsList.status === "fulfilled" &&
+          Array.isArray(courseLessonsList.value) &&
+          courseLessonsList.value.length > 0
+        ) {
+          lessonsFound = courseLessonsList.value;
+        } else if (
+          topics.status === "fulfilled" &&
+          Array.isArray(topics.value) &&
+          topics.value.length > 0
+        ) {
+          const lessonsPromises = topics.value.map((t) =>
+            curriculumService.getTopicLessons(t._id).catch(() => [] as Lesson[])
+          );
+          const topicLessonsArrays = await Promise.all(lessonsPromises);
+          lessonsFound = topicLessonsArrays.flat();
         }
 
-        const lessonsPromises = topics.map((t) =>
-          curriculumService.getTopicLessons(t._id).catch(() => [] as Lesson[])
-        );
-        const topicLessonsArrays = await Promise.all(lessonsPromises);
-        const allFetchedLessons = topicLessonsArrays.flat();
-
         if (isMounted) {
-          if (allFetchedLessons.length > 0) {
-            const formattedList = allFetchedLessons.map(formatLessonToDemo);
+          if (lessonsFound.length > 0) {
+            const formattedList = lessonsFound.map(formatLessonToDemo);
             setCourseLessons(formattedList);
           } else {
-            setCourseLessons(DEMO_LESSONS);
+            setCourseLessons([]);
           }
         }
       } catch (err) {
         console.warn("Could not load course lessons for switcher:", err);
-        if (isMounted) setCourseLessons(DEMO_LESSONS);
+        if (isMounted) setCourseLessons([]);
       }
     };
 
@@ -1228,7 +1251,8 @@ export const CourseVideoStudyPage = () => {
 
   // Initialize and synchronize YouTube Player
   useEffect(() => {
-    if (!ytApiReady || !selectedLesson.youtubeId) return;
+    // Guard: Do NOT mount player while still loading dynamic lesson or if no youtubeId
+    if (!ytApiReady || !selectedLesson.youtubeId || loadingLesson) return;
 
     // If player already exists, load the new video immediately
     if (ytPlayerRef.current) {
@@ -1301,7 +1325,7 @@ export const CourseVideoStudyPage = () => {
     return () => {
       stopYouTubeTimeSync();
     };
-  }, [ytApiReady, selectedLesson.youtubeId, startYouTubeTimeSync, stopYouTubeTimeSync, stopAllAudio]);
+  }, [ytApiReady, selectedLesson.youtubeId, loadingLesson, startYouTubeTimeSync, stopYouTubeTimeSync, stopAllAudio]);
 
   // Clean up YouTube time poll & instance on unmount
   useEffect(() => {
@@ -1647,10 +1671,7 @@ export const CourseVideoStudyPage = () => {
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded text-3xs font-extrabold">
-                    {selectedLesson.level}
-                  </span>
-                  <span className="text-2xs sm:text-xs font-black text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-[320px]">
+                  <span className="text-2xs sm:text-xs font-black text-slate-900 dark:text-white truncate max-w-[150px] sm:max-w-[320px]">
                     {selectedLesson.title}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
@@ -1695,12 +1716,7 @@ export const CourseVideoStudyPage = () => {
                         }`}
                       >
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-3xs font-extrabold px-1.5 py-0.2 bg-slate-200 dark:bg-slate-800 rounded">
-                              {l.level}
-                            </span>
-                            <p className="text-xs truncate">{l.title}</p>
-                          </div>
+                          <p className="text-xs truncate font-medium">{l.title}</p>
                           {l.description && (
                             <p className="text-3xs text-slate-400 truncate mt-0.5">{l.description}</p>
                           )}
@@ -1818,6 +1834,21 @@ export const CourseVideoStudyPage = () => {
                 }`}
               >
                 <div id="jtalk-yt-player" className="w-full h-full" />
+
+                {loadingLesson && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-xs text-slate-300">
+                    <LoadingSpinner size="lg" />
+                    <p className="mt-3 text-xs font-bold text-slate-300 tracking-wide">Đang tải video bài học...</p>
+                  </div>
+                )}
+
+                {!loadingLesson && !selectedLesson.youtubeId && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/95 text-slate-400 p-6 text-center">
+                    <Tv className="w-10 h-10 text-slate-600 mb-2" />
+                    <p className="text-xs font-bold text-slate-300">Bài học này chưa có liên kết video YouTube</p>
+                    <p className="text-3xs text-slate-500 mt-1">Quản trị viên có thể cập nhật link video trong trang Quản lý bài học</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1825,7 +1856,11 @@ export const CourseVideoStudyPage = () => {
           <div className="w-full bg-slate-950/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl space-y-2 shrink-0">
             {/* Furigana Sentence & Vietnamese Translation */}
             <div className="text-center space-y-1.5 py-0.5">
-              {showSubtitles || showFurigana || (showTranslation && currentSub.translation) ? (
+              {loadingLesson ? (
+                <div className="min-h-[44px] flex items-center justify-center text-xs text-slate-400 italic">
+                  <LoadingSpinner size="sm" className="mr-2" /> Đang tải nội dung bài học...
+                </div>
+              ) : (showSubtitles || showFurigana || (showTranslation && currentSub?.translation)) && currentSub?.japanese ? (
                 <>
                   <div className="min-h-[44px] flex items-center justify-center">
                     {renderFuriganaSentence(currentSub)}
@@ -1838,7 +1873,9 @@ export const CourseVideoStudyPage = () => {
                 </>
               ) : (
                 <div className="min-h-[44px] flex items-center justify-center text-xs text-slate-500 italic">
-                  Phụ đề đang tắt (Bấm nút "Phụ đề" hoặc "Furigana" bên dưới để hiển thị)
+                  {totalSubtitles === 0
+                    ? "Chưa có kịch bản phụ đề cho bài học này"
+                    : "Phụ đề đang tắt (Bấm nút 'Phụ đề' hoặc 'Furigana' bên dưới để hiển thị)"}
                 </div>
               )}
             </div>
@@ -1891,7 +1928,7 @@ export const CourseVideoStudyPage = () => {
               </div>
 
               {/* Toggles & Speed chips */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <button
                   onClick={() => setShowSubtitles((prev) => !prev)}
                   type="button"
@@ -1996,9 +2033,9 @@ export const CourseVideoStudyPage = () => {
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 type="button"
-                className={`inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-md ${
+                className={`w-full sm:w-auto justify-center inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-md ${
                   isRecording
-                    ? "bg-rose-600 hover:bg-rose-700 text-white animate-pulse shadow-rose-600/30 scale-105"
+                    ? "bg-rose-600 hover:bg-rose-700 text-white animate-pulse shadow-rose-600/30 scale-102"
                     : "bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 text-white shadow-rose-600/20 active:scale-95"
                 }`}
               >
@@ -2041,6 +2078,44 @@ export const CourseVideoStudyPage = () => {
               </div>
             )}
           </div>
+
+          {/* 4. Creator Credit & Copyright Attribution Bar */}
+          {selectedLesson.youtubeId ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-2xs text-slate-500 dark:text-slate-400 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-7 h-7 rounded-xl bg-red-600/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 font-black text-xs">
+                  YT
+                </span>
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-800 dark:text-slate-200 truncate flex items-center gap-1.5">
+                    <span>Nguồn:</span>
+                    <span className="text-red-600 dark:text-red-400">
+                      {selectedLesson.channelName || "Cộng đồng YouTube"}
+                    </span>
+                  </p>
+                  <p className="text-3xs text-slate-400 truncate">
+                    Video được nhúng từ YouTube chính thức của tác giả nhằm mục đích học tập phi thương mại.
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`https://www.youtube.com/watch?v=${selectedLesson.youtubeId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-red-600 text-3xs font-extrabold transition-colors shrink-0"
+              >
+                <span>Xem trên YouTube</span>
+                <ExternalLink size={11} />
+              </a>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-transparent border border-amber-200/60 dark:border-amber-900/40 rounded-2xl p-3 flex items-center gap-2.5 text-2xs text-amber-900 dark:text-amber-200 shrink-0">
+              <Sparkles size={16} className="text-amber-500 shrink-0" />
+              <span className="font-bold">
+                Nội dung độc quyền từ JTalk AI Studio kết hợp chấm điểm và luyện nói phản xạ tương tác.
+              </span>
+            </div>
+          )}
           </div>
         </div>
 
@@ -2071,21 +2146,33 @@ export const CourseVideoStudyPage = () => {
             ref={transcriptScrollContainerRef}
             className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 scrollbar-thin divide-y divide-slate-100 dark:divide-slate-800/60"
           >
-            {subtitles.map((sub, idx) => {
-              const isActive = idx === activeSubIndex;
+            {loadingLesson ? (
+              <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                <LoadingSpinner size="md" />
+                <p className="mt-3 text-xs font-bold text-slate-500">Đang tải phụ đề bài học...</p>
+              </div>
+            ) : subtitles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-slate-400 text-center px-4 space-y-2">
+                <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto" />
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">Chưa có kịch bản phụ đề cho bài học này</p>
+                <p className="text-3xs text-slate-500">Bạn có thể tự nhập phụ đề bằng công cụ trích xuất AI trong Admin.</p>
+              </div>
+            ) : (
+              subtitles.map((sub, idx) => {
+                const isActive = idx === activeSubIndex;
 
-              return (
-                <div
-                  key={idx}
-                  ref={(el) => {
-                    subtitleRefs.current[idx] = el;
-                  }}
-                  onClick={() => handleSelectSubtitle(idx, true)}
-                  className={`group flex items-start gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-rose-50/90 dark:bg-rose-950/50 border-l-4 border-rose-500 text-rose-950 dark:text-rose-200 shadow-2xs font-semibold"
-                      : "hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300"
-                  }`}
+                return (
+                  <div
+                    key={idx}
+                    ref={(el) => {
+                      subtitleRefs.current[idx] = el;
+                    }}
+                    onClick={() => handleSelectSubtitle(idx, true)}
+                    className={`group flex items-start gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-rose-50/90 dark:bg-rose-950/50 border-l-4 border-rose-500 text-rose-950 dark:text-rose-200 shadow-2xs font-semibold"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300"
+                    }`}
                 >
                   {/* Timestamp Badge & Play Button */}
                   <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
@@ -2139,7 +2226,8 @@ export const CourseVideoStudyPage = () => {
                   </div>
                 </div>
               );
-            })}
+            })
+          )}
           </div>
         </aside>
       </div>

@@ -64,16 +64,17 @@ export default function Navbar() {
         </div>
 
         {/* Right Section: Badges, Actions, Theme Toggle & User */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Admin Portal Quick Link (Only visible to admin) */}
           {user?.role === "admin" && (
             <Link
               to="/admin"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-full text-xs font-bold shadow-xs hover:shadow-md hover:shadow-indigo-500/25 active:scale-97 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-full text-xs font-bold shadow-xs hover:shadow-md hover:shadow-indigo-500/25 active:scale-97 transition-all cursor-pointer"
               title="Truy cập Cổng Quản trị viên"
             >
               <ShieldCheck size={14} />
-              <span>Admin Portal</span>
+              <span className="hidden sm:inline">Admin Portal</span>
+              <span className="sm:hidden">Admin</span>
             </Link>
           )}
 
@@ -90,11 +91,12 @@ export default function Navbar() {
           <button
             onClick={() => setShowCheckInModal(true)}
             type="button"
-            className="flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 px-3 py-1.5 text-xs font-black text-rose-900 dark:text-rose-200 shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs hover:bg-rose-100/80 dark:hover:bg-rose-900/40"
+            className="flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 px-2.5 sm:px-3 py-1.5 text-xs font-black text-rose-900 dark:text-rose-200 shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs hover:bg-rose-100/80 dark:hover:bg-rose-900/40"
             title={`Chuỗi ${streak} ngày học liên tiếp! Bấm để xem Thẻ điểm danh 7 ngày.`}
           >
             <Flame size={15} className="text-rose-500 fill-rose-500 animate-pulse" />
-            <span>{streak} ngày</span>
+            <span>{streak}</span>
+            <span className="hidden sm:inline">ngày</span>
           </button>
 
           {/* XP Pill (Hidden on mobile) */}

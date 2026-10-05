@@ -6,8 +6,8 @@ import { successResponse } from "../utils/apiResponse.js";
  */
 export const getCourses = async (req, res, next) => {
   try {
-    const { level, category } = req.query;
-    const courses = await CurriculumService.getCourses({ level, category });
+    const { level, category, sourceType } = req.query;
+    const courses = await CurriculumService.getCourses({ level, category, sourceType });
 
     return res.status(200).json({
       success: true,
@@ -52,6 +52,25 @@ export const getCourseTopics = async (req, res, next) => {
       success: true,
       data: topics,
       topics,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/courses/:id/lessons
+ * Get list of all lessons belonging to a course directly
+ */
+export const getCourseLessons = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const lessons = await CurriculumService.getLessonsByCourseId(id);
+
+    return res.status(200).json({
+      success: true,
+      data: lessons,
+      lessons,
     });
   } catch (error) {
     next(error);

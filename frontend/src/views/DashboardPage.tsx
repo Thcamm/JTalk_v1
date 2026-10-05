@@ -120,7 +120,7 @@ export const DashboardPage = () => {
             to="/courses"
             className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
           >
-            <span>Video Bài Giảng</span>
+            <span>Thư viện Video</span>
           </Link>
         </div>
 
@@ -285,15 +285,15 @@ export const DashboardPage = () => {
               </div>
               <div>
                 <h3 className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                  Video Bài Giảng AI
+                  Thư viện Video Thực Tế & AI
                 </h3>
                 <p className="text-2xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 font-medium leading-relaxed">
-                  Micro-learning 5 phút, phụ đề Furigana từng chữ và luyện đọc đuổi chuẩn Tokyo
+                  Video thực tế từ cộng đồng bản xứ & Chuỗi video AI độc quyền kèm Shadowing
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80 text-3xs font-bold text-amber-600 dark:text-amber-400 group-hover:underline">
-              <span>Xem bài học</span>
+              <span>Khám phá thư viện</span>
               <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>

@@ -14,6 +14,7 @@ import {
   createAdminTopic,
   getYoutubeTranscript,
   enrichSubtitlesWithAi,
+  cleanDuplicateVideosHandler,
 } from "../controllers/admin.controller.js";
 import {
   createLesson,
@@ -39,6 +40,7 @@ router.delete("/users/:id", deleteUser);
 // 3. Lesson & Video Management & YouTube Transcript Extraction
 router.get("/youtube/transcript", getYoutubeTranscript);
 router.post("/subtitles/enrich", enrichSubtitlesWithAi);
+router.post("/clean-duplicate-videos", cleanDuplicateVideosHandler);
 router.get("/lessons", getAdminLessons);
 router.post("/lessons", createLesson);
 router.patch("/lessons/:id", updateLesson);

@@ -3,8 +3,8 @@ import type { Course, Topic, Lesson } from "@/types";
 
 export const curriculumService = {
   // Courses
-  getCourses: async (): Promise<Course[]> => {
-    const res = await api.get("/courses");
+  getCourses: async (params?: { level?: string; category?: string; sourceType?: string }): Promise<Course[]> => {
+    const res = await api.get("/courses", { params });
     return res.data?.courses || res.data?.data || [];
   },
 
@@ -16,6 +16,11 @@ export const curriculumService = {
   getCourseTopics: async (courseId: string): Promise<Topic[]> => {
     const res = await api.get(`/courses/${courseId}/topics`);
     return res.data?.topics || res.data?.data || [];
+  },
+
+  getCourseLessons: async (courseId: string): Promise<Lesson[]> => {
+    const res = await api.get(`/courses/${courseId}/lessons`);
+    return res.data?.lessons || res.data?.data || [];
   },
 
   // Topics

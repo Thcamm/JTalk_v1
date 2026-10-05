@@ -102,6 +102,11 @@ const subtitleSchema = new mongoose.Schema(
 
 const lessonSchema = new mongoose.Schema(
   {
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course",
+      index: true,
+    },
     topicId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Topic",
@@ -111,6 +116,18 @@ const lessonSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
+      trim: true,
+    },
+    episodeNumber: {
+      type: Number,
+    },
+    orderIndex: {
+      type: Number,
+      default: 0,
+    },
+    lessonType: {
+      type: String,
+      default: "video",
       trim: true,
     },
     description: {
@@ -143,7 +160,17 @@ const lessonSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    sourceType: {
+      type: String,
+      enum: ["community", "jtalk"],
+      default: "community",
+      index: true,
+    },
     channelName: {
+      type: String,
+      trim: true,
+    },
+    channelUrl: {
       type: String,
       trim: true,
     },
@@ -176,8 +203,25 @@ const lessonSchema = new mongoose.Schema(
   }
 );
 
+lessonSchema.index({ courseId: 1, orderIndex: 1 });
+lessonSchema.index({ courseId: 1, isPublished: 1 });
 lessonSchema.index({ topicId: 1, isPublished: 1 });
 lessonSchema.index({ level: 1, isPublished: 1 });
+
+// Tự động suy ra courseId từ topicId nếu khi tạo/sửa chưa truyền courseId
+lessonSchema.pre("save", async function (next) {
+  if (!this.courseId && this.topicId) {
+    try {
+      const topic = await mongoose.model("Topic").findById(this.topicId).select("courseId");
+      if (topic && topic.courseId) {
+        this.courseId = topic.courseId;
+      }
+    } catch (err) {
+      console.warn("Could not auto-populate courseId for Lesson:", err.message);
+    }
+  }
+  next();
+});
 
 const Lesson = mongoose.model("Lesson", lessonSchema);
 export default Lesson;

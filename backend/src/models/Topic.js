@@ -37,6 +37,9 @@ const topicSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    unitNumber: {
+      type: Number,
+    },
     orderIndex: {
       type: Number,
       default: 0,
