@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "@/lib/react-router-compat";
 import { curriculumService } from "@/services/curriculum.service";
 import { LessonItem } from "@/components/dashboard/LessonItem";
@@ -9,7 +9,21 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Badge } from "@/components/common/Badge";
 import { useAuth } from "@/hooks/useAuth";
 import type { Course, Topic, Lesson } from "@/types";
-import { ArrowLeft, Sparkles, Folder } from "lucide-react";
+import {
+  ArrowLeft,
+  Sparkles,
+  Play,
+  Clock,
+  Video,
+  Tv,
+  Search,
+  BookOpen,
+  CheckCircle2,
+  ListFilter,
+  Globe,
+  Zap,
+  ExternalLink,
+} from "lucide-react";
 
 export const LessonListCoursePage = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -17,414 +31,336 @@ export const LessonListCoursePage = () => {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [selectedTopicId, setSelectedTopicId] = useState<string>("");
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
+  const [selectedTopicId, setSelectedTopicId] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [loadingLessons, setLoadingLessons] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
-  // 1. Fetch Course and Topics
   useEffect(() => {
     let isMounted = true;
 
-    const fetchCourseAndTopics = async () => {
+    const fetchCourseData = async () => {
       if (!courseId) return;
       try {
         setLoading(true);
 
-        const [courseData, topicList] = await Promise.allSettled([
+        const [courseData, topicList, lessonList] = await Promise.allSettled([
           curriculumService.getCourseById(courseId),
           curriculumService.getCourseTopics(courseId),
+          curriculumService.getCourseLessons(courseId),
         ]);
 
         if (isMounted) {
+          // 1. Course Data
           if (courseData.status === "fulfilled" && courseData.value) {
             setCourse(courseData.value);
           } else {
             setCourse({
               _id: courseId,
-              title: "Khóa học đàm thoại Kaiwa",
-              description: "Rèn luyện phản xạ giao tiếp tự nhiên với gia sư AI.",
+              title: "Chủ đề đàm thoại giao tiếp",
+              description: "Rèn luyện phản xạ giao tiếp tự nhiên với gia sư AI và video bài giảng.",
               level: "N5",
-              category: "kaiwa",
+              category: "Giao tiếp",
+              courseType: "video_series",
               isPublished: true,
               isPremiumOnly: false,
               orderIndex: 1,
             });
           }
 
+          // 2. Topics Data
           let fetchedTopics: Topic[] = [];
           if (topicList.status === "fulfilled" && topicList.value?.length > 0) {
             fetchedTopics = topicList.value;
-          } else {
-            // Demo topic fallback
-            fetchedTopics = [
-              {
-                _id: "topic-1",
-                name: "Chào hỏi & Làm quen lần đầu",
-                description: "Các mẫu câu tự giới thiệu bản thân và hỏi thăm thông tin.",
-                level: "N5",
-                isPublished: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-              {
-                _id: "topic-2",
-                name: "Mua sắm & Ăn uống tại nhà hàng",
-                description: "Hỏi giá tiền, thanh toán và gọi món ăn tại Nhật Bản.",
-                level: "N5",
-                isPublished: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-              {
-                _id: "topic-3",
-                name: "Hỏi đường & Di chuyển tàu điện ngầm",
-                description: "Tìm ga tàu, hỏi cách mua vé và chuyển tuyến JR/Metro.",
-                level: "N5",
-                isPublished: true,
-                isPremiumOnly: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-              {
-                _id: "topic-keigo",
-                name: "Video Kính ngữ thực chiến (Sambon Juku)",
-                description: "Phân biệt Tôn kính ngữ, Khiêm nhường ngữ và Thể lịch sự qua video bài giảng chuẩn bản xứ.",
-                level: "N4",
-                isPublished: true,
-                isPremiumOnly: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            ];
           }
-
           setTopics(fetchedTopics);
-          if (fetchedTopics.length > 0) {
-            setSelectedTopicId(fetchedTopics[0]._id);
+
+          // 3. Lessons Data
+          if (lessonList.status === "fulfilled" && Array.isArray(lessonList.value)) {
+            setAllLessons(lessonList.value);
+          } else {
+            setAllLessons([]);
           }
         }
       } catch (err) {
-        console.error("Error loading course details:", err);
+        console.error("Lỗi khi tải thông tin khóa học:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
     };
 
-    fetchCourseAndTopics();
+    fetchCourseData();
 
     return () => {
       isMounted = false;
     };
   }, [courseId]);
 
-  // 2. Fetch Lessons when selectedTopicId changes
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchLessons = async () => {
-      if (!selectedTopicId) return;
-
-      try {
-        setLoadingLessons(true);
-        const data = await curriculumService.getTopicLessons(selectedTopicId);
-        if (isMounted) {
-          if (data && data.length > 0) {
-            setLessons(data);
-          } else {
-            // Topic-specific fallback lessons
-            if (selectedTopicId === "topic-2" || selectedTopicId.includes("an-uong") || selectedTopicId.includes("nha-hang")) {
-              setLessons([
-                {
-                  _id: "lesson-ramen",
-                  topicId: selectedTopicId,
-                  title: "Bài 1: Gọi món và Giao tiếp tại Nhà hàng Nhật Bản (Chuumon & Kaiwa)",
-                  sampleSentence: "おすすめのとんこつラーメンセットをひとつお願いします。",
-                  translation: "Cho tôi một phần set ramen tonkotsu được gợi ý với ạ.",
-                  level: "N5",
-                  duration: "3 phút",
-                  isPublished: true,
-                  isPremiumOnly: false,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  _id: "topic-2-lesson-2",
-                  topicId: selectedTopicId,
-                  title: "Bài 2: Tùy chỉnh khẩu vị Ramen & Nước dùng đậm đà",
-                  sampleSentence: "麺のかたさはかためで、スープはこってりでお願いします。",
-                  translation: "Độ cứng sợi mì cho tôi loại dai cứng, còn nước súp thì đậm đà béo nhé.",
-                  level: "N5",
-                  duration: "4 phút",
-                  isPublished: true,
-                  isPremiumOnly: false,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  _id: "topic-2-lesson-3",
-                  topicId: selectedTopicId,
-                  title: "Bài 3: Gọi thanh toán & Trả tiền bằng PayPay hoặc Tiền mặt",
-                  sampleSentence: "すみません、お会計をお願いします。PayPayで支払えますか？",
-                  translation: "Xin lỗi, cho tôi thanh toán với. Quán có nhận PayPay không ạ?",
-                  level: "N5",
-                  duration: "3 phút",
-                  isPublished: true,
-                  isPremiumOnly: true,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ]);
-            } else if (selectedTopicId === "topic-3" || selectedTopicId.includes("tau-dien") || selectedTopicId.includes("shinjuku")) {
-              setLessons([
-                {
-                  _id: "lesson-shinjuku",
-                  topicId: selectedTopicId,
-                  title: "Bài 1: Hỏi đường & Chuyển tuyến tàu điện Shinjuku",
-                  sampleSentence: "すみません、新宿駅に行きたいんですが、どの電車に乗ればいいですか？",
-                  translation: "Xin lỗi, tôi muốn đi ga Shinjuku thì nên lên tàu nào ạ?",
-                  level: "N5",
-                  duration: "4 phút",
-                  isPublished: true,
-                  isPremiumOnly: false,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  _id: "topic-3-lesson-2",
-                  topicId: selectedTopicId,
-                  title: "Bài 2: Nạp thẻ Suica & Hướng dẫn qua cổng soát vé tự động",
-                  sampleSentence: "改札口の横にある券売機で、Suicaのチャージも簡単にできます。",
-                  translation: "Tại máy bán vé bên cạnh cổng soát vé, bạn cũng có thể nạp thẻ Suica dễ dàng.",
-                  level: "N5",
-                  duration: "3 phút",
-                  isPublished: true,
-                  isPremiumOnly: false,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ]);
-            } else if (selectedTopicId === "topic-keigo" || selectedTopicId.includes("keigo")) {
-              setLessons([
-                {
-                  _id: "lesson-keigo",
-                  topicId: selectedTopicId,
-                  title: "Bài 1: 敬語って何？ - Khái niệm Kính ngữ & 3 phân loại chính",
-                  sampleSentence: "みなさん、こんにちは！今回は敬語についてお話ししましょう。",
-                  translation: "Xin chào các bạn! Hôm nay chúng ta hãy cùng trò chuyện về Kính ngữ nhé.",
-                  level: "N4",
-                  duration: "5 phút",
-                  youtubeId: "1iDoq9sGX1s",
-                  isPublished: true,
-                  isPremiumOnly: false,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ]);
-            } else {
-              setLessons([
-                {
-                  _id: "lesson-baito",
-                  topicId: selectedTopicId,
-                  title: "Bài 1: Phỏng vấn xin việc thêm tại Combini & Chào hỏi khách hàng",
-                  sampleSentence: "はじめまして、本日は面接のお時間をいただきありがとうございます。",
-                  translation: "Rất vui được gặp anh/chị, cảm ơn anh/chị đã dành thời gian phỏng vấn hôm nay.",
-                  level: "N5",
-                  duration: "4 phút",
-                  isPublished: true,
-                  isPremiumOnly: false,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  _id: "topic-1-lesson-2",
-                  topicId: selectedTopicId,
-                  title: "Bài 2: Tự giới thiệu quê quán và nghề nghiệp (Jikoshoukai)",
-                  sampleSentence: "私はベトナムから来ました。エンジニアです。",
-                  translation: "Tôi đến từ Việt Nam. Tôi là một kỹ sư.",
-                  level: "N5",
-                  duration: "5 phút",
-                  isPublished: true,
-                  isPremiumOnly: false,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  _id: "topic-1-lesson-3",
-                  topicId: selectedTopicId,
-                  title: "Bài 3: Trò chuyện về sở thích (Shumi)",
-                  sampleSentence: "私の趣味は音楽を聴くことと旅行です。",
-                  translation: "Sở thích của tôi là nghe nhạc và đi du lịch.",
-                  level: "N5",
-                  duration: "5 phút",
-                  isPublished: true,
-                  isPremiumOnly: true,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ]);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Error loading lessons:", err);
-      } finally {
-        if (isMounted) setLoadingLessons(false);
+  // Filter lessons based on selected topic and search query
+  const filteredLessons = useMemo(() => {
+    return allLessons.filter((lesson) => {
+      // Topic match
+      let matchesTopic = true;
+      if (selectedTopicId !== "ALL") {
+        const rawTopicId =
+          typeof lesson.topicId === "object" && lesson.topicId
+            ? (lesson.topicId as any)._id
+            : (lesson.topicId as string);
+        matchesTopic = rawTopicId === selectedTopicId;
       }
-    };
 
-    fetchLessons();
+      // Search match
+      let matchesSearch = true;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        matchesSearch =
+          lesson.title.toLowerCase().includes(q) ||
+          (lesson.sampleSentence && lesson.sampleSentence.toLowerCase().includes(q)) ||
+          (lesson.translation && lesson.translation.toLowerCase().includes(q));
+      }
 
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedTopicId]);
+      return matchesTopic && matchesSearch;
+    });
+  }, [allLessons, selectedTopicId, searchQuery]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] flex items-center justify-center">
-        <LoadingSpinner size="lg" label="Đang tải danh sách bài học..." />
+        <LoadingSpinner size="lg" label="Đang tải danh sách bài học và video..." />
       </div>
     );
   }
 
-  const currentTopic = topics.find((t) => t._id === selectedTopicId) || topics[0];
+  const firstLesson = allLessons.length > 0 ? allLessons[0] : null;
+  const totalMins = course?.totalDurationMinutes || allLessons.reduce((acc, l) => acc + (l.durationMinutes || 5), 0);
+  const totalVideos = course?.totalVideos || allLessons.filter((l) => l.youtubeId || l.videoUrl || l.lessonType === "video").length;
 
   return (
     <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] p-4 sm:p-6 lg:p-8 font-sans transition-colors duration-200">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Navigation */}
+        {/* Navigation & Header Actions */}
         <div className="flex items-center justify-between">
           <Link
             to="/courses"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Tất cả khóa học</span>
+            <span>Quay lại Thư viện Video</span>
           </Link>
 
           {!isPremium && (
             <button
               onClick={() => setShowPremiumModal(true)}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-full text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
             >
-              <Sparkles className="w-3 h-3 text-amber-500 animate-spin-slow" />
-              <span>Gói Premium 99k/tháng</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
+              <span>Nâng cấp Pro 99k/tháng</span>
             </button>
           )}
         </div>
 
-        {/* Course Banner */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1.5 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <Badge variant="success" size="sm">
-                {course?.level || "N5"}
-              </Badge>
-              <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Khóa học đàm thoại</span>
+        {/* Enhanced Course Banner with Playlist Info */}
+        <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-3 max-w-3xl">
+            {/* Badges Bar */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {course?.sourceType === "jtalk" || course?.channelName?.toLowerCase().includes("jtalk") ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-3xs font-extrabold">
+                  <Zap size={11} className="text-amber-500" />
+                  JTalk Độc quyền
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-3xs font-extrabold">
+                  <Globe size={11} className="text-emerald-500" />
+                  Video Cộng đồng (Free)
+                </span>
+              )}
+
+              {course?.channelName && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-3xs font-bold">
+                  <Tv size={11} className="text-rose-500" />
+                  Kênh: {course.channelName}
+                </span>
+              )}
+
+              {course?.channelUrl && (
+                <a
+                  href={course.channelUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:underline text-3xs font-bold"
+                  title="Ghé thăm kênh YouTube gốc"
+                >
+                  <span>Kênh gốc</span>
+                  <ExternalLink size={10} />
+                </a>
+              )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-              {course?.title || "Khóa học Kaiwa"}
+
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              {course?.title
+                ? course.title
+                    .replace(/\s*\([^)]*\)/g, "")
+                    .replace(/Kaiwa/gi, "Giao tiếp")
+                    .replace(/Beginner/gi, "Nhập môn")
+                    .replace(/Intermediate/gi, "Trung cấp")
+                    .replace(/Business Japanese/gi, "Tiếng Nhật Doanh nghiệp")
+                : "Chủ đề Video Giao tiếp"}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              {course?.description || "Chọn chủ đề và bài học để vào phòng luyện phản xạ nói cùng AI."}
+
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              {course?.description
+                ? course.description.replace(/Khóa học/gi, "Chuỗi").replace(/Shadowing/gi, "phản xạ")
+                : "Kho bài giảng và video thực chiến. Học viên vừa xem video, vừa luyện nhại giọng với độ chính xác cao."}
             </p>
-          </div>
-        </div>
 
-        {/* Layout: Topics Sidebar + Lessons List */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Topics Navigation Column */}
-          <div className="lg:col-span-4 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-2">
-              Danh sách chủ đề ({topics.length})
-            </h3>
-            <div className="space-y-2">
-              {topics.map((t) => {
-                const isSelected = t._id === selectedTopicId;
-                const isTopicLocked = t.isPremiumOnly && !isPremium;
-
-                return (
-                  <button
-                    key={t._id}
-                    onClick={() => setSelectedTopicId(t._id)}
-                    type="button"
-                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-150 flex items-center justify-between gap-3 cursor-pointer ${
-                      isSelected
-                        ? "bg-rose-50/80 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-200 font-bold shadow-2xs ring-1 ring-rose-400"
-                        : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                          isSelected ? "bg-rose-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                        }`}
-                      >
-                        <Folder className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs sm:text-sm truncate">{t.name}</p>
-                        {t.description && (
-                          <p className="text-2xs text-slate-400 truncate font-normal">
-                            {t.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {isTopicLocked && (
-                      <Badge variant="premium" size="sm">
-                        Khóa
-                      </Badge>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Lessons List Column */}
-          <div className="lg:col-span-8 space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  {currentTopic?.name || "Danh sách bài học"}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {lessons.length} bài luyện phản xạ giọng nói
-                </p>
-              </div>
-            </div>
-
-            {loadingLessons ? (
-              <div className="py-16 flex justify-center">
-                <LoadingSpinner size="md" label="Đang tải các bài học..." />
-              </div>
-            ) : lessons.length === 0 ? (
-              <div className="text-center py-12 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6">
-                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                  Chủ đề này chưa có bài học nào
-                </p>
-              </div>
+            {/* Source Copyright Notice */}
+            {course?.sourceType === "jtalk" || course?.channelName?.toLowerCase().includes("jtalk") ? (
+              <p className="text-3xs text-amber-700 dark:text-amber-400 font-semibold pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5">
+                <Zap size={11} />
+                <span>Nội dung được biên soạn độc quyền bởi JTalk AI Studio kết hợp chấm phát âm và luyện phản xạ tương tác.</span>
+              </p>
             ) : (
-              <div className="space-y-3">
-                {lessons.map((lesson, idx) => (
-                  <LessonItem
-                    key={lesson._id}
-                    lesson={lesson}
-                    courseId={courseId}
-                    index={idx}
-                    isUserPremium={isPremium}
-                    onLockClick={() => setShowPremiumModal(true)}
-                  />
-                ))}
-              </div>
+              <p className="text-3xs text-slate-500 dark:text-slate-400 font-medium pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5">
+                <Globe size={11} className="text-emerald-600 shrink-0" />
+                <span>Video được nhúng trực tiếp qua YouTube Player từ kênh tác giả nhằm mục đích hỗ trợ học tập phi thương mại. Mọi quyền sở hữu thuộc về chủ kênh.</span>
+              </p>
             )}
+
+            {/* Quick Stats: Duration, Total Lessons, Videos */}
+            <div className="flex items-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400 pt-1">
+              <span className="inline-flex items-center gap-1.5">
+                <Clock size={14} className="text-rose-500" />
+                <span>Tổng {totalMins} phút</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Video size={14} className="text-rose-500" />
+                <span>{totalVideos > 0 ? `${totalVideos} video bài giảng` : `${allLessons.length} bài học`}</span>
+              </span>
+              {topics.length > 0 && (
+                <span className="inline-flex items-center gap-1.5">
+                  <BookOpen size={14} className="text-rose-500" />
+                  <span>{topics.length} chương / chủ đề</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Play First Lesson Action Button */}
+          {firstLesson && (
+            <div className="shrink-0 w-full sm:w-auto">
+              <Link
+                to={`/courses/${courseId}/lesson/${firstLesson._id}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg hover:shadow-rose-500/20 transition-all"
+              >
+                <Play size={15} className="fill-current ml-0.5" />
+                <span>Bắt đầu học ngay (Tập 1)</span>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Filter Controls: Search & Topic Tabs */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+          {/* Chapter / Topic Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setSelectedTopicId("ALL")}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
+                selectedTopicId === "ALL"
+                  ? "bg-rose-600 dark:bg-rose-500 text-white shadow-rose-600/20"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              Tất cả video ({allLessons.length})
+            </button>
+
+            {topics.map((t) => {
+              const isSelected = selectedTopicId === t._id;
+              const count = allLessons.filter((l) => {
+                const rawTopicId =
+                  typeof l.topicId === "object" && l.topicId ? (l.topicId as any)._id : (l.topicId as string);
+                return rawTopicId === t._id;
+              }).length;
+
+              return (
+                <button
+                  key={t._id}
+                  type="button"
+                  onClick={() => setSelectedTopicId(t._id)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
+                    isSelected
+                      ? "bg-rose-600 dark:bg-rose-500 text-white shadow-rose-600/20"
+                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {t.name} {count > 0 && `(${count})`}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search in Course */}
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm video, mẫu câu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs font-medium dark:text-white focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all shadow-2xs placeholder:text-slate-400"
+            />
           </div>
         </div>
+
+        {/* Video Playlist Header */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <ListFilter size={16} className="text-rose-500" />
+            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Danh sách video bài học ({filteredLessons.length})
+            </h3>
+          </div>
+
+          <span className="text-xs font-semibold text-slate-400">
+            {course?.courseType === "video_series" ? "Chuỗi bài giảng YouTube liên tục" : "Kịch bản giao tiếp tương tác"}
+          </span>
+        </div>
+
+        {/* Lessons / Videos List */}
+        {filteredLessons.length === 0 ? (
+          <div className="text-center py-16 bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-8 space-y-3">
+            <Video className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+              Không tìm thấy video bài giảng nào phù hợp
+            </p>
+            <button
+              onClick={() => {
+                setSelectedTopicId("ALL");
+                setSearchQuery("");
+              }}
+              className="text-xs font-black text-rose-600 dark:text-rose-400 underline underline-offset-4 cursor-pointer"
+            >
+              Hiển thị lại toàn bộ video
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredLessons.map((lesson, idx) => (
+              <LessonItem
+                key={lesson._id}
+                lesson={lesson}
+                courseId={courseId}
+                index={idx}
+                isUserPremium={isPremium}
+                onLockClick={() => setShowPremiumModal(true)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <PremiumModal

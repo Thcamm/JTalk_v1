@@ -3,6 +3,7 @@ import {
   getCourses,
   getCourseById,
   getCourseTopics,
+  getCourseLessons,
 } from "../controllers/course.controller.js";
 
 const router = express.Router();
@@ -15,5 +16,8 @@ router.get("/:id", getCourseById);
 
 // GET /api/v1/courses/:id/topics: Lấy danh sách topics thuộc khóa học
 router.get("/:id/topics", getCourseTopics);
+
+// GET /api/v1/courses/:id/lessons: Lấy danh sách toàn bộ bài học thuộc khóa học
+router.get("/:id/lessons", getCourseLessons);
 
 export default router;

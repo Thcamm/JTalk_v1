@@ -74,16 +74,17 @@ export const checkLessonPremiumAccess = async (req, res, next) => {
       return next();
     }
 
-    const lesson = await Lesson.findById(lessonId).populate("topicId");
+    const lesson = await Lesson.findById(lessonId).populate("topicId").populate("courseId");
     if (!lesson) {
       return errorResponse(res, "Không tìm thấy bài học", 404);
     }
 
     const isLessonPremium = lesson.isPremiumOnly;
     const isTopicPremium = lesson.topicId?.isPremiumOnly;
+    const isCoursePremium = lesson.courseId?.isPremiumOnly;
 
     // If neither is premium, allow free access
-    if (!isLessonPremium && !isTopicPremium) {
+    if (!isLessonPremium && !isTopicPremium && !isCoursePremium) {
       req.lesson = lesson;
       return next();
     }

@@ -21,7 +21,22 @@ const courseSchema = new mongoose.Schema(
       type: String,
       default: "kaiwa",
     },
+    courseType: {
+      type: String,
+      enum: ["video_series", "ai_kaiwa", "grammar_curriculum"],
+      default: "video_series",
+    },
+    sourceType: {
+      type: String,
+      enum: ["community", "jtalk"],
+      default: "community",
+      index: true,
+    },
     channelName: {
+      type: String,
+      trim: true,
+    },
+    channelUrl: {
       type: String,
       trim: true,
     },
@@ -29,6 +44,20 @@ const courseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    totalVideos: {
+      type: Number,
+      default: 0,
+    },
+    totalDurationMinutes: {
+      type: Number,
+      default: 0,
+    },
+    tags: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
     thumbnail: {
       type: String,
     },

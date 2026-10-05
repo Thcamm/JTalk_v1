@@ -7,6 +7,7 @@ import config from "./config/index.js";
 import { connectDB } from "./config/db.js";
 import apiRouter from "./routes/index.js";
 import { errorHandler } from "./middleware/errorHandler.middleware.js";
+import CurriculumService from "./services/curriculum.service.js";
 
 const app = express();
 const PORT = config.port;
@@ -71,7 +72,14 @@ app.use(errorHandler);
 
 // 6. Connect to MongoDB Atlas and Start Server
 connectDB()
-  .then(() => {
+  .then(async () => {
+    // Tự động kiểm tra và dọn dẹp các video trùng lặp khi khởi động
+    try {
+      await CurriculumService.cleanDuplicateVideos();
+    } catch (cleanErr) {
+      console.warn("⚠️ Tự động dọn dẹp video gặp lỗi nhỏ:", cleanErr?.message);
+    }
+
     app.listen(PORT, () => {
       console.log(`🚀 JTalk Backend Server đang chạy trên cổng ${PORT}`);
       console.log(`📡 API Base URL: http://localhost:${PORT}/api/v1`);

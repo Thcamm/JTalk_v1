@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSidebarStore } from "@/stores/useSidebarStore";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -19,12 +20,20 @@ export default function SidebarItem({
   isCollapsed = false,
 }: SidebarItemProps) {
   const pathname = usePathname();
+  const { setCollapsed } = useSidebarStore();
   const isActive = to === "/" ? pathname === "/" : pathname?.startsWith(to);
+
+  const handleClick = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setCollapsed(true);
+    }
+  };
 
   return (
     <Link
       href={to}
       prefetch={true}
+      onClick={handleClick}
       title={isCollapsed ? text : undefined}
       className={`
         flex items-center gap-3.5

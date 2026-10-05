@@ -50,79 +50,106 @@ const seedData = async () => {
     await Lesson.deleteMany({});
     console.log("Đã xoá dữ liệu Course, Topic & Lesson cũ.");
 
-    // 1. Tạo Khóa học (Courses)
+    // 1. Tạo Chủ đề Thư viện Video (Courses / Video Topics)
     const courseKeigo = await Course.create({
-      title: "Kính ngữ & Văn hóa Giao tiếp Bản xứ (Sambon Juku)",
+      title: "Kính ngữ và Văn hóa Giao tiếp Chuẩn Nhật",
       description:
-        "Khóa học video bài giảng Kính ngữ thực chiến của thầy Sambon Juku: Thể lịch sự (Teineigo), Tôn kính ngữ (Sonkeigo), Khiêm nhường ngữ (Kenjougo) và Shadowing trực quan.",
+        "Tuyển tập video bài giảng Kính ngữ thực tế: Thể lịch sự (Teineigo), Tôn kính ngữ (Sonkeigo), Khiêm nhường ngữ (Kenjougo) và luyện phản xạ tự nhiên.",
       level: "N4",
-      category: "kaiwa",
+      category: "Kính ngữ • Văn hóa ứng xử",
+      courseType: "video_series",
+      sourceType: "community",
       channelName: "三本塾 -Sambon Juku-",
+      channelUrl: "https://www.youtube.com/@SambonJuku",
       thumbnail:
         "https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800&auto=format&fit=crop&q=80",
       isPublished: true,
       isPremiumOnly: false,
-      totalLessons: 3,
+      totalLessons: 2,
+      totalVideos: 2,
+      totalDurationMinutes: 10,
+      tags: ["Kính ngữ", "Giao tiếp", "Phản xạ", "N4"],
       orderIndex: 1,
     });
 
     const courseN5 = await Course.create({
-      title: "Kaiwa Beginner - Phản xạ giao tiếp N5",
+      title: "Giao tiếp Nhập môn – Phản xạ Cơ bản N5",
       description:
         "Luyện tập phản xạ giao tiếp đời sống hàng ngày từ con số 0 đến N5 cùng trợ lý AI.",
       level: "N5",
-      category: "daily",
-      channelName: "JTalk AI Tutor",
+      category: "Giao tiếp đời sống • Luyện nói phản xạ",
+      courseType: "ai_kaiwa",
+      sourceType: "jtalk",
+      channelName: "JTalk AI Studio",
       thumbnail:
         "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&auto=format&fit=crop&q=80",
       isPublished: true,
-      isPremiumOnly: false,
-      totalLessons: 4,
+      isPremiumOnly: true,
+      totalLessons: 3,
+      totalVideos: 0,
+      totalDurationMinutes: 15,
+      tags: ["N5", "Chào hỏi", "Đời sống", "Luyện nói phản xạ"],
       orderIndex: 2,
     });
 
     const courseN4 = await Course.create({
-      title: "Kaiwa Intermediate & Công sở N4",
+      title: "Giao tiếp Đời sống và Tình huống Công sở N4",
       description:
-        "Kịch bản giao tiếp đời sống mở rộng, quán ăn, bệnh viện và phỏng vấn cơ bản.",
+        "Kịch bản giao tiếp đời sống mở rộng, gọi món nhà hàng, khám bệnh và phỏng vấn cơ bản.",
       level: "N4",
-      category: "daily",
-      channelName: "JTalk AI Tutor",
+      category: "Công sở • Nhà hàng • Phỏng vấn",
+      courseType: "ai_kaiwa",
+      sourceType: "jtalk",
+      channelName: "JTalk AI Studio",
       thumbnail:
         "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800&auto=format&fit=crop&q=80",
       isPublished: true,
-      isPremiumOnly: false,
-      totalLessons: 4,
+      isPremiumOnly: true,
+      totalLessons: 3,
+      totalVideos: 0,
+      totalDurationMinutes: 15,
+      tags: ["N4", "Công sở", "Đời sống", "Phỏng vấn"],
       orderIndex: 3,
     });
 
     const courseN3 = await Course.create({
-      title: "Business Japanese & Đàm thoại N3",
+      title: "Tiếng Nhật Doanh nghiệp và Làm việc N3",
       description:
-        "Kịch bản giao tiếp công sở chuyên sâu, báo cáo HORENSO, trao đổi dự án và đối tác.",
+        "Kịch bản giao tiếp công sở chuyên sâu, quy tắc báo cáo HORENSO, trao đổi dự án và đối tác độc quyền từ JTalk AI.",
       level: "N3",
-      category: "business",
-      channelName: "JTalk Business",
+      category: "Công sở • Báo cáo công việc • Đàm phán",
+      courseType: "ai_kaiwa",
+      sourceType: "jtalk",
+      channelName: "JTalk AI Studio",
       thumbnail:
         "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=800&auto=format&fit=crop&q=80",
       isPublished: true,
       isPremiumOnly: true,
-      totalLessons: 4,
+      totalLessons: 2,
+      totalVideos: 0,
+      totalDurationMinutes: 10,
+      tags: ["N3", "Công sở", "Doanh nghiệp", "HORENSO"],
       orderIndex: 4,
     });
 
     const courseMinna = await Course.create({
-      title: "Minna no Nihongo I – 25 Bài Kaiwa Video Thực Tế",
+      title: "Giáo trình Minna – 25 Tình huống Giao tiếp Thực tế",
       description:
-        "Giáo trình sơ cấp 1: 25 bài video hội thoại, mỗi bài gồm Từ vựng, Ngữ pháp, Hội thoại, Hán tự và Luyện phản xạ Shadowing.",
+        "Giáo trình sơ cấp 1: 25 bài video hội thoại, mỗi bài gồm Từ vựng, Ngữ pháp, Hội thoại, Hán tự và Luyện phản xạ tự nhiên.",
       level: "N5",
-      category: "grammar",
+      category: "Tình huống thực tế • Ngữ pháp",
+      courseType: "video_series",
+      sourceType: "community",
       channelName: "Dũng Mori / Nihongo no Mori",
+      channelUrl: "https://www.youtube.com/@dungmori",
       thumbnail:
         "https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&auto=format&fit=crop&q=80",
       isPublished: true,
       isPremiumOnly: false,
-      totalLessons: 5,
+      totalLessons: 1,
+      totalVideos: 1,
+      totalDurationMinutes: 5,
+      tags: ["Minna no Nihongo", "N5", "Video thực tế"],
       orderIndex: 5,
     });
 
@@ -254,7 +281,12 @@ const seedData = async () => {
     const lessons = await Lesson.create([
       // --- KHÓA HỌC VIDEO 1: Kính ngữ Sambon Juku (Chính xác theo hình mẫu người dùng) ---
       {
+        courseId: courseKeigo._id,
         topicId: topicKeigo._id,
+        orderIndex: 1,
+        episodeNumber: 1,
+        lessonType: "video",
+        sourceType: "community",
         title: "敬語って何？ /What is Japanese Keigo?【敬語 1】",
         description:
           "Video bài giảng chuẩn bản xứ từ thầy Sambon Juku giúp bạn nắm rõ bản chất của Kính ngữ và 3 phân loại chính: Teineigo, Sonkeigo, Kenjougo.",
@@ -262,6 +294,7 @@ const seedData = async () => {
         youtubeId: "1iDoq9sGX1s",
         videoUrl: "https://www.youtube.com/watch?v=1iDoq9sGX1s",
         channelName: "三本塾 -Sambon Juku-",
+        channelUrl: "https://www.youtube.com/@SambonJuku",
         duration: "5 phút",
         durationMinutes: 5,
         isPremiumOnly: false,
@@ -551,7 +584,11 @@ const seedData = async () => {
 
       // Bài 2 Kính ngữ
       {
+        courseId: courseKeigo._id,
         topicId: topicKeigo._id,
+        orderIndex: 2,
+        episodeNumber: 2,
+        lessonType: "video",
         title: "丁寧語・尊敬語・謙譲語の違いと使い分け【敬語 2】",
         description:
           "Thực hành phân biệt vị trí nói, chủ ngữ và các mẫu câu thông dụng khi giao tiếp với người trên và khách hàng.",
@@ -825,7 +862,11 @@ const seedData = async () => {
 
       // --- KHÓA HỌC VIDEO 2: Minna no Nihongo Video Hội thoại ---
       {
+        courseId: courseMinna._id,
         topicId: topicMinnaVideo._id,
+        orderIndex: 1,
+        episodeNumber: 1,
+        lessonType: "video",
         title: "第1課 会話：初めまして (Bài 1: Rất vui được gặp bạn)",
         description: "Video hoạt cảnh hội thoại thực tế gặp gỡ đồng nghiệp và giới thiệu bản thân bài 1 Minna no Nihongo.",
         level: "N5",
@@ -1023,7 +1064,11 @@ const seedData = async () => {
       // --- CÁC KỊCH BẢN LUYỆN NÓI AI (GIỮ NGUYÊN ĐỂ LUYỆN NÓI AI HOẠT ĐỘNG HOÀN HẢO) ---
       // Kịch bản 1
       {
+        courseId: courseN5._id,
         topicId: topic1._id,
+        orderIndex: 1,
+        episodeNumber: 1,
+        lessonType: "dialogue",
         title: "新しいクラスでの自己紹介 (Tự giới thiệu trong lớp học mới)",
         description: "Luyện cách giới thiệu bản thân, sở thích và kết bạn tự nhiên với bạn cùng lớp.",
         level: "N5",
@@ -1109,7 +1154,11 @@ const seedData = async () => {
 
       // Kịch bản 2
       {
+        courseId: courseN5._id,
         topicId: topic2._id,
+        orderIndex: 2,
+        episodeNumber: 2,
+        lessonType: "dialogue",
         title: "毎日の生活と習慣 (Cuộc sống và thói quen hàng ngày)",
         description: "Kể về các hoạt động thường nhật từ sáng đến tối, chia sẻ thói quen cá nhân.",
         level: "N5",
@@ -1195,7 +1244,11 @@ const seedData = async () => {
 
       // Kịch bản 3
       {
+        courseId: courseN4._id,
         topicId: topic3._id,
+        orderIndex: 1,
+        episodeNumber: 1,
+        lessonType: "dialogue",
         title: "病院で診察を受ける (Khám bệnh tại phòng khám Nhật)",
         description: "Miêu tả triệu chứng mệt mỏi, đau đầu, sốt và lắng nghe dặn dò của bác sĩ.",
         level: "N4",
@@ -1281,7 +1334,11 @@ const seedData = async () => {
 
       // Kịch bản 4
       {
+        courseId: courseN4._id,
         topicId: topic4._id,
+        orderIndex: 2,
+        episodeNumber: 2,
+        lessonType: "dialogue",
         title: "カフェで飲み物を注文する (Gọi đồ uống tại quán Cafe)",
         description: "Hỏi menu thức uống, chọn size ly đá/nóng, đặt bánh ngọt và thanh toán.",
         level: "N4",
@@ -1367,7 +1424,11 @@ const seedData = async () => {
 
       // Kịch bản 5
       {
+        courseId: courseN5._id,
         topicId: topic5._id,
+        orderIndex: 3,
+        episodeNumber: 3,
+        lessonType: "dialogue",
         title: "駅で道を尋ねる・乗換案内 (Hỏi đường và đi tàu điện Shinjuku)",
         description: "Hỏi quầy vé, tìm line tàu Yamanote và hỏi cửa ra hướng Đông của ga.",
         level: "N5",
@@ -1453,7 +1514,11 @@ const seedData = async () => {
 
       // Kịch bản 6
       {
+        courseId: courseN4._id,
         topicId: topic6._id,
+        orderIndex: 3,
+        episodeNumber: 3,
+        lessonType: "dialogue",
         title: "採用面接・自己PRと志望動機 (Phỏng vấn xin việc Jikoshoukai)",
         description: "Lễ nghi chào hỏi, giải thích lý do ứng tuyển và điểm mạnh của bản thân.",
         level: "N4",
@@ -1539,7 +1604,11 @@ const seedData = async () => {
 
       // Kịch bản 7
       {
+        courseId: courseN3._id,
         topicId: topic7._id,
+        orderIndex: 1,
+        episodeNumber: 1,
+        lessonType: "dialogue",
         title: "ビジネス会話・進捗報告 (HORENSO trong công việc)",
         description: "Thực hành kính ngữ Sonkeigo/Kenjougo, báo cáo tiến độ dự án cho cấp trên.",
         level: "N3",
@@ -1625,7 +1694,11 @@ const seedData = async () => {
 
       // Kịch bản 8
       {
+        courseId: courseN3._id,
         topicId: topic8._id,
+        orderIndex: 2,
+        episodeNumber: 2,
+        lessonType: "dialogue",
         title: "居酒屋で乾杯・食事の誘い (Rủ đồng nghiệp đi nhậu Izakaya)",
         description: "Rủ đồng nghiệp đi ăn sau giờ làm, gọi món nhắm và văn hóa nâng ly Kanpai.",
         level: "N3",
