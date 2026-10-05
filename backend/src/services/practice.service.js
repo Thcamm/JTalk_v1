@@ -310,6 +310,38 @@ export class PracticeService {
 
     return aiResult;
   }
+
+  /**
+   * 6. Handle Freeform AI Roleplay Contextual Suggestions
+   */
+  static async handleRoleplaySuggestions({
+    userId,
+    lessonId,
+    scenarioTitle,
+    level = "N5",
+    aiMessage = "",
+    conversationHistory = [],
+  }) {
+    let finalTitle = scenarioTitle || "Luyện nói tự do với AI";
+    let finalLevel = level;
+
+    if (lessonId && mongoose.Types.ObjectId.isValid(lessonId)) {
+      const lesson = await Lesson.findById(lessonId);
+      if (lesson) {
+        finalTitle = lesson.title || finalTitle;
+        finalLevel = lesson.level || finalLevel;
+      }
+    }
+
+    const result = await AiService.generateRoleplaySuggestions({
+      scenarioTitle: finalTitle,
+      level: finalLevel,
+      aiMessage,
+      conversationHistory,
+    });
+
+    return result;
+  }
 }
 
 export default PracticeService;

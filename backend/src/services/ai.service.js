@@ -871,6 +871,413 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
       ],
     };
   }
+
+  /**
+   * 4. Generate Contextual Roleplay Suggestions
+   * Provides 2-3 dynamic, context-aware Japanese responses for any given AI utterance & scenario
+   */
+  static async generateRoleplaySuggestions({
+    scenarioTitle = "Hội thoại giao tiếp",
+    level = "N5",
+    aiMessage = "",
+    conversationHistory = [],
+  }) {
+    // 1. Try Google Gemini
+    if (config.ai.geminiApiKey) {
+      try {
+        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory });
+        const rawContent = await this.callGemini({ prompt, temperature: 0.7, isJson: true });
+        const parsed = this.parseSuggestionsJson(rawContent);
+        if (parsed && parsed.suggestedAnswers && parsed.suggestedAnswers.length > 0) {
+          return parsed;
+        }
+      } catch (err) {
+        console.warn("Lỗi gọi Gemini cho roleplay-suggestions, thử Claude/OpenAI/Fallback:", err.message);
+      }
+    }
+
+    // 2. Try Claude
+    if (config.ai.anthropicApiKey) {
+      try {
+        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory });
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": config.ai.anthropicApiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: config.ai.anthropicModel || "claude-3-5-sonnet-20241022",
+            max_tokens: 800,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const rawContent = data.content?.[0]?.text || "";
+          const parsed = this.parseSuggestionsJson(rawContent);
+          if (parsed && parsed.suggestedAnswers && parsed.suggestedAnswers.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (err) {
+        console.warn("Lỗi gọi Claude cho roleplay-suggestions, thử OpenAI/Fallback:", err.message);
+      }
+    }
+
+    // 3. Try OpenAI
+    if (config.ai.openaiApiKey) {
+      try {
+        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory });
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${config.ai.openaiApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: config.ai.openaiModel || "gpt-4o",
+            temperature: 0.7,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a friendly Japanese conversation tutor providing natural contextual reply suggestions. Return strictly valid JSON.",
+              },
+              { role: "user", content: prompt },
+            ],
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const rawContent = data.choices?.[0]?.message?.content || "";
+          const parsed = this.parseSuggestionsJson(rawContent);
+          if (parsed && parsed.suggestedAnswers && parsed.suggestedAnswers.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (err) {
+        console.warn("Lỗi gọi OpenAI cho roleplay-suggestions, dùng Heuristic Fallback:", err.message);
+      }
+    }
+
+    // 4. Context-Aware Heuristic Generator
+    return {
+      suggestedAnswers: this.getHeuristicSuggestions({ scenarioTitle, aiMessage, level }),
+    };
+  }
+
+  /**
+   * Prompt builder for Roleplay Suggestions
+   */
+  static buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory = [] }) {
+    const formattedHistory = conversationHistory
+      .slice(-4)
+      .map((msg) => `${msg.sender === "ai" ? "Character (AI)" : "Learner"}: "${msg.japanese}"`)
+      .join("\n");
+
+    return `
+Bạn là chuyên gia sư phạm tiếng Nhật bản ngữ của JTalk AI.
+Tình huống giao tiếp thực tế: "${scenarioTitle}".
+Trình độ người học: JLPT ${level}.
+Câu nói của đối phương (nhân vật AI): "${aiMessage}".
+${formattedHistory ? `Lịch sử đối thoại trước đó:\n${formattedHistory}` : ""}
+
+Nhiệm vụ:
+Tạo ra 2 đến 3 câu gợi ý phản xạ ngắn gọn (1 câu tiếng Nhật mỗi gợi ý), TỰ NHIÊN và ĐÚNG NGỮ CẢNH NHẤT để người học có thể chọn đáp lại ngay câu nói của đối phương.
+Các gợi ý phải sát với tình huống thực tế của "${scenarioTitle}" và câu của nhân vật vừa nói ("${aiMessage}").
+
+Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
+{
+  "suggestedAnswers": [
+    {
+      "japanese": "Câu tiếng Nhật (có Kanji nếu cần)",
+      "furigana": "Phiên âm toàn bộ chữ Hán sang Hiragana/Katakana",
+      "romaji": "Phiên âm Latin chuẩn",
+      "translation": "Nghĩa tiếng Việt tự nhiên, ngắn gọn"
+    }
+  ]
+}
+`;
+  }
+
+  /**
+   * Safely parse suggestions JSON
+   */
+  static parseSuggestionsJson(rawText) {
+    try {
+      const cleaned = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed && Array.isArray(parsed.suggestedAnswers)) {
+        parsed.suggestedAnswers = parsed.suggestedAnswers.map((item) => {
+          if (typeof item === "string") {
+            return { japanese: item, furigana: item, romaji: "", translation: "" };
+          }
+          return {
+            japanese: item.japanese || "",
+            furigana: item.furigana || item.japanese || "",
+            romaji: item.romaji || "",
+            translation: item.translation || "",
+          };
+        });
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Intelligent Context-Aware Heuristic Suggestions
+   */
+  static getHeuristicSuggestions({ scenarioTitle = "", aiMessage = "", level = "N5" }) {
+    const titleLower = (scenarioTitle || "").toLowerCase();
+    const msgLower = (aiMessage || "").toLowerCase();
+
+    // 1. Bakery / Bread / Tiệm bánh (e.g. Mua bánh mì ở tiệm bánh Nhật Bản)
+    if (
+      titleLower.includes("bánh mì") ||
+      titleLower.includes("tiệm bánh") ||
+      titleLower.includes("bánh") ||
+      titleLower.includes("bakery") ||
+      titleLower.includes("パン") ||
+      msgLower.includes("パン")
+    ) {
+      if (
+        msgLower.includes("こんにちは") ||
+        msgLower.includes("いらっしゃい") ||
+        msgLower.includes("おはよう") ||
+        msgLower.includes("皆さん")
+      ) {
+        return [
+          {
+            japanese: "こんにちは！美味しそうなパンですね。",
+            furigana: "こんにちは！おいしそうなパンですね。",
+            romaji: "Konnichiwa! Oishisou na pan desu ne.",
+            translation: "Chào bạn! Bánh mì nhìn ngon quá.",
+          },
+          {
+            japanese: "こんにちは！おすすめのパンは何ですか？",
+            furigana: "こんにちは！おすすめのパンはなんですか？",
+            romaji: "Konnichiwa! Osusume no pan wa nan desu ka?",
+            translation: "Chào bạn! Món bánh mì gợi ý đặc biệt của quán là gì ạ?",
+          },
+          {
+            japanese: "焼きたてのパンはありますか？",
+            furigana: "やきたてのパンはありますか？",
+            romaji: "Yakitate no pan wa arimasu ka?",
+            translation: "Tiệm có bánh mì mới nướng ra lò không ạ?",
+          },
+        ];
+      }
+      return [
+        {
+          japanese: "このクロワッサンを二つください。",
+          furigana: "このクロワッサンをふたつください。",
+          romaji: "Kono kurowassan o futatsu kudasai.",
+          translation: "Cho tôi 2 chiếc bánh sừng bò này nhé.",
+        },
+        {
+          japanese: "持ち帰りでお願いします。",
+          furigana: "もちかえりでおねがいします。",
+          romaji: "Mochikaeri de onegaishimasu.",
+          translation: "Cho tôi mang về ạ.",
+        },
+      ];
+    }
+
+    // 2. Cafe / Drink / Quán cafe
+    if (
+      titleLower.includes("cafe") ||
+      titleLower.includes("cà phê") ||
+      titleLower.includes("カフェ") ||
+      titleLower.includes("uống") ||
+      msgLower.includes("コーヒー") ||
+      msgLower.includes("ラテ")
+    ) {
+      if (
+        msgLower.includes("こんにちは") ||
+        msgLower.includes("いらっしゃい") ||
+        msgLower.includes("皆さん")
+      ) {
+        return [
+          {
+            japanese: "こんにちは！アイスカフェラテをお願いします。",
+            furigana: "こんにちは！アイスカフェラテをおねがいします。",
+            romaji: "Konnichiwa! Aisu kaferate o onegaishimasu.",
+            translation: "Chào bạn! Cho tôi một ly cà phê latte đá nhé.",
+          },
+          {
+            japanese: "おすすめのドリンクは何ですか？",
+            furigana: "おすすめのドリンクはなんですか？",
+            romaji: "Osusume no dorinku wa nan desu ka?",
+            translation: "Đồ uống gợi ý của quán là gì vậy ạ?",
+          },
+        ];
+      }
+      return [
+        {
+          japanese: "店内でお願いします。",
+          furigana: "てんないでおねがいします。",
+          romaji: "Tennai de onegaishimasu.",
+          translation: "Dùng tại quán ạ.",
+        },
+        {
+          japanese: "持ち帰りでお願いします。",
+          furigana: "もちかえりでおねがいします。",
+          romaji: "Mochikaeri de onegaishimasu.",
+          translation: "Mang về ạ.",
+        },
+      ];
+    }
+
+    // 3. Convenience Store / Shopping / Siêu thị
+    if (
+      titleLower.includes("tiện lợi") ||
+      titleLower.includes("siêu thị") ||
+      titleLower.includes("mua") ||
+      titleLower.includes("combini") ||
+      titleLower.includes("コンビニ") ||
+      titleLower.includes("スーパー")
+    ) {
+      return [
+        {
+          japanese: "袋は大丈夫です。",
+          furigana: "ふくろはだいじょうぶです。",
+          romaji: "Fukuro wa daijoubu desu.",
+          translation: "Tôi không cần túi ni-lông ạ.",
+        },
+        {
+          japanese: "Suicaで支払います。",
+          furigana: "スイカでしはらいます。",
+          romaji: "Suica de shiharaimasu.",
+          translation: "Tôi thanh toán bằng thẻ Suica.",
+        },
+        {
+          japanese: "レシートをください。",
+          furigana: "レシートをください。",
+          romaji: "Reshiito o kudasai.",
+          translation: "Cho tôi xin hóa đơn ạ.",
+        },
+      ];
+    }
+
+    // 4. Asking directions / Station / Tàu điện
+    if (
+      titleLower.includes("đường") ||
+      titleLower.includes("ga") ||
+      titleLower.includes("tàu") ||
+      titleLower.includes("駅") ||
+      titleLower.includes("道") ||
+      msgLower.includes("駅")
+    ) {
+      return [
+        {
+          japanese: "すみません、新宿駅へはどう行けばいいですか？",
+          furigana: "すみません、しんじゅくえきへはどういけばいいですか？",
+          romaji: "Sumimasen, Shinjuku-eki e wa dou ikeba ii desu ka?",
+          translation: "Xin lỗi, làm thế nào để đi đến ga Shinjuku ạ?",
+        },
+        {
+          japanese: "切符売り場はどこにありますか？",
+          furigana: "きっぷうりばはどこにありますか？",
+          romaji: "Kippu uriba wa doko ni arimasu ka?",
+          translation: "Quầy bán vé ở đâu vậy ạ?",
+        },
+      ];
+    }
+
+    // 5. Self-introduction / Meeting new people / Giới thiệu bản thân
+    if (
+      titleLower.includes("chào hỏi") ||
+      titleLower.includes("giới thiệu") ||
+      titleLower.includes("lớp học") ||
+      titleLower.includes("自己紹介") ||
+      msgLower.includes("名前") ||
+      msgLower.includes("初めまして")
+    ) {
+      return [
+        {
+          japanese: "初めまして！どうぞよろしくお願いします。",
+          furigana: "はじめまして！どうぞよろしくおねがいします。",
+          romaji: "Hajimemashite! Douzo yoroshiku onegaishimasu.",
+          translation: "Rất vui được gặp bạn! Rất mong được giúp đỡ.",
+        },
+        {
+          japanese: "こんにちは！ベトナムから来ました。",
+          furigana: "こんにちは！ベトナムからきました。",
+          romaji: "Konnichiwa! Betonamu kara kimashita.",
+          translation: "Xin chào! Tôi đến từ Việt Nam.",
+        },
+      ];
+    }
+
+    // 6. Job interview / Business / Công sở
+    if (
+      titleLower.includes("phỏng vấn") ||
+      titleLower.includes("công việc") ||
+      titleLower.includes("báo cáo") ||
+      titleLower.includes("面接") ||
+      titleLower.includes("ビジネス")
+    ) {
+      return [
+        {
+          japanese: "本日はお時間をいただきありがとうございます。",
+          furigana: "ほんじつはおじかんをいただきありがとうございます。",
+          romaji: "Honjitsu wa ojikan o itadaki arigatou gozaimasu.",
+          translation: "Cảm ơn quý công ty đã dành thời gian hôm nay ạ.",
+        },
+        {
+          japanese: "どうぞよろしくお願いいたします。",
+          furigana: "どうぞよろしくおねがいいたします。",
+          romaji: "Douzo yoroshiku onegai itashimasu.",
+          translation: "Kính mong được sự quan tâm và giúp đỡ ạ.",
+        },
+      ];
+    }
+
+    // 7. General greeting matches (e.g. "皆さんこんにちは", "こんにちは", "おはようございます")
+    if (
+      msgLower.includes("こんにちは") ||
+      msgLower.includes("おはよう") ||
+      msgLower.includes("こんばんは") ||
+      msgLower.includes("皆さん")
+    ) {
+      return [
+        {
+          japanese: "こんにちは！よろしくお願いします。",
+          furigana: "こんにちは！よろしくおねがいします。",
+          romaji: "Konnichiwa! Yoroshiku onegaishimasu.",
+          translation: "Xin chào bạn! Rất mong được giúp đỡ.",
+        },
+        {
+          japanese: "こんにちは！今日もよろしくお願いします。",
+          furigana: "こんにちは！きょうもよろしくおねがいします。",
+          romaji: "Konnichiwa! Kyou mo yoroshiku onegaishimasu.",
+          translation: "Xin chào! Hôm nay cũng nhờ bạn giúp đỡ nhé.",
+        },
+      ];
+    }
+
+    // 8. General default fallback
+    return [
+      {
+        japanese: "はい、分かりました。",
+        furigana: "はい、わかりました。",
+        romaji: "Hai, wakarimashita.",
+        translation: "Vâng, tôi hiểu rồi ạ.",
+      },
+      {
+        japanese: "詳しく教えていただけますか？",
+        furigana: "くわしくおしえていただけますか？",
+        romaji: "Kuwashiku oshiete itadakemasu ka?",
+        translation: "Bạn có thể chỉ rõ hơn giúp tôi được không ạ?",
+      },
+    ];
+  }
 }
 
 export default AiService;
