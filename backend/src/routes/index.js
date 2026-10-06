@@ -8,6 +8,7 @@ import practiceRoute from "./practice.route.js";
 import studylogRoute from "./studylog.route.js";
 import paymentRoute from "./payment.route.js";
 import adminRoute from "./admin.route.js";
+import vocabularyRoute from "./vocabulary.route.js";
 
 const router = express.Router();
 
@@ -49,6 +50,7 @@ router.use("/lessons", lessonRoute);
 router.use("/practices", practiceRoute);
 router.use("/studylogs", studylogRoute);
 router.use("/payments", paymentRoute);
+router.use("/vocabularies", vocabularyRoute);
 router.use("/admin", adminRoute);
 
 export default router;

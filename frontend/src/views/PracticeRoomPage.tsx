@@ -9,6 +9,8 @@ import {
   ChevronRight,
   Target,
   Mic,
+  Lightbulb,
+  Volume2,
 } from "lucide-react";
 import { curriculumService } from "@/services/curriculum.service";
 import { usePracticeSession } from "@/hooks/usePracticeSession";
@@ -549,6 +551,7 @@ export const PracticeRoomPage = () => {
   const [showFurigana, setShowFurigana] = useState(true);
   const [showRomaji, setShowRomaji] = useState(true);
   const [showTranslation, setShowTranslation] = useState(true);
+  const [showHint, setShowHint] = useState(false);
 
   // Load Lesson from backend or fallback scenario
   useEffect(() => {
@@ -633,6 +636,7 @@ export const PracticeRoomPage = () => {
 
   const handleNextDialogue = () => {
     session.stopAudio();
+    setShowHint(false);
     if (isLastDialogue) {
       navigate("/progress");
     } else {
@@ -642,6 +646,7 @@ export const PracticeRoomPage = () => {
 
   const handleRetryCurrent = () => {
     session.stopAudio();
+    setShowHint(false);
     session.setCurrentEvaluation(null);
     session.setClientTranscript("");
     session.recorder.resetRecording();
@@ -920,7 +925,80 @@ export const PracticeRoomPage = () => {
                 >
                   {showTranslation ? "Ẩn Bản dịch" : "Hiện Bản dịch"}
                 </button>
+
+                <button
+                  onClick={() => setShowHint(!showHint)}
+                  type="button"
+                  className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-bold flex items-center gap-1.5 ${
+                    showHint
+                      ? "bg-amber-500 text-slate-950 border-amber-400 shadow-sm"
+                      : "border-amber-400/80 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                  }`}
+                  title="Xem gợi ý mẫu câu và từ vựng phản xạ"
+                >
+                  <Lightbulb className="w-3.5 h-3.5 fill-current text-amber-500" />
+                  <span>{showHint ? "Đóng gợi ý" : "Gợi ý mẫu câu (Hint)"}</span>
+                </button>
               </div>
+
+              {/* Expandable Hint Assistant Panel */}
+              {showHint && (
+                <div className="p-4 sm:p-5 bg-gradient-to-br from-amber-50 via-orange-50/60 to-amber-50 dark:from-amber-950/40 dark:via-slate-900 dark:to-amber-950/30 border border-amber-300/80 dark:border-amber-800 rounded-2xl space-y-3 animate-in fade-in zoom-in-98 duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                        Trợ Thủ Gợi Ý Mẫu Câu Phản Xạ
+                      </h4>
+                    </div>
+                    <span className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold bg-amber-100/80 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
+                      Mẹo giao tiếp tự nhiên
+                    </span>
+                  </div>
+
+                  {/* Primary Recommended Phrase */}
+                  <div className="bg-white/95 dark:bg-slate-900/95 p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 shadow-2xs">
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+                        Câu mẫu nên phản xạ:
+                      </span>
+                      <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-sans">
+                        {currentDialogue?.expectedAnswer || currentDialogue?.japanese}
+                      </p>
+                      {currentDialogue?.translation && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                          {currentDialogue.translation}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => session.playNativeAudio(currentDialogue?.expectedAnswer || currentDialogue?.japanese)}
+                      className="p-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all shrink-0 hover:scale-105 active:scale-95"
+                      title="Nghe phát âm thử câu mẫu"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Context Advice & Expression Variations */}
+                  <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1 pt-1">
+                    <p className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Cách nói linh hoạt theo ngữ cảnh:</span>
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 pl-1 text-[11px] text-slate-600 dark:text-slate-400">
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-200">Giao tiếp thường ngày:</strong> Bạn có thể dùng thể ngắn (thân mật) nếu trò chuyện với bạn bè cùng tuổi.
+                      </li>
+                      <li>
+                        <strong className="text-slate-800 dark:text-slate-200">Công sở / Phỏng vấn:</strong> Hãy luôn kết thúc bằng đuôi です / ます hoặc kính ngữ để thể hiện sự tôn trọng.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Real-time Web Speech Transcript & Waveform during recording */}
@@ -1001,6 +1079,9 @@ export const PracticeRoomPage = () => {
                 {/* 4 criteria breakdown & AI score */}
                 <FeedbackCard
                   evaluation={session.currentEvaluation}
+                  userAudioUrl={session.audioUrl || session.recorder.audioUrl}
+                  nativeSentence={currentDialogue?.japanese}
+                  onPlayNative={() => session.playNativeAudio(currentDialogue?.japanese)}
                   onRetry={handleRetryCurrent}
                   onNext={handleNextDialogue}
                   hasNext={!isLastDialogue}

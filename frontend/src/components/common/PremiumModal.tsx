@@ -1,7 +1,5 @@
-import { useState } from "react";
-import { X, Sparkles, Check, ShieldCheck, Zap, ArrowRight, Loader2 } from "lucide-react";
-import { paymentService } from "@/services/payment.service";
-import { toast } from "sonner";
+import { useNavigate } from "@/lib/react-router-compat";
+import { X, Sparkles, Check, ShieldCheck, Zap, ArrowRight } from "lucide-react";
 
 interface PremiumModalProps {
   isOpen: boolean;
@@ -14,30 +12,13 @@ export const PremiumModal = ({
   onClose,
   reason = "general",
 }: PremiumModalProps) => {
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
-  const handleMoMoPayment = async () => {
-    try {
-      setLoading(true);
-      const res = await paymentService.createMoMoPayment("monthly_99k");
-
-      if (res.payUrl) {
-        toast.success("Đang chuyển hướng đến cổng thanh toán MoMo...");
-        window.location.href = res.payUrl;
-      } else {
-        toast.info(res.message || "Tạo yêu cầu thanh toán thành công! Vui lòng làm theo hướng dẫn.");
-      }
-    } catch (error: unknown) {
-      console.error("Payment error:", error);
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
-      toast.error(
-        err.response?.data?.message || err.message || "Không thể khởi tạo thanh toán MoMo lúc này."
-      );
-    } finally {
-      setLoading(false);
-    }
+  const handleGoToCheckout = () => {
+    onClose();
+    navigate("/checkout");
   };
 
   const benefits = [
@@ -124,26 +105,16 @@ export const PremiumModal = ({
           {/* Action button */}
           <div className="space-y-3 pt-2">
             <button
-              onClick={handleMoMoPayment}
-              disabled={loading}
-              className="w-full py-4 px-6 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl hover:shadow-rose-500/20 transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-[0.99] disabled:opacity-70 cursor-pointer"
+              onClick={handleGoToCheckout}
+              className="w-full py-4 px-6 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl hover:shadow-rose-500/20 transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-[0.99] cursor-pointer"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Đang kết nối MoMo...</span>
-                </>
-              ) : (
-                <>
-                  <span>Thanh toán 99.000đ qua MoMo</span>
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
+              <span>Nâng cấp 99.000đ ngay (VietQR / MoMo)</span>
+              <ArrowRight className="w-5 h-5" />
             </button>
 
             <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
-              <ShieldCheck className="w-4 h-4 text-rose-500" />
-              <span>Thanh toán bảo mật chuẩn HMAC-SHA256 qua cổng MoMo</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              <span>Hỗ trợ chuyển khoản ngân hàng 24/7 & Ví MoMo bảo mật</span>
             </div>
           </div>
         </div>

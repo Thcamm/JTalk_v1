@@ -341,4 +341,37 @@ export interface RoleplayChatResponse {
   suggestedAnswers?: (string | RoleplaySuggestedAnswer)[];
 }
 
+export interface VocabularyItem {
+  _id: string;
+  userId?: string;
+  kanji: string;
+  furigana?: string;
+  romaji?: string;
+  meaning: string;
+  level: "N5" | "N4" | "N3" | "N2" | "N1";
+  wordType?: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
+  exampleSentence?: string;
+  exampleTranslation?: string;
+  isMastered: boolean;
+  reviewCount: number;
+  lastReviewedAt?: string | null;
+  sourceLessonId?: string | null;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateVocabularyPayload {
+  kanji: string;
+  furigana?: string;
+  romaji?: string;
+  meaning: string;
+  level?: "N5" | "N4" | "N3" | "N2" | "N1";
+  wordType?: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
+  exampleSentence?: string;
+  exampleTranslation?: string;
+  sourceLessonId?: string | null;
+  tags?: string[];
+}
+
 
