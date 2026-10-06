@@ -48,7 +48,7 @@ export interface DemoLesson {
 }
 
 function extractYouTubeId(urlOrId?: string): string | undefined {
-  if (!urlOrId) return undefined;
+  if (!urlOrId || typeof urlOrId !== "string") return undefined;
   const trimmed = urlOrId.trim();
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
   const match = trimmed.match(
@@ -734,35 +734,50 @@ function findMatchingDemoLesson(id?: string): DemoLesson | undefined {
 }
 
 function formatLessonToDemo(lesson: Lesson): DemoLesson {
+  if (!lesson) {
+    return {
+      id: "unknown",
+      title: "Bài học",
+      description: "",
+      level: "N5",
+      senseiName: "Giảng viên",
+      senseiRole: "Video bài giảng",
+      senseiAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80",
+      duration: "5 phút",
+      subtitles: [],
+    };
+  }
+
+  const titleLower = (lesson.title || "").toLowerCase();
   const isFoodLesson =
-    lesson.title?.toLowerCase().includes("gọi món") ||
-    lesson.title?.toLowerCase().includes("nhà hàng") ||
-    lesson.title?.toLowerCase().includes("ramen") ||
-    lesson.title?.toLowerCase().includes("quán") ||
-    lesson.title?.toLowerCase().includes("cafe") ||
-    lesson.title?.toLowerCase().includes("đồ uống") ||
-    lesson.title?.toLowerCase().includes("ăn uống") ||
-    lesson.title?.toLowerCase().includes("注文");
+    titleLower.includes("gọi món") ||
+    titleLower.includes("nhà hàng") ||
+    titleLower.includes("ramen") ||
+    titleLower.includes("quán") ||
+    titleLower.includes("cafe") ||
+    titleLower.includes("đồ uống") ||
+    titleLower.includes("ăn uống") ||
+    titleLower.includes("注文");
 
   const ytId = lesson.youtubeId?.trim() || extractYouTubeId(lesson.videoUrl);
 
-  let subs = lesson.subtitles || [];
+  let subs: VideoSubtitle[] = Array.isArray(lesson.subtitles) ? lesson.subtitles : [];
   if (!subs || subs.length === 0) {
-    if (lesson.dialogues && lesson.dialogues.length > 0) {
+    if (lesson.dialogues && Array.isArray(lesson.dialogues) && lesson.dialogues.length > 0) {
       subs = lesson.dialogues.map((d, idx) => ({
-        startTime: idx * 5,
-        endTime: (idx + 1) * 5,
-        japanese: d.japanese,
-        furigana: d.furigana,
-        romaji: d.romaji,
-        translation: d.translation,
+        startTime: typeof (d as any).startTime === "number" ? (d as any).startTime : idx * 5,
+        endTime: typeof (d as any).endTime === "number" ? (d as any).endTime : (idx + 1) * 5,
+        japanese: d.japanese || "",
+        furigana: d.furigana || "",
+        romaji: d.romaji || "",
+        translation: d.translation || "",
       }));
     } else if (lesson.sampleSentence) {
       subs = [
         {
           startTime: 0,
           endTime: 5,
-          japanese: lesson.sampleSentence,
+          japanese: lesson.sampleSentence || "",
           translation: lesson.translation || "",
         },
       ];
@@ -770,8 +785,8 @@ function formatLessonToDemo(lesson: Lesson): DemoLesson {
   }
 
   return {
-    id: lesson._id,
-    title: lesson.title,
+    id: lesson._id || (lesson as any).id || "unknown",
+    title: lesson.title || "Bài học",
     description: lesson.description || "",
     level: (lesson.level as "N5" | "N4" | "N3") || "N5",
     senseiName: lesson.channelName || (isFoodLesson ? "Sensei Kenji" : "Sensei Yuki"),
@@ -794,7 +809,8 @@ function formatLessonToDemo(lesson: Lesson): DemoLesson {
 }
 
 // Helper: Convert Katakana to Hiragana for accurate phonetic alignment
-function kataToHira(str: string): string {
+function kataToHira(str?: string): string {
+  if (!str || typeof str !== "string") return "";
   return str.replace(/[ァ-ヶ]/g, (ch) =>
     String.fromCharCode(ch.charCodeAt(0) - 0x60)
   );
@@ -808,16 +824,18 @@ const KANJI_REGEX = /[一-龯㐀-䶿]/;
  * to produce structured { kanji, furigana } words for browser <ruby><rt> rendering.
  */
 export function buildFuriganaWords(
-  japanese: string,
+  japanese?: string,
   furigana?: string
 ): Array<{ kanji: string; furigana: string }> {
-  if (!japanese) return [];
-  if (!furigana || !furigana.trim() || !KANJI_REGEX.test(japanese)) {
-    return [{ kanji: japanese, furigana: "" }];
+  if (!japanese || typeof japanese !== "string") return [];
+  if (!furigana || typeof furigana !== "string" || !furigana.trim() || !KANJI_REGEX.test(japanese)) {
+    return [{ kanji: japanese || "", furigana: "" }];
   }
 
   const cleanJp = japanese.trim();
   const cleanFuri = furigana.trim();
+
+  if (!cleanJp) return [];
 
   // If already identical or no Kanji found
   if (cleanJp === cleanFuri || kataToHira(cleanJp) === kataToHira(cleanFuri)) {
@@ -900,7 +918,9 @@ export function buildFuriganaWords(
 }
 
 export const CourseVideoStudyPage = () => {
-  const { courseId, lessonId } = useParams<{ courseId?: string; lessonId: string }>();
+  const rawParams = useParams<{ courseId?: string | string[]; lessonId?: string | string[] }>();
+  const lessonId = (Array.isArray(rawParams?.lessonId) ? rawParams.lessonId[0] : rawParams?.lessonId) || "";
+  const courseId = Array.isArray(rawParams?.courseId) ? rawParams.courseId[0] : rawParams?.courseId;
   const navigate = useNavigate();
 
   // Check if current lessonId matches a static demo ID
@@ -1028,9 +1048,9 @@ export const CourseVideoStudyPage = () => {
   const transcriptScrollContainerRef = useRef<HTMLDivElement>(null);
   const subtitleRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
-  const subtitles = selectedLesson.subtitles;
-  const currentSub = subtitles[activeSubIndex] || subtitles[0];
+  const subtitles = selectedLesson?.subtitles || [];
   const totalSubtitles = subtitles.length;
+  const currentSub = totalSubtitles > 0 ? (subtitles[activeSubIndex] || subtitles[0]) : undefined;
 
   // Helper to cleanly stop any Audio & SpeechSynthesis without resuming paused speech
   const stopAllAudio = useCallback(() => {
@@ -1208,6 +1228,7 @@ export const CourseVideoStudyPage = () => {
         let matchedIndex = -1;
         for (let i = 0; i < subs.length; i++) {
           const sub = subs[i];
+          if (!sub) continue;
           const start = typeof sub.startTime === "number" ? sub.startTime : 0;
           const nextStart = subs[i + 1] && typeof subs[i + 1].startTime === "number" ? subs[i + 1].startTime : start + 6;
           const end = typeof sub.endTime === "number" && sub.endTime > start ? sub.endTime : nextStart;
@@ -1221,7 +1242,9 @@ export const CourseVideoStudyPage = () => {
         // 2. Fallback: match the latest started subtitle
         if (matchedIndex === -1) {
           for (let i = subs.length - 1; i >= 0; i--) {
-            const start = typeof subs[i].startTime === "number" ? subs[i].startTime : 0;
+            const sub = subs[i];
+            if (!sub) continue;
+            const start = typeof sub.startTime === "number" ? sub.startTime : 0;
             if (currentTime >= start) {
               matchedIndex = i;
               break;
@@ -1567,10 +1590,10 @@ export const CourseVideoStudyPage = () => {
 
     // Scoring calculation based on transcript accuracy
     setTimeout(() => {
-      const target = currentSub.japanese.replace(/[、。！？\s]/g, "");
-      const spoken = userTranscript.replace(/[、。！？\s]/g, "");
+      const target = (currentSub?.japanese || "").replace(/[、。！？\s]/g, "");
+      const spoken = (userTranscript || "").replace(/[、。！？\s]/g, "");
 
-      if (!spoken || spoken.length === 0) {
+      if (!target || !spoken || spoken.length === 0) {
         toast.warning("Chưa ghi nhận được giọng nói. Bạn hãy bấm Micro và đọc đuổi theo câu mẫu nhé!");
         setEvalScore(null);
         setEvalFeedback(null);
@@ -1597,10 +1620,12 @@ export const CourseVideoStudyPage = () => {
   }, [currentSub, userTranscript]);
 
   // Clean segment words for Furigana rendering with Ruby text on top of Kanji
-  const renderFuriganaSentence = (sub: VideoSubtitle) => {
+  const renderFuriganaSentence = (sub?: VideoSubtitle) => {
+    if (!sub || !sub.japanese) return null;
+
     // If sub.words is pre-populated use it; otherwise dynamically build from sub.japanese and sub.furigana
     const words =
-      sub.words && sub.words.length > 0
+      Array.isArray(sub.words) && sub.words.length > 0
         ? sub.words
         : buildFuriganaWords(sub.japanese, sub.furigana);
 
@@ -1618,14 +1643,16 @@ export const CourseVideoStudyPage = () => {
     return (
       <div className="flex flex-wrap items-end justify-center gap-x-0.5 gap-y-1 font-jp leading-relaxed">
         {words.map((w, idx) => {
-          const hasFuri = showFurigana && w.furigana && w.furigana.trim().length > 0;
+          if (!w) return null;
+          const kanjiText = w.kanji || "";
+          const hasFuri = showFurigana && Boolean(w.furigana && typeof w.furigana === "string" && w.furigana.trim().length > 0);
           if (hasFuri) {
             return (
               <ruby
                 key={idx}
                 className="text-lg sm:text-2xl font-black text-white hover:text-rose-300 transition-colors"
               >
-                {w.kanji}
+                {kanjiText}
                 <rt className="text-rose-400 font-bold text-xs sm:text-sm select-none">
                   {w.furigana}
                 </rt>
@@ -1637,7 +1664,7 @@ export const CourseVideoStudyPage = () => {
               key={idx}
               className="text-lg sm:text-2xl font-black text-white hover:text-rose-200 transition-colors"
             >
-              {w.kanji}
+              {kanjiText}
             </span>
           );
         })}
@@ -1819,7 +1846,7 @@ export const CourseVideoStudyPage = () => {
                 </button>
 
                 <span className="text-3xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
-                  Câu {activeSubIndex + 1}/{totalSubtitles}
+                  Câu {totalSubtitles > 0 ? activeSubIndex + 1 : 0}/{totalSubtitles}
                 </span>
               </div>
             </div>
@@ -1865,7 +1892,7 @@ export const CourseVideoStudyPage = () => {
                   <div className="min-h-[44px] flex items-center justify-center">
                     {renderFuriganaSentence(currentSub)}
                   </div>
-                  {showTranslation && currentSub.translation && (
+                  {showTranslation && currentSub?.translation && (
                     <p className="text-xs sm:text-sm text-slate-300 font-normal italic pt-1 border-t border-slate-800/60 max-w-3xl mx-auto line-clamp-2">
                       "{currentSub.translation}"
                     </p>
@@ -1874,7 +1901,9 @@ export const CourseVideoStudyPage = () => {
               ) : (
                 <div className="min-h-[44px] flex items-center justify-center text-xs text-slate-500 italic">
                   {totalSubtitles === 0
-                    ? "Chưa có kịch bản phụ đề cho bài học này"
+                    ? loadingLesson
+                      ? "Đang tải dữ liệu bài học..."
+                      : "Chưa có kịch bản phụ đề cho bài học này"
                     : "Phụ đề đang tắt (Bấm nút 'Phụ đề' hoặc 'Furigana' bên dưới để hiển thị)"}
                 </div>
               )}
@@ -1895,7 +1924,7 @@ export const CourseVideoStudyPage = () => {
 
                 <button
                   onClick={handlePrevSubtitle}
-                  disabled={activeSubIndex === 0}
+                  disabled={activeSubIndex === 0 || totalSubtitles === 0}
                   type="button"
                   className="w-8 h-8 rounded-full text-slate-300 hover:text-white disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
                   title="Câu trước đó"
@@ -1905,7 +1934,7 @@ export const CourseVideoStudyPage = () => {
 
                 <button
                   onClick={handleNextSubtitle}
-                  disabled={activeSubIndex >= totalSubtitles - 1}
+                  disabled={activeSubIndex >= totalSubtitles - 1 || totalSubtitles === 0}
                   type="button"
                   className="w-8 h-8 rounded-full text-slate-300 hover:text-white disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
                   title="Câu kế tiếp"
@@ -1915,15 +1944,16 @@ export const CourseVideoStudyPage = () => {
 
                 <button
                   onClick={handleReplayCurrent}
+                  disabled={totalSubtitles === 0}
                   type="button"
-                  className="w-8 h-8 rounded-full text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+                  className="w-8 h-8 rounded-full text-slate-300 hover:text-white disabled:opacity-30 flex items-center justify-center cursor-pointer transition-colors"
                   title="Nghe lại câu hiện tại"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
 
                 <span className="text-3xs font-extrabold bg-slate-800/80 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700/60 ml-1">
-                  Câu {activeSubIndex + 1}/{totalSubtitles}
+                  Câu {totalSubtitles > 0 ? activeSubIndex + 1 : 0}/{totalSubtitles}
                 </span>
               </div>
 
@@ -2013,16 +2043,16 @@ export const CourseVideoStudyPage = () => {
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5">
                   <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 rounded text-2xs font-extrabold uppercase">
-                    Luyện Shadowing câu {activeSubIndex + 1}
+                    {totalSubtitles > 0 ? `Luyện Shadowing câu ${activeSubIndex + 1}` : "Luyện Shadowing"}
                   </span>
                   <span className="text-2xs text-slate-400 font-medium">
                     (Bấm mic để nhại giọng nói theo video)
                   </span>
                 </div>
                 <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-jp line-clamp-1">
-                  {currentSub.japanese}
+                  {currentSub?.japanese || (loadingLesson ? "Đang tải nội dung bài học..." : "Chưa có kịch bản phụ đề cho câu này")}
                 </p>
-                {showFurigana && currentSub.furigana && (
+                {showFurigana && currentSub?.furigana && (
                   <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold font-jp line-clamp-1">
                     {currentSub.furigana}
                   </p>
@@ -2159,6 +2189,7 @@ export const CourseVideoStudyPage = () => {
               </div>
             ) : (
               subtitles.map((sub, idx) => {
+                if (!sub) return null;
                 const isActive = idx === activeSubIndex;
 
                 return (
