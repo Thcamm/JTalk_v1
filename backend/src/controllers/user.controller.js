@@ -37,15 +37,39 @@ export const updateProfile = async (req, res, next) => {
 };
 
 /**
+ * PATCH /api/v1/users/change-password
+ */
+export const changePassword = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { currentPassword, newPassword } = req.body;
+
+    await UserService.changePassword(userId, currentPassword, newPassword);
+
+    return successResponse(res, null, "Đổi mật khẩu thành công! Hãy ghi nhớ mật khẩu mới của bạn.");
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * GET /api/v1/users/leaderboard
  */
 export const getLeaderboard = async (req, res, next) => {
   try {
     const type = req.query.type || "xp"; // "xp" | "streak"
-    const limit = parseInt(req.query.limit, 10) || 20;
-    const leaderboard = await UserService.getLeaderboard(type, limit);
+    const timeframe = req.query.timeframe || "all"; // "all" | "week" | "month"
+    const limit = parseInt(req.query.limit, 10) || 25;
+    const currentUserId = req.user?._id;
 
-    return successResponse(res, leaderboard, "Lấy bảng xếp hạng thành công!");
+    const data = await UserService.getLeaderboard({
+      type,
+      timeframe,
+      limit,
+      currentUserId,
+    });
+
+    return successResponse(res, data, "Lấy bảng xếp hạng thành công!");
   } catch (error) {
     next(error);
   }

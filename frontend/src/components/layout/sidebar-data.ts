@@ -2,7 +2,9 @@ import {
   Home,
   Mic,
   Video,
+  BookOpen,
   ChartNoAxesColumn,
+  Trophy,
   User,
   Sparkles,
 } from "lucide-react";
@@ -22,6 +24,16 @@ export const sidebarItems = [
     icon: Mic,
     text: "Luyện nói AI",
     to: "/speaking",
+  },
+  {
+    icon: BookOpen,
+    text: "Sổ tay Từ vựng",
+    to: "/vocabulary",
+  },
+  {
+    icon: Trophy,
+    text: "Bảng xếp hạng",
+    to: "/leaderboard",
   },
   {
     icon: ChartNoAxesColumn,

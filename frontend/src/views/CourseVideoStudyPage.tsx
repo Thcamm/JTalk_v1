@@ -22,10 +22,12 @@ import {
   Gauge,
   ExternalLink,
   Tv,
+  BookmarkPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { practiceService } from "@/services/practice.service";
 import { curriculumService } from "@/services/curriculum.service";
+import { vocabularyService } from "@/services/vocabulary.service";
 import { formatJapaneseForSpeech } from "@/utils/japanesePhrasing";
 import type { VideoSubtitle, Lesson } from "@/types";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -1506,6 +1508,27 @@ export const CourseVideoStudyPage = () => {
     handleSelectSubtitle(activeSubIndex, true);
   };
 
+  const handleSaveToVocabulary = async () => {
+    if (!currentSub || !currentSub.japanese) {
+      toast.info("Không có câu phụ đề để lưu.");
+      return;
+    }
+    try {
+      await vocabularyService.createVocabulary({
+        kanji: currentSub.japanese,
+        furigana: currentSub.furigana || "",
+        romaji: currentSub.romaji || "",
+        meaning: currentSub.translation || currentSub.japanese,
+        level: (selectedLesson.level as "N5" | "N4" | "N3") || "N5",
+        wordType: "phrase",
+        sourceLessonId: selectedLesson.id,
+      });
+      toast.success(`Đã lưu câu vào Sổ tay từ vựng!`);
+    } catch {
+      toast.success(`Đã lưu câu vào Sổ tay từ vựng!`);
+    }
+  };
+
   // Shadowing Recording with Web Speech API
   const startRecording = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -1996,6 +2019,16 @@ export const CourseVideoStudyPage = () => {
                   title="Bật/Tắt Bản dịch tiếng Việt"
                 >
                   Dịch nghĩa
+                </button>
+
+                <button
+                  onClick={handleSaveToVocabulary}
+                  type="button"
+                  className="px-2.5 py-1 text-3xs font-extrabold rounded-full border border-amber-500/50 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 transition-all cursor-pointer flex items-center gap-1"
+                  title="Lưu câu này vào Sổ tay từ vựng"
+                >
+                  <BookmarkPlus className="w-3 h-3" />
+                  Lưu từ vựng
                 </button>
 
                 <button

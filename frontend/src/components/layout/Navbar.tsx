@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "@/lib/react-router-compat";
 import {
   Search,
@@ -20,6 +20,7 @@ import { useThemeStore } from "@/stores/useThemeStore";
 import Logout from "../auth/Logout";
 import { PremiumModal } from "@/components/common/PremiumModal";
 import { DailyCheckInModal } from "@/components/gamification/DailyCheckInModal";
+import { QuickSearchModal } from "@/components/common/QuickSearchModal";
 import { Badge } from "@/components/common/Badge";
 
 export default function Navbar() {
@@ -28,6 +29,19 @@ export default function Navbar() {
   const { isDark, toggleTheme } = useThemeStore();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [showQuickSearch, setShowQuickSearch] = useState(false);
+
+  // Global Cmd+K / Ctrl+K keyboard shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowQuickSearch((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const targetLevel = user?.profile?.targetLevel || "N5";
   const xpPoints = user?.gamification?.totalXp || 0;
@@ -47,17 +61,30 @@ export default function Navbar() {
             <Menu size={18} />
           </button>
 
-          {/* Search input - Rounded full pill with keyboard shortcut */}
-          <div className="relative w-full hidden sm:block">
+          {/* Mobile Search Button */}
+          <button
+            onClick={() => setShowQuickSearch(true)}
+            type="button"
+            className="sm:hidden w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            aria-label="Tìm kiếm nhanh"
+            title="Tìm kiếm bài học & từ vựng (⌘K)"
+          >
+            <Search size={16} />
+          </button>
+
+          {/* Search input trigger - Rounded full pill with keyboard shortcut */}
+          <div
+            onClick={() => setShowQuickSearch(true)}
+            className="relative w-full hidden sm:flex items-center h-10 rounded-full bg-slate-100/90 dark:bg-slate-800/70 pl-10 pr-12 text-xs font-medium border border-transparent hover:border-rose-400 dark:hover:border-rose-500/50 cursor-pointer transition-all shadow-2xs group"
+          >
             <Search
               size={15}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-hover:text-rose-500 transition-colors"
             />
-            <input
-              placeholder="Tìm bài học, kịch bản phỏng vấn, từ vựng..."
-              className="h-10 w-full rounded-full bg-slate-100/90 dark:bg-slate-800/70 pl-10 pr-12 text-xs font-medium outline-hidden border border-transparent dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all focus:bg-white dark:focus:bg-slate-800 focus:border-rose-500 dark:focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 shadow-2xs"
-            />
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-3xs font-bold text-slate-400 dark:text-slate-500 bg-white/80 dark:bg-slate-700/80 px-1.5 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-600">
+            <span className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors truncate">
+              Tìm bài học, kịch bản phỏng vấn, từ vựng...
+            </span>
+            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-3xs font-bold text-slate-400 dark:text-slate-500 bg-white/80 dark:bg-slate-700/80 px-1.5 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-600 group-hover:border-rose-300">
               ⌘K
             </span>
           </div>
@@ -186,6 +213,11 @@ export default function Navbar() {
         isOpen={showCheckInModal}
         onClose={() => setShowCheckInModal(false)}
         autoCheckDaily={false}
+      />
+
+      <QuickSearchModal
+        isOpen={showQuickSearch}
+        onClose={() => setShowQuickSearch(false)}
       />
     </>
   );

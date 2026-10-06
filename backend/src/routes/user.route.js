@@ -1,5 +1,5 @@
 import express from "express";
-import { getMe, updateProfile, getLeaderboard } from "../controllers/user.controller.js";
+import { getMe, updateProfile, changePassword, getLeaderboard } from "../controllers/user.controller.js";
 import { protectedRoute } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -15,5 +15,9 @@ router.get("/me", getMe);
 
 // PATCH /api/v1/users/me
 router.patch("/me", updateProfile);
+
+// PATCH & POST /api/v1/users/change-password
+router.patch("/change-password", changePassword);
+router.post("/change-password", changePassword);
 
 export default router;

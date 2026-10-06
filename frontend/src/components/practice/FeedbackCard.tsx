@@ -1,8 +1,21 @@
+import { useState, useRef, useEffect } from "react";
 import type { ProcessVoiceResponse } from "@/types";
-import { Lightbulb, ArrowRight, RotateCcw } from "lucide-react";
+import {
+  Lightbulb,
+  ArrowRight,
+  RotateCcw,
+  Play,
+  Pause,
+  Volume2,
+  Mic,
+  Headphones,
+} from "lucide-react";
 
 interface FeedbackCardProps {
   evaluation: ProcessVoiceResponse;
+  userAudioUrl?: string | null;
+  nativeSentence?: string;
+  onPlayNative?: (text?: string) => void;
   onRetry: () => void;
   onNext?: () => void;
   hasNext?: boolean;
@@ -11,12 +24,57 @@ interface FeedbackCardProps {
 
 export const FeedbackCard: React.FC<FeedbackCardProps> = ({
   evaluation,
+  userAudioUrl,
+  nativeSentence,
+  onPlayNative,
   onRetry,
   onNext,
   hasNext = false,
   className = "",
 }) => {
   const { scores, overallScore, feedback } = evaluation;
+
+  // User recorded audio player state
+  const [isPlayingUserAudio, setIsPlayingUserAudio] = useState(false);
+  const [userAudioProgress, setUserAudioProgress] = useState(0);
+  const userAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const audio = userAudioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      if (audio.duration) {
+        setUserAudioProgress((audio.currentTime / audio.duration) * 100);
+      }
+    };
+
+    const handleEnded = () => {
+      setIsPlayingUserAudio(false);
+      setUserAudioProgress(0);
+    };
+
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
+      try {
+        audio.pause();
+      } catch (_) {}
+    };
+  }, [userAudioUrl]);
+
+  const toggleUserAudio = () => {
+    if (!userAudioRef.current) return;
+    if (isPlayingUserAudio) {
+      userAudioRef.current.pause();
+      setIsPlayingUserAudio(false);
+    } else {
+      userAudioRef.current.play().then(() => setIsPlayingUserAudio(true)).catch(console.error);
+    }
+  };
 
   // Rating and color scheme based on overall score
   const getScoreTheme = (score: number) => {
@@ -73,7 +131,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
     {
       title: "Độ đầy đủ (Completeness)",
       score: scores?.completeness ?? overallScore,
-      color: "bg-indigo-500",
+      color: "bg-emerald-500",
     },
   ];
 
@@ -138,6 +196,94 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             </div>
           </div>
         ))}
+      </div>
+
+      {/* AUDIO COMPARISON: Nghe lại giọng thu âm & Đối chiếu giọng mẫu */}
+      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-50 via-rose-50/40 to-slate-50 dark:from-slate-800/60 dark:via-rose-950/20 dark:to-slate-800/60 border border-slate-200 dark:border-slate-700/70 rounded-2xl space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Headphones className="w-4 h-4 text-rose-500" />
+            <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Đối chiếu âm thanh phát âm
+            </h5>
+          </div>
+          <span className="text-[11px] text-slate-400">So sánh ngữ điệu & trường âm</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* 1. User Recorded Audio Playback */}
+          <div className="p-3 bg-white dark:bg-slate-900 border border-rose-200/80 dark:border-rose-900/50 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center shrink-0">
+                <Mic className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
+                  Giọng thu âm của bạn
+                </span>
+                <span className="text-[11px] text-slate-400 block">
+                  {userAudioUrl ? (isPlayingUserAudio ? "Đang phát..." : "Bấm để nghe lại") : "Ghi âm trực tiếp"}
+                </span>
+              </div>
+            </div>
+
+            {userAudioUrl ? (
+              <div className="flex items-center gap-2">
+                <audio ref={userAudioRef} src={userAudioUrl} preload="auto" className="hidden" />
+                <button
+                  type="button"
+                  onClick={toggleUserAudio}
+                  className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  {isPlayingUserAudio ? (
+                    <>
+                      <Pause className="w-3.5 h-3.5 fill-current" /> Dừng
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current ml-0.5" /> Nghe
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <span className="text-[11px] text-slate-400 italic">Đã xử lý âm</span>
+            )}
+          </div>
+
+          {/* 2. Native Model Audio Playback */}
+          <div className="p-3 bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-900/50 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center shrink-0">
+                <Volume2 className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
+                  Giọng mẫu bản xứ
+                </span>
+                <span className="text-[11px] text-slate-400 block">Phát âm Tokyo chuẩn</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onPlayNative?.(nativeSentence || evaluation.targetSentence)}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <Volume2 className="w-3.5 h-3.5" /> Nghe mẫu
+            </button>
+          </div>
+        </div>
+
+        {/* User audio progress indicator */}
+        {isPlayingUserAudio && (
+          <div className="w-full bg-slate-200 dark:bg-slate-700 h-1 rounded-full overflow-hidden mt-1">
+            <div
+              className="bg-rose-500 h-full rounded-full transition-all duration-100"
+              style={{ width: `${userAudioProgress}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {/* AI Advice & Suggestions */}

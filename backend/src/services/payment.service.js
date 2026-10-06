@@ -86,15 +86,25 @@ export class PaymentService {
       if (momoData.resultCode === 0 && momoData.payUrl) {
         payUrl = momoData.payUrl;
         deeplink = momoData.deeplink || "";
-        qrCodeUrl = momoData.qrCodeUrl || "";
+        qrCodeUrl =
+          momoData.qrCodeUrl ||
+          `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+            momoData.payUrl
+          )}`;
       } else {
         console.warn("MoMo gateway response:", momoData);
         // Fallback simulate URL for development or testing
         payUrl = `${config.momo.redirectUrl}?orderId=${orderCode}&resultCode=0&message=Success`;
+        qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+          payUrl
+        )}`;
       }
     } catch (apiErr) {
       console.warn("Lỗi kết nối tới cổng thanh toán MoMo, sử dụng dev fallback:", apiErr.message);
       payUrl = `${config.momo.redirectUrl}?orderId=${orderCode}&resultCode=0&message=Success`;
+      qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+        payUrl
+      )}`;
     }
 
     // Update order with payUrl
@@ -112,7 +122,114 @@ export class PaymentService {
   }
 
   /**
-   * 2. Process IPN Webhook from MoMo
+   * 2. Create VietQR Payment Order (Ngân hàng 24/7 Napas standard)
+   */
+  static async createVietQRPayment({ userId, planType = "monthly_99k", amount = PREMIUM_PRICE_VND }) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("Người dùng không tồn tại.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const orderCode = `JTALK_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const bankId = config.vietqr.bankId;
+    const accountNo = config.vietqr.accountNo;
+    const accountName = config.vietqr.accountName;
+    const template = config.vietqr.template;
+
+    // Standard VietQR Image Generator API (Napas 247)
+    const qrCodeUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(
+      orderCode
+    )}&accountName=${encodeURIComponent(accountName)}`;
+
+    const order = await Order.create({
+      orderCode,
+      userId: user._id,
+      amount,
+      paymentMethod: "vietqr",
+      status: "pending",
+      payUrl: qrCodeUrl,
+      callbackData: { planType },
+    });
+
+    return {
+      orderCode,
+      amount,
+      bankId,
+      accountNo,
+      accountName,
+      qrCodeUrl,
+      payUrl: qrCodeUrl,
+      transferContent: orderCode,
+      status: order.status,
+    };
+  }
+
+  /**
+   * Helper: Activate 30-day Premium Subscription for a paid order
+   */
+  static async activateSubscriptionForOrder(order, transactionId, rawData = {}) {
+    if (order.status === "completed" || order.status === "SUCCESS") {
+      return {
+        message: "Đơn hàng đã được ghi nhận thành công trước đó.",
+        resultCode: 0,
+        orderCode: order.orderCode,
+      };
+    }
+
+    order.status = "completed";
+    order.transactionId = transactionId || `TX_${Date.now()}`;
+    order.paidAt = new Date();
+    order.callbackData = rawData;
+    await order.save();
+
+    const userId = order.userId;
+    const now = new Date();
+
+    const existingSub = await Subscription.findOne({
+      userId,
+      status: { $in: ["active", "ACTIVE"] },
+      endDate: { $gt: now },
+    }).sort({ endDate: -1 });
+
+    let targetSub;
+    if (existingSub) {
+      const newEndDate = new Date(existingSub.endDate.getTime() + SUBSCRIPTION_DURATION_MS);
+      existingSub.endDate = newEndDate;
+      existingSub.status = "active";
+      await existingSub.save();
+      targetSub = existingSub;
+    } else {
+      targetSub = await Subscription.create({
+        userId,
+        planType: "monthly_99k",
+        price: order.amount || PREMIUM_PRICE_VND,
+        status: "active",
+        startDate: now,
+        endDate: new Date(now.getTime() + SUBSCRIPTION_DURATION_MS),
+        orderId: order._id,
+      });
+    }
+
+    await User.findByIdAndUpdate(userId, {
+      $set: {
+        "subscription.tier": "premium",
+        "subscription.expiresAt": targetSub.endDate,
+        "subscription.subscriptionId": targetSub._id,
+      },
+    });
+
+    return {
+      message: "Kích hoạt gói Premium 30 ngày thành công!",
+      resultCode: 0,
+      orderCode: order.orderCode,
+      expiresAt: targetSub.endDate,
+    };
+  }
+
+  /**
+   * 3. Process IPN Webhook from MoMo
    */
   static async processMoMoWebhook(payload) {
     const { orderId, resultCode, transId } = payload;
@@ -141,73 +258,14 @@ export class PaymentService {
       throw error;
     }
 
-    // Idempotency: If order was already completed, return immediately
-    if (order.status === "completed" || order.status === "SUCCESS") {
-      return {
-        message: "Đơn hàng đã được ghi nhận thành công trước đó.",
-        resultCode: 0,
-      };
-    }
-
     // 3. Process payment status
     if (Number(resultCode) === 0) {
-      // Payment Successful!
-      order.status = "completed"; // tương thích với enum "completed" và "SUCCESS"
-      order.transactionId = transId || `MOMO_${Date.now()}`;
-      order.paidAt = new Date();
-      order.callbackData = payload;
-      await order.save();
-
-      // 4. Create or extend Premium subscription by 30 days in subscriptions collection
-      const userId = order.userId;
-      const now = new Date();
-
-      // Check if user has an existing active subscription
-      const existingSub = await Subscription.findOne({
-        userId,
-        status: { $in: ["active", "ACTIVE"] },
-        endDate: { $gt: now },
-      }).sort({ endDate: -1 });
-
-      let targetSub;
-
-      if (existingSub) {
-        // Gia hạn thêm 30 ngày từ ngày kết thúc hiện tại
-        const newEndDate = new Date(existingSub.endDate.getTime() + SUBSCRIPTION_DURATION_MS);
-        existingSub.endDate = newEndDate;
-        existingSub.status = "active";
-        await existingSub.save();
-        targetSub = existingSub;
-      } else {
-        // Tạo mới gói 30 ngày bắt đầu từ bây giờ
-        targetSub = await Subscription.create({
-          userId,
-          planType: "monthly_99k",
-          price: order.amount || PREMIUM_PRICE_VND,
-          status: "active",
-          startDate: now,
-          endDate: new Date(now.getTime() + SUBSCRIPTION_DURATION_MS),
-          orderId: order._id,
-        });
-      }
-
-      // 5. Update user snapshot in users collection
-      await User.findByIdAndUpdate(userId, {
-        $set: {
-          "subscription.tier": "premium",
-          "subscription.expiresAt": targetSub.endDate,
-          "subscription.subscriptionId": targetSub._id,
-        },
-      });
-
-      return {
-        message: "Kích hoạt gói Premium 30 ngày thành công!",
-        resultCode: 0,
-        orderCode: order.orderCode,
-        expiresAt: targetSub.endDate,
-      };
+      return await PaymentService.activateSubscriptionForOrder(
+        order,
+        transId || `MOMO_${Date.now()}`,
+        payload
+      );
     } else {
-      // Payment failed or cancelled
       order.status = "failed";
       order.callbackData = payload;
       await order.save();
@@ -217,6 +275,67 @@ export class PaymentService {
         resultCode: Number(resultCode),
       };
     }
+  }
+
+  /**
+   * 4. Process VietQR Webhook (Hỗ trợ SePay, PayOS hoặc Webhook SMS ngân hàng)
+   */
+  static async processVietQRWebhook(payload) {
+    const content =
+      payload.content ||
+      payload.orderCode ||
+      payload.addInfo ||
+      payload.description ||
+      payload.data?.description ||
+      payload.data?.orderCode ||
+      "";
+
+    // Trích xuất mã đơn hàng dạng JTALK_...
+    const match = String(content).match(/JTALK_\d+(_\d+)?/i);
+    const orderCode = match ? match[0].toUpperCase() : String(content).trim();
+
+    if (!orderCode) {
+      return { success: false, message: "Không tìm thấy mã đơn hàng trong nội dung chuyển khoản." };
+    }
+
+    const order = await Order.findOne({ orderCode });
+    if (!order) {
+      return { success: false, message: `Không tìm thấy đơn hàng: ${orderCode}` };
+    }
+
+    const transId = payload.id || payload.referenceCode || payload.data?.paymentLinkId || `VQR_${Date.now()}`;
+    const result = await PaymentService.activateSubscriptionForOrder(order, transId, payload);
+
+    return {
+      success: true,
+      resultCode: 0,
+      ...result,
+    };
+  }
+
+  /**
+   * 5. Xác nhận thanh toán VietQR thủ công / test demo
+   */
+  static async confirmVietQRPayment(orderCode, userId) {
+    const order = await Order.findOne({ orderCode, userId });
+    if (!order) {
+      const error = new Error("Không tìm thấy đơn hàng.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (order.status === "completed" || order.status === "SUCCESS") {
+      return {
+        message: "Đơn hàng đã được xác nhận thành công trước đó.",
+        orderCode: order.orderCode,
+      };
+    }
+
+    const transId = `CONFIRM_${Date.now()}`;
+    return await PaymentService.activateSubscriptionForOrder(order, transId, {
+      confirmedBy: userId,
+      confirmedAt: new Date(),
+    });
   }
 
   /**
@@ -230,6 +349,27 @@ export class PaymentService {
       throw error;
     }
     return order;
+  }
+
+  /**
+   * 4. Get list of orders for a user (Payment History)
+   */
+  static async getUserOrders(userId) {
+    const orders = await Order.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return orders.map((o) => ({
+      _id: o._id,
+      orderCode: o.orderCode,
+      amount: o.amount || 99000,
+      paymentMethod: o.paymentMethod || "momo",
+      status: o.status || "pending",
+      transactionId: o.transactionId || "",
+      paidAt: o.paidAt || null,
+      createdAt: o.createdAt,
+      payUrl: o.payUrl || "",
+    }));
   }
 }
 

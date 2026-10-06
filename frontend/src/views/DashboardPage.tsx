@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { practiceService } from "@/services/practice.service";
 import { PremiumModal } from "@/components/common/PremiumModal";
 import { HankoStampCard } from "@/components/gamification/HankoStampCard";
+import { DailyQuestsWidget } from "@/components/gamification/DailyQuestsWidget";
 import type { Practice } from "@/types";
 
 export const DashboardPage = () => {
@@ -225,7 +226,10 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* 2.5. Japanese Hanko Stamp Card (Thẻ điểm danh mộc đỏ Radio Taisou) */}
+      {/* 2.5. Daily Quests Widget (3 Thử thách ngắn + Nhận XP) */}
+      <DailyQuestsWidget />
+
+      {/* 2.6. Japanese Hanko Stamp Card (Thẻ điểm danh mộc đỏ Radio Taisou) */}
       <HankoStampCard />
 
       {/* 3. Section: Khám phá tính năng (Gen-Z Bento Feature Cards) */}
