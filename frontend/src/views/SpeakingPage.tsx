@@ -164,28 +164,48 @@ export const SpeakingPage = () => {
       return;
     }
 
-    // Match specifically with the real lesson in DB by japaneseTitle, title, or topic
+    // Match specifically with the real lesson in DB by japaneseTitle, title, or topic ONLY if it has valid dialogues
     const matchedLesson = lessons.find((l) => {
       const dbTitle = l.title || "";
       const topicName = typeof l.topicId === "object" ? l.topicId?.name || "" : "";
+      const hasDialogues = Array.isArray(l.dialogues) && l.dialogues.length > 0;
       return (
-        dbTitle.includes(scenario.japaneseTitle) ||
-        topicName.includes(scenario.japaneseTitle) ||
-        (scenario.title && dbTitle.includes(scenario.title))
+        hasDialogues &&
+        (dbTitle.includes(scenario.japaneseTitle) ||
+          topicName.includes(scenario.japaneseTitle) ||
+          (scenario.title && dbTitle.includes(scenario.title)))
       );
     });
 
+    // If no matching DB lesson with dialogues, navigate to scenario.id (sc-1 -> sc-8)
+    // PracticeRoomPage will load authentic Japanese dialogues with furigana & translation
     const targetId = matchedLesson?._id || scenario.lessonId || scenario.id;
     navigate(`/practice/${targetId}`);
   };
 
   const handleRandomQuickPractice = () => {
-    if (lessons.length > 0) {
-      const randomLesson = lessons[Math.floor(Math.random() * lessons.length)];
-      navigate(`/practice/${randomLesson._id}`);
-    } else {
-      navigate("/practice/quick-drill");
+    // 1. Ưu tiên chọn ngẫu nhiên từ kho kịch bản giao tiếp tiếng Nhật chuẩn (sc-1 -> sc-8)
+    const availableScenarios = allScenarios.filter((sc) => isPremium || !sc.isPremium);
+    if (availableScenarios.length > 0) {
+      const randomScenario =
+        availableScenarios[Math.floor(Math.random() * availableScenarios.length)];
+      handleScenarioClick(randomScenario);
+      return;
     }
+
+    // 2. Hoặc bài học trong cơ sở dữ liệu có sẵn hội thoại tiếng Nhật hợp lệ
+    const validDbLessons = lessons.filter(
+      (l) =>
+        (Array.isArray(l.dialogues) && l.dialogues.length > 0) ||
+        (l.sampleSentence && /[぀-ゟ゠-ヿ一-龯]/.test(l.sampleSentence))
+    );
+    if (validDbLessons.length > 0) {
+      const randomLesson = validDbLessons[Math.floor(Math.random() * validDbLessons.length)];
+      navigate(`/practice/${randomLesson._id}`);
+      return;
+    }
+
+    navigate("/practice/sc-1");
   };
 
   const filteredScenarios = allScenarios.filter((sc) => {

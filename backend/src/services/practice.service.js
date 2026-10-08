@@ -296,8 +296,8 @@ export class PracticeService {
     if (lessonId && mongoose.Types.ObjectId.isValid(lessonId)) {
       const lesson = await Lesson.findById(lessonId);
       if (lesson) {
-        finalTitle = lesson.title || finalTitle;
-        finalLevel = lesson.level || finalLevel;
+        finalTitle = scenarioTitle || lesson.title || finalTitle;
+        finalLevel = level || lesson.level || finalLevel;
       }
     }
 
@@ -328,8 +328,8 @@ export class PracticeService {
     if (lessonId && mongoose.Types.ObjectId.isValid(lessonId)) {
       const lesson = await Lesson.findById(lessonId);
       if (lesson) {
-        finalTitle = lesson.title || finalTitle;
-        finalLevel = lesson.level || finalLevel;
+        finalTitle = scenarioTitle || lesson.title || finalTitle;
+        finalLevel = level || lesson.level || finalLevel;
       }
     }
 

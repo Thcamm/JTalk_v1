@@ -121,7 +121,7 @@ export class EdgeTtsService {
     }
 
     // 3. Primary Production Engine: Microsoft Edge Neural TTS with Sec-MS-GEC DRM Token
-    const candidateHosts = ["speech.platform.bing.com", "eastus.api.speech.microsoft.com"];
+    const candidateHosts = ["speech.platform.bing.com"];
     for (const host of candidateHosts) {
       try {
         const audioBuffer = await this.synthesizeWithEdge(cleanText, selectedVoice, rateStr, pitchStr, host);
@@ -139,6 +139,24 @@ export class EdgeTtsService {
       } catch (edgeError) {
         console.warn(`[Edge-TTS] Host ${host} notice: ${edgeError.message}`);
       }
+    }
+
+    // 4. Fallback 1: Google Translate Japanese Native Audio (Zero setup, 100% free, ultra-fast < 250ms)
+    try {
+      const audioBuffer = await this.synthesizeWithGoogleTranslate(cleanText);
+      if (audioBuffer && audioBuffer.length > 0) {
+        const base64Audio = audioBuffer.toString("base64");
+        this.saveToCache(cacheKey, base64Audio);
+        return {
+          audioContent: base64Audio,
+          mimeType: "audio/mp3",
+          voice: selectedVoice,
+          cached: false,
+          provider: "google-translate-tts",
+        };
+      }
+    } catch (gtError) {
+      console.warn("[Edge-TTS] Google Translate fallback notice:", gtError.message);
     }
 
     // 4. Fallback 1: OpenAI TTS (if API key available and not in 429 quota exhaustion cooldown)
@@ -266,11 +284,11 @@ export class EdgeTtsService {
         }
       };
 
-      // Responsive 3500ms timeout
+      // Responsive 1200ms timeout for instant fallback if Edge connection stalls
       timer = setTimeout(() => {
         cleanup(null);
-        reject(new Error(`Timeout khi kết nối Edge TTS ${host} (3.5s).`));
-      }, 3500);
+        reject(new Error(`Timeout khi kết nối Edge TTS ${host} (1.2s).`));
+      }, 1200);
 
       req.on("error", (err) => {
         cleanup(null);
