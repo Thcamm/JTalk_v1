@@ -51,17 +51,44 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   errorMessage: null,
 
   setLesson: (lesson: Lesson) => {
-    const dialogues = lesson.dialogues && lesson.dialogues.length > 0
-      ? lesson.dialogues
-      : [
-          {
-            order: 1,
-            speaker: "ai" as const,
-            japanese: lesson.sampleSentence || "こんにちは！元気ですか？",
-            translation: lesson.translation || "Xin chào! Bạn có khỏe không?",
-            expectedAnswer: lesson.sampleSentence || "はい、元気です。",
-          },
-        ];
+    const hasJapanese = (str?: string) =>
+      Boolean(str && /[぀-ゟ゠-ヿ一-龯]/.test(str));
+
+    // Lọc hoặc xây dựng hội thoại đảm bảo trường japanese TUYỆT ĐỐI không phải là tiếng Việt
+    let dialogues =
+      Array.isArray(lesson.dialogues) && lesson.dialogues.length > 0
+        ? lesson.dialogues.filter((d) => hasJapanese(d.japanese))
+        : [];
+
+    if (dialogues.length === 0) {
+      const validJapanese = hasJapanese(lesson.sampleSentence)
+        ? lesson.sampleSentence!
+        : "初めまして、どうぞよろしくお願いします。";
+      const validTranslation = hasJapanese(lesson.sampleSentence)
+        ? lesson.translation || ""
+        : "Rất vui được gặp bạn, mong nhận được sự giúp đỡ.";
+
+      dialogues = [
+        {
+          order: 1,
+          speaker: "ai" as const,
+          japanese: "こんにちは！新しいクラスへようこそ。お名前は何ですか？",
+          furigana: "こんにちは！あたらしいクラスへようこそ。おなまえはなんですか？",
+          romaji: "Konnichiwa! Atarashii kurasu e youkoso. Onamae wa nan desu ka?",
+          translation: "Xin chào! Chào mừng bạn tới lớp học mới. Bạn tên là gì thế?",
+          expectedAnswer: validJapanese,
+        },
+        {
+          order: 2,
+          speaker: "user" as const,
+          japanese: validJapanese,
+          furigana: validJapanese,
+          romaji: "",
+          translation: validTranslation,
+          expectedAnswer: validJapanese,
+        },
+      ];
+    }
 
     set({
       currentLesson: lesson,
@@ -75,6 +102,9 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       durationSeconds: 0,
       quotaExceeded: false,
       errorMessage: null,
+      isRecording: false,
+      isEvaluating: false,
+      isSaving: false,
     });
   },
 
@@ -89,6 +119,9 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
         audioUrl: null,
         durationSeconds: 0,
         errorMessage: null,
+        isRecording: false,
+        isEvaluating: false,
+        isSaving: false,
       });
     }
   },
@@ -104,6 +137,9 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
         audioUrl: null,
         durationSeconds: 0,
         errorMessage: null,
+        isRecording: false,
+        isEvaluating: false,
+        isSaving: false,
       });
     }
   },
@@ -119,6 +155,9 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
         audioUrl: null,
         durationSeconds: 0,
         errorMessage: null,
+        isRecording: false,
+        isEvaluating: false,
+        isSaving: false,
       });
     }
   },

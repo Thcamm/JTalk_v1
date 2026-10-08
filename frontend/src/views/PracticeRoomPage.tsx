@@ -583,7 +583,29 @@ export const PracticeRoomPage = () => {
         setLoadingLesson(true);
         const data = await curriculumService.getLessonById(lessonId);
         if (isMounted && data) {
-          session.setLesson(data);
+          const hasJapaneseText = (str?: string) =>
+            Boolean(str && /[぀-ゟ゠-ヿ一-龯]/.test(str));
+
+          const hasValidDialogues =
+            Array.isArray(data.dialogues) &&
+            data.dialogues.length > 0 &&
+            data.dialogues.some((d) => hasJapaneseText(d.japanese));
+
+          const hasJapaneseSample = hasJapaneseText(data.sampleSentence);
+
+          if (!hasValidDialogues && !hasJapaneseSample) {
+            // Bài học trong DB không có hội thoại giao tiếp (ví dụ bài ngữ pháp/video chỉ có tiêu đề tiếng Việt)
+            // Tự động làm giàu dữ liệu bằng kịch bản hội thoại tiếng Nhật bản xứ chuẩn
+            const fb = getFallbackScenario(lessonId);
+            session.setLesson({
+              ...data,
+              dialogues: fb.dialogues,
+              sampleSentence: fb.sampleSentence || "初めまして、どうぞよろしくお願いします。",
+              translation: fb.translation || "Rất vui được gặp bạn, mong nhận được sự giúp đỡ.",
+            });
+          } else {
+            session.setLesson(data);
+          }
         }
       } catch (err: unknown) {
         console.error("Failed to load lesson from API:", err);
@@ -637,6 +659,9 @@ export const PracticeRoomPage = () => {
   const handleNextDialogue = () => {
     session.stopAudio();
     setShowHint(false);
+    session.setIsEvaluating(false);
+    session.setIsRecording(false);
+    session.recorder.resetRecording();
     if (isLastDialogue) {
       navigate("/progress");
     } else {
@@ -647,6 +672,8 @@ export const PracticeRoomPage = () => {
   const handleRetryCurrent = () => {
     session.stopAudio();
     setShowHint(false);
+    session.setIsEvaluating(false);
+    session.setIsRecording(false);
     session.setCurrentEvaluation(null);
     session.setClientTranscript("");
     session.recorder.resetRecording();
@@ -851,7 +878,15 @@ export const PracticeRoomPage = () => {
 
                 <AudioPlayer
                   textToSpeak={currentDialogue?.japanese}
-                  onNativeTts={() => session.playNativeAudio(currentDialogue?.japanese)}
+                  onNativeTts={() => {
+                    if (session.isPlayingAudio || session.isLoadingAudio) {
+                      session.stopAudio();
+                    } else {
+                      session.playNativeAudio(currentDialogue?.japanese);
+                    }
+                  }}
+                  isPlaying={session.isPlayingAudio}
+                  isLoading={session.isLoadingAudio}
                   label="Nghe giọng chuẩn"
                 />
               </div>
@@ -974,11 +1009,20 @@ export const PracticeRoomPage = () => {
 
                     <button
                       type="button"
-                      onClick={() => session.playNativeAudio(currentDialogue?.expectedAnswer || currentDialogue?.japanese)}
-                      className="p-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all shrink-0 hover:scale-105 active:scale-95"
+                      disabled={session.isLoadingAudio}
+                      onClick={() => {
+                        if (session.isPlayingAudio || session.isLoadingAudio) {
+                          session.stopAudio();
+                        } else {
+                          session.playNativeAudio(
+                            currentDialogue?.expectedAnswer || currentDialogue?.japanese
+                          );
+                        }
+                      }}
+                      className="p-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all shrink-0 hover:scale-105 active:scale-95 disabled:opacity-50"
                       title="Nghe phát âm thử câu mẫu"
                     >
-                      <Volume2 className="w-4 h-4" />
+                      <Volume2 className={`w-4 h-4 ${session.isPlayingAudio ? "animate-pulse" : ""}`} />
                     </button>
                   </div>
 

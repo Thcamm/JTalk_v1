@@ -1,7 +1,105 @@
 import config from "../config/index.js";
 
 /**
- * AI Service: Speech-to-Text (Azure/Whisper) and LLM Scoring Engine (OpenAI/Claude)
+ * Gemini Key Pool Manager
+ * Quản lý đa API Keys Google AI Studio với phân tải Round-Robin,
+ * tự động cách ly key khi gặp 429 (Resource Exhausted) và chuyển key tức thời (Auto-Failover).
+ */
+class GeminiKeyPoolManager {
+  constructor() {
+    this.keys = [];
+    this.currentIndex = 0;
+    this.cooldowns = new Map(); // apiKey -> timestamp khi hết hạn cooldown
+    this.initKeys();
+  }
+
+  initKeys() {
+    const configuredKeys = config.ai.geminiApiKeys || [];
+    const singleKey = config.ai.geminiApiKey;
+    const combined = [...configuredKeys];
+    if (singleKey && !combined.includes(singleKey)) {
+      combined.push(singleKey);
+    }
+    this.keys = [...new Set(combined)].filter(
+      (k) => Boolean(k) && !k.startsWith("your_")
+    );
+  }
+
+  hasKeys() {
+    this.initKeys();
+    return this.keys.length > 0;
+  }
+
+  /**
+   * Lấy key tiếp theo theo thuật toán Round-Robin, ưu tiên key không bị cooldown.
+   * Nếu tất cả đều cooldown, chọn key có thời gian chờ ngắn nhất.
+   * @param {Set<string>} excludedKeys - Các key đã thử trong lượt gọi hiện tại
+   */
+  getNextKey(excludedKeys = new Set()) {
+    this.initKeys();
+    if (this.keys.length === 0) return null;
+
+    const now = Date.now();
+    const total = this.keys.length;
+
+    // 1. Duyệt Round-Robin tìm key khỏe mạnh
+    for (let i = 0; i < total; i++) {
+      const idx = (this.currentIndex + i) % total;
+      const candidateKey = this.keys[idx];
+      if (excludedKeys.has(candidateKey)) continue;
+
+      const cooldownUntil = this.cooldowns.get(candidateKey) || 0;
+      if (now >= cooldownUntil) {
+        this.currentIndex = (idx + 1) % total;
+        return candidateKey;
+      }
+    }
+
+    // 2. Nếu tất cả key hợp lệ đều đang cooldown, chọn key sắp hồi phục sớm nhất
+    let earliestKey = null;
+    let earliestTime = Infinity;
+    for (const key of this.keys) {
+      if (excludedKeys.has(key)) continue;
+      const cooldownUntil = this.cooldowns.get(key) || 0;
+      if (cooldownUntil < earliestTime) {
+        earliestTime = cooldownUntil;
+        earliestKey = key;
+      }
+    }
+
+    if (earliestKey) return earliestKey;
+
+    // 3. Fallback: Lấy bất kỳ key nào chưa thử trong request này
+    const remaining = this.keys.find((k) => !excludedKeys.has(k));
+    return remaining || null;
+  }
+
+  /**
+   * Đưa key vào hàng đợi nghỉ (cooldown) khi chạm hạn mức 429 / Rate Limit
+   * @param {string} key
+   * @param {number} durationMs - Thời gian cooldown (mặc định 60 giây)
+   */
+  markCooldown(key, durationMs = 60000) {
+    if (!key) return;
+    const masked = key.length > 8 ? `${key.slice(0, 4)}...${key.slice(-4)}` : "***";
+    console.warn(
+      `[GeminiKeyPool] Key [${masked}] đạt giới hạn quota (429), tạm nghỉ ${Math.round(
+        durationMs / 1000
+      )}s.`
+    );
+    this.cooldowns.set(key, Date.now() + durationMs);
+  }
+
+  getKeyCount() {
+    this.initKeys();
+    return this.keys.length;
+  }
+}
+
+const geminiPool = new GeminiKeyPoolManager();
+
+/**
+ * AI Service: Speech-to-Text (Azure/Whisper) and LLM Scoring Engine (Gemini Pool/Claude/OpenAI)
  */
 export class AiService {
   /**
@@ -216,12 +314,12 @@ export class AiService {
     vocabularyList = [],
     level = "N5",
   }) {
-    // 1. Try Google Gemini (Free Tier / High Speed)
-    if (config.ai.geminiApiKey) {
+    // 1. Try Google Gemini Key Pool (Multi-key round-robin & auto-failover khi hết quota 429)
+    if (this.hasGeminiKeys()) {
       try {
         return await this.evaluateWithGemini({ transcript, expectedSentence, vocabularyList, level });
       } catch (err) {
-        console.warn("Lỗi gọi Gemini API cho chấm điểm, thử Claude/OpenAI/Fallback:", err.message);
+        console.warn("Lỗi gọi Gemini Key Pool cho chấm điểm, thử Claude/OpenAI/Fallback:", err.message);
       }
     }
 
@@ -248,58 +346,105 @@ export class AiService {
   }
 
   /**
-   * Helper to call Google Gemini API with smart multi-model fallback to handle capacity spikes
+   * Kiểm tra xem có bất kỳ Gemini API Key nào khả dụng không
+   */
+  static hasGeminiKeys() {
+    return geminiPool.hasKeys();
+  }
+
+  /**
+   * Helper to call Google Gemini API with Gemini Multi-Key Pool
+   * Round-Robin load distribution, 429 quota exhaustion tracking & instantaneous failover
    */
   static async callGemini({ prompt, temperature = 0.2, isJson = true }) {
-    if (!config.ai.geminiApiKey) {
-      throw new Error("GEMINI_API_KEY chưa được cấu hình.");
+    if (!geminiPool.hasKeys()) {
+      throw new Error("Không có GEMINI_API_KEY nào khả dụng trong cấu hình.");
     }
 
-    // Try candidate models in order to bypass any 503 high demand spikes or deprecated model 404s
+    // Danh sách model ưu tiên xử lý tiếng Nhật nhanh và tối ưu tốc độ (< 1s)
     const candidateModels = [
-      config.ai.geminiModel || "gemini-3.1-flash-lite",
+      config.ai.geminiModel,
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
       "gemini-3.1-flash-lite",
-      "gemini-3-flash-preview",
-      "gemini-3.6-flash",
-    ];
+    ].filter(Boolean);
 
     const models = [...new Set(candidateModels)];
+    const triedKeys = new Set();
+    const totalKeys = geminiPool.getKeyCount();
     let lastError = null;
 
-    for (const model of models) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.ai.geminiApiKey}`;
-        const bodyPayload = {
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature,
-            ...(isJson ? { responseMimeType: "application/json" } : {}),
-          },
-        };
+    // Vòng lặp Failover qua các API Key trong Key Pool
+    for (let attempt = 0; attempt < Math.max(1, totalKeys); attempt++) {
+      const apiKey = geminiPool.getNextKey(triedKeys);
+      if (!apiKey) break;
+      triedKeys.add(apiKey);
 
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bodyPayload),
-        });
+      const maskedKey = apiKey.length > 8 ? `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}` : "***";
 
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`Gemini (${model}) error [${response.status}]: ${errText}`);
+      for (const model of models) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+          const bodyPayload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature,
+              ...(isJson ? { responseMimeType: "application/json" } : {}),
+            },
+          };
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6500); // 6.5s responsive timeout
+
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bodyPayload),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          // Phát hiện 429 Quota Exhausted hoặc Rate Limit -> Tự động kích hoạt Circuit Breaker & Failover
+          if (response.status === 429) {
+            const errText = await response.text();
+            geminiPool.markCooldown(apiKey, 60000); // Cooldown key này trong 60s
+            console.warn(
+              `[GeminiKeyPool] Key [${maskedKey}] bị giới hạn 429 (Resource Exhausted). Tự động chuyển sang key tiếp theo trong Pool...`
+            );
+            lastError = new Error(`Gemini 429 Rate Limit [${maskedKey}]: ${errText}`);
+            break; // Thoát vòng lặp model để chuyển sang KEY TIẾP THEO ngay lập tức!
+          }
+
+          if (!response.ok) {
+            const errText = await response.text();
+            // Nếu API key không hợp lệ hoặc hết hạn (400, 403)
+            if (response.status === 400 || response.status === 403) {
+              if (errText.includes("API_KEY_INVALID") || errText.includes("key expired")) {
+                geminiPool.markCooldown(apiKey, 3600000); // Cooldown 1 giờ
+                console.warn(
+                  `[GeminiKeyPool] Key [${maskedKey}] không hợp lệ hoặc hết hạn. Chuyển key tiếp theo...`
+                );
+                break;
+              }
+            }
+            throw new Error(`Gemini (${model}) [${response.status}]: ${errText}`);
+          }
+
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            return text;
+          }
+        } catch (err) {
+          lastError = err;
+          console.warn(`[GeminiKeyPool] Model ${model} với key [${maskedKey}] chưa thành công:`, err.message);
         }
-
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          return text;
-        }
-      } catch (err) {
-        lastError = err;
-        console.warn(`[Gemini Engine] Model ${model} gặp lỗi/bận, thử model tiếp theo:`, err.message);
       }
     }
 
-    throw lastError || new Error("Tất cả các model Gemini đều không phản hồi.");
+    throw lastError || new Error("Tất cả các API key trong Gemini Pool đều không phản hồi.");
   }
 
   /**
@@ -535,12 +680,12 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
     conversationHistory = [],
     userMessage = "",
   }) {
-    // 1. Try Google Gemini (Free Tier / High Speed)
-    if (config.ai.geminiApiKey) {
+    // 1. Try Google Gemini Key Pool (Multi-key round-robin & auto-failover)
+    if (this.hasGeminiKeys()) {
       try {
         return await this.roleplayWithGemini({ scenarioTitle, level, conversationHistory, userMessage });
       } catch (err) {
-        console.warn("Lỗi gọi Gemini API cho Roleplay, thử Claude/OpenAI/Fallback:", err.message);
+        console.warn("Lỗi gọi Gemini Key Pool cho Roleplay, thử Claude/OpenAI/Fallback:", err.message);
       }
     }
 
@@ -572,7 +717,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
   static async roleplayWithGemini({ scenarioTitle, level, conversationHistory, userMessage }) {
     const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage });
     const rawContent = await this.callGemini({ prompt, temperature: 0.7, isJson: true });
-    return this.parseRoleplayJson(rawContent, scenarioTitle, userMessage);
+    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage);
   }
 
   /**
@@ -602,7 +747,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
 
     const data = await response.json();
     const rawContent = data.content?.[0]?.text || "";
-    return this.parseRoleplayJson(rawContent, scenarioTitle, userMessage);
+    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage);
   }
 
   /**
@@ -639,15 +784,15 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content || "";
-    return this.parseRoleplayJson(rawContent, scenarioTitle, userMessage);
+    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage);
   }
 
   /**
-   * Prompt builder for Roleplay
+   * Prompt builder for Roleplay with strict conversation flow & off-topic clarification
    */
   static buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage }) {
-    const formattedHistory = conversationHistory
-      .slice(-6)
+    const formattedHistory = (conversationHistory || [])
+      .slice(-8)
       .map((msg) => `${msg.sender === "ai" ? "Character (AI)" : "Learner"}: "${msg.japanese}"`)
       .join("\n");
 
@@ -655,19 +800,34 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
 Hãy đóng vai nhân vật bản ngữ tiếng Nhật trong tình huống giao tiếp: "${scenarioTitle}".
 Trình độ người học: JLPT ${level}.
 
-Nhiệm vụ:
-1. Tiếp nối câu chuyện một cách tự nhiên, đúng vai trò và ngữ cảnh. Câu trả lời của bạn nên ngắn gọn (1-2 câu tiếng Nhật), phù hợp trình độ ${level}.
-2. Đánh giá câu người học vừa nói:
-   - naturalnessScore: chấm điểm độ tự nhiên (0-100)
-   - grammarAdvice: nhận xét ngắn gọn bằng tiếng Việt (cách dùng trợ từ は/が/を/に, thể lịch sự です/ます)
-   - betterExpression: gợi ý mẫu câu nói tự nhiên chuẩn người bản xứ hơn (nếu có)
-   - betterExpressionFurigana: phiên âm Hiragana/Katakana cho toàn bộ chữ Hán trong betterExpression
-3. Gợi ý 2-3 câu trả lời ngắn mà người học có thể chọn để đối đáp tiếp (suggestedAnswers).
-   MỖI CÂU GỢI Ý PHẢI CÓ ĐỦ:
-   - japanese: câu tiếng Nhật (có chữ Hán Kanji nếu cần)
-   - furigana: phiên âm toàn bộ chữ Hán sang Hiragana/Katakana để người học dễ đọc
-   - romaji: phiên âm Latin
-   - translation: nghĩa tiếng Việt ngắn gọn
+QUY TẮC CỐT LÕI (TUYỆT ĐỐI TUÂN THỦ):
+1. TIẾN TRÌNH HỘI THOẠI & KHÔNG LẶP LẠI CÂU HỎI CŨ:
+   - TUYỆT ĐỐI KHÔNG lặp lại câu hỏi mở đầu hoặc bất kỳ câu hỏi nào bạn đã hỏi trong lịch sử trò chuyện (xem phần Lịch sử trò chuyện bên dưới).
+   - Mỗi lượt hội thoại phải phát triển câu chuyện tiến lên phía trước theo diễn biến thực tế.
+
+2. XỬ LÝ KHI NGƯỜI HỌC TRẢ LỜI LINH TINH / LẠC ĐỀ / KHÔNG HIỂU / CÂU VÔ NGHĨA:
+   - Nếu câu người học vừa nói ("${userMessage}") không ăn nhập với câu hỏi trước, nói lạc đề, hoặc là từ ngữ vô nghĩa:
+     * AI TUYỆT ĐỐI KHÔNG quay lại câu hỏi ban đầu và KHÔNG giả vờ như đã hiểu.
+     * AI PHẢI phản xạ bằng câu nghi vấn làm rõ hoặc ngạc nhiên lịch sự (Clarifying / Puzzled questions) như người Nhật ngoài đời:
+       Ví dụ:
+       + 「えっ、すみません、よく聞き取れなかったのですが、もう一度言っていただけますか？」(Ủa, xin lỗi tôi chưa nghe rõ lắm, bạn có thể nói lại một lần nữa được không?)
+       + 「あれ？急にどうしたんですか？今の話と少し違うような気がしますが…」(Ủa? Sao tự nhiên lại vậy ta? Hình như hơi khác chủ đề chúng ta đang nói một chút thì phải…)
+       + 「すみません、それはどういう意味ですか？もう少し分かりやすく教えてくれますか？」(Xin lỗi, điều đó nghĩa là gì vậy ạ? Bạn có thể giải thích dễ hiểu hơn một chút được không?)
+     * Trong "userEvaluation": Chấm điểm naturalnessScore thấp hơn (35-55), grammarAdvice giải thích nhẹ nhàng bằng tiếng Việt rằng câu nói chưa phù hợp hoặc lạc đề, gợi ý câu trả lời đúng trọng tâm.
+     * Trong "suggestedAnswers": Cung cấp 2-3 câu trả lời mẫu đúng trọng tâm ngữ cảnh để hỗ trợ người học lấy lại mạch đối thoại.
+
+3. KHI NGƯỜI HỌC TRẢ LỜI TỰ NHIÊN VÀ ĐÚNG TRỌNG TÂM:
+   - AI đáp lại bằng từ đệm cảm thán (Aizuchi: 「そうなんですね！」「なるほど！」「いいですね！」...) và hỏi tiếp 1 câu mở rộng/đào sâu vào thông tin người học vừa chia sẻ.
+   - Câu trả lời của AI ngắn gọn (1-2 câu tiếng Nhật), tự nhiên, chuẩn giao tiếp bản xứ ${level}.
+
+4. ĐÁNH GIÁ CÂU NGƯỜI HỌC VỪA NÓI (userEvaluation):
+   - naturalnessScore: Chấm điểm độ tự nhiên (0-100).
+   - grammarAdvice: Nhận xét ngắn gọn, thực tế bằng tiếng Việt.
+   - betterExpression: Gợi ý cách diễn đạt tự nhiên hơn của người bản xứ (nếu có).
+   - betterExpressionFurigana: Phiên âm Hiragana/Katakana cho toàn bộ chữ Hán trong betterExpression.
+
+5. GỢI Ý 2-3 CÂU TRẢ LỜI TIẾP THEO (suggestedAnswers):
+   - Mỗi câu có đủ: japanese, furigana (phiên âm toàn bộ chữ Hán sang Hiragana), romaji, translation (tiếng Việt).
 
 Lịch sử trò chuyện gần nhất:
 ${formattedHistory || "(Bắt đầu cuộc trò chuyện)"}
@@ -677,8 +837,8 @@ Câu người học vừa nói: "${userMessage}"
 Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
 {
   "aiReply": {
-    "japanese": "Câu tiếng Nhật nhân vật đáp lại",
-    "furigana": "Câu tiếng Nhật phiên âm toàn bộ Kanji sang Hiragana/Katakana",
+    "japanese": "Câu tiếng Nhật nhân vật đáp lại (ngắn gọn, tự nhiên, không lặp lại câu hỏi cũ)",
+    "furigana": "Phiên âm toàn bộ chữ Hán sang Hiragana/Katakana",
     "romaji": "Romaji phiên âm Latin",
     "translation": "Bản dịch tiếng Việt tự nhiên"
   },
@@ -690,16 +850,10 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
   },
   "suggestedAnswers": [
     {
-      "japanese": "店内でお願いします。",
-      "furigana": "てんないでおねがいします。",
-      "romaji": "Tennai de onegaishimasu.",
-      "translation": "Cho tôi dùng tại quán ạ."
-    },
-    {
-      "japanese": "持ち帰りでお願いします。",
-      "furigana": "もちかえりでおねがいします。",
-      "romaji": "Mochikaeri de onegaishimasu.",
-      "translation": "Cho tôi mang về ạ."
+      "japanese": "...",
+      "furigana": "...",
+      "romaji": "...",
+      "translation": "..."
     }
   ]
 }
@@ -709,7 +863,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
   /**
    * Safely parse Roleplay JSON and normalize suggestedAnswers
    */
-  static parseRoleplayJson(rawText, scenarioTitle, userMessage) {
+  static parseRoleplayJson(rawText, scenarioTitle, level, conversationHistory, userMessage) {
     try {
       const cleaned = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned);
@@ -735,138 +889,479 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
 
       return parsed;
     } catch {
-      return this.roleplayHeuristically({ scenarioTitle, userMessage });
+      return this.roleplayHeuristically({ scenarioTitle, level, conversationHistory, userMessage });
     }
   }
 
   /**
-   * Dynamic Heuristic Roleplay Fallback (Zero external cost / offline resilient)
+   * Dynamic Heuristic Roleplay Fallback (Zero external cost / offline resilient / turn-aware progression)
    */
-  static roleplayHeuristically({ scenarioTitle = "", userMessage = "" }) {
-    const cleanMsg = (userMessage || "").toLowerCase();
+  static roleplayHeuristically({ scenarioTitle = "", level = "N5", conversationHistory = [], userMessage = "" }) {
+    const cleanMsg = (userMessage || "").trim().toLowerCase();
+    const userTurns = (conversationHistory || []).filter(
+      (m) => m.sender === "user" || m.role === "user"
+    ).length;
+    const currentTurn = userTurns + 1; // 1, 2, 3, 4...
 
-    // Cafe scenario
-    if (scenarioTitle.includes("カフェ") || scenarioTitle.includes("Cafe") || cleanMsg.includes("コーヒー") || cleanMsg.includes("ラテ")) {
+    // 1. Phán đoán nếu câu trả lời của người học là vô nghĩa, linh tinh, quá ngắn hoặc lạc đề hoàn toàn
+    const isTooShortOrGibberish =
+      cleanMsg.length < 2 ||
+      /^[^a-zA-Z0-9぀-ゟ゠-ヿ一-龯]+$/.test(cleanMsg) ||
+      /^(.)\1{3,}$/.test(cleanMsg) ||
+      /^(alo|test|asdf|haha|kkk|ko|khong|sao the|gi day|gi vay)/i.test(cleanMsg);
+
+    if (isTooShortOrGibberish) {
       return {
         aiReply: {
-          japanese: "かしこまりました！お持ち帰りですか、それとも店内でお召し上がりになりますか？",
-          furigana: "かしこまりました！おもちかえりですか、それともてんないでおめしあがりになりますか？",
-          romaji: "Kashikomarimashita! Omochikaeri desu ka, soretomo tennai de omeshiagari ni narimasu ka?",
-          translation: "Dạ vâng được chứ ạ! Quý khách muốn mang đi hay dùng tại quán ạ?",
+          japanese: "えっ、すみません、よく聞き取れなかったのですが、もう一度言っていただけますか？",
+          furigana: "えっ、すみません、よくききとれなかったのですが、もういちどいっていただけますか？",
+          romaji: "E', sumimasen, yoku kikitorenakatta no desu ga, mou ichido itte itadakemasu ka?",
+          translation: "Ủa, xin lỗi tôi chưa nghe rõ lắm, bạn có thể nhắc lại một lần nữa được không?",
         },
         userEvaluation: {
-          naturalnessScore: 88,
-          grammarAdvice: "Bạn đã gọi món rất rõ ràng và chuẩn xác. Có thể thêm お願いします ở cuối câu để tăng tính lịch sự.",
-          betterExpression: `${userMessage}をお願いします。`,
-          betterExpressionFurigana: `${userMessage}をおねがいします。`,
+          naturalnessScore: 45,
+          grammarAdvice:
+            "Câu trả lời của bạn dường như chưa rõ nghĩa hoặc chưa khớp với ngữ cảnh hội thoại. Hãy thử trả lời to, rõ ràng bằng các mẫu câu tiếng Nhật gợi ý bên dưới nhé.",
+          betterExpression: "もう一度お願いします。(Làm ơn nói lại một lần nữa ạ)",
+          betterExpressionFurigana: "もういちどおねがいします。",
         },
         suggestedAnswers: [
           {
-            japanese: "店内でお願いします。",
-            furigana: "てんないでおねがいします。",
-            romaji: "Tennai de onegaishimasu.",
-            translation: "Dùng tại quán ạ.",
+            japanese: "はい、もう一度言いますね。",
+            furigana: "はい、もういちどいいますね。",
+            romaji: "Hai, mou ichido iimasu ne.",
+            translation: "Vâng, để tôi nói lại một lần nữa nhé.",
           },
           {
-            japanese: "持ち帰りでお願いします。",
-            furigana: "もちかえりでおねがいします。",
-            romaji: "Mochikaeri de onegaishimasu.",
-            translation: "Mang đi ạ.",
+            japanese: "すみません、日本語でどう言えばいいですか？",
+            furigana: "すみません、にほんごでどういえばいいですか？",
+            romaji: "Sumimasen, Nihongo de dou ieba ii desu ka?",
+            translation: "Xin lỗi, câu này trong tiếng Nhật nói thế nào vậy ạ?",
           },
         ],
       };
     }
 
-    // Introducing oneself / New class
-    if (scenarioTitle.includes("自己紹介") || cleanMsg.includes("はじめまして") || cleanMsg.includes("申します") || cleanMsg.includes("名前")) {
+    // 2. Kịch bản: Tự giới thiệu / Lớp học mới / Chào hỏi làm quen (自己紹介 / クラス / 友達)
+    if (
+      scenarioTitle.includes("自己紹介") ||
+      scenarioTitle.includes("クラス") ||
+      scenarioTitle.includes("友達") ||
+      scenarioTitle.includes("初めまして") ||
+      /giới thiệu|chào hỏi|lớp học|bạn bè|làm quen/i.test(scenarioTitle)
+    ) {
+      if (currentTurn === 1) {
+        return {
+          aiReply: {
+            japanese: "初めまして！お会いできて嬉しいです。日本に来てどのくらいになりますか？",
+            furigana: "はじめまして！おあいできてうれしいです。にほんにきてどのくらいになりますか？",
+            romaji: "Hajimemashite! Oai dekite ureshii desu. Nihon ni kite dono kurai ni narimasu ka?",
+            translation: "Rất vui được gặp bạn! Bạn đã sang Nhật được bao lâu rồi?",
+          },
+          userEvaluation: {
+            naturalnessScore: 92,
+            grammarAdvice: "Lời chào hỏi rất tự nhiên và đúng lễ nghi giao tiếp của người Nhật.",
+            betterExpression: "初めまして、どうぞよろしくお願いします。",
+            betterExpressionFurigana: "はじめまして、どうぞよろしくおねがいします。",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "まだ半年くらいです。",
+              furigana: "まだはんとし・はんねんくらいです。",
+              romaji: "Mada hantoshi kurai desu.",
+              translation: "Mới khoảng nửa năm thôi ạ.",
+            },
+            {
+              japanese: "先月日本に来たばかりです。",
+              furigana: "せんげつにほんにきたばかりです。",
+              romaji: "Sengetsu Nihon ni kita bakari desu.",
+              translation: "Tôi vừa sang Nhật hồi tháng trước ạ.",
+            },
+          ],
+        };
+      }
+
+      if (currentTurn === 2) {
+        return {
+          aiReply: {
+            japanese: "そうなんですね！日本での生活にはもう慣れましたか？日本の食べ物や街はどうですか？",
+            furigana: "そうなんですね！にほんでのせいかつにはもうなれましたか？にほんのたべものやまちはどうですか？",
+            romaji: "Sou nan desu ne! Nihon de no seikatsu ni wa mou naremashita ka? Nihon no tabemono ya machi wa dou desu ka?",
+            translation: "Ra là vậy! Bạn đã quen với cuộc sống ở Nhật chưa? Đồ ăn và đường phố Nhật Bản thế nào?",
+          },
+          userEvaluation: {
+            naturalnessScore: 90,
+            grammarAdvice: "Cách diễn đạt mốc thời gian rất chuẩn ngữ pháp và tự nhiên. Hãy tiếp tục duy trì nhé!",
+            betterExpression: `${userMessage}。生活にも少しずつ慣れてきました。`,
+            betterExpressionFurigana: `${userMessage}。せいかつにもすこしずつなれてきました。`,
+          },
+          suggestedAnswers: [
+            {
+              japanese: "はい、だんだん慣れてきました。ラーメンがとても美味しいです。",
+              furigana: "はい、だんだんなれてきました。ラーメンがとてもおいしいです。",
+              romaji: "Hai, dandan narete kimashita. Raamen ga totemo oishii desu.",
+              translation: "Vâng, tôi dần quen rồi. Mì Ramen ngon lắm ạ.",
+            },
+            {
+              japanese: "まだ少し慣れていませんが、街がとても綺麗で気に入っています。",
+              furigana: "まだすこしなれていませんが、まちがとてもきれいで気にいっています。",
+              romaji: "Mada sukoshi narete imasen ga, machi ga totemo kirei de ki ni itte imasu.",
+              translation: "Tôi vẫn chưa quen lắm, nhưng đường phố rất sạch đẹp và tôi rất thích.",
+            },
+          ],
+        };
+      }
+
+      if (currentTurn === 3) {
+        return {
+          aiReply: {
+            japanese: "いいですね！休みの日は普段どんなことをして過ごしていますか？趣味は何ですか？",
+            furigana: "いいですね！やすみのひはふだんどんなことをしてすごしていますか？しゅみはなんですか？",
+            romaji: "Ii desu ne! Yasumi no hi wa fudan donna koto o shite sugoshite imasu ka? Shuumi wa nan desu ka?",
+            translation: "Tuyệt quá! Ngày nghỉ bạn thường làm gì? Sở thích của bạn là gì?",
+          },
+          userEvaluation: {
+            naturalnessScore: 93,
+            grammarAdvice: "Bạn dùng từ vựng miêu tả cảm nhận rất phong phú và chính xác.",
+            betterExpression: `${userMessage}。日本の文化にもとても興味があります。`,
+            betterExpressionFurigana: `${userMessage}。にほんのぶんかにもとてもきょうみがあります。`,
+          },
+          suggestedAnswers: [
+            {
+              japanese: "休みの日はよく公園を散歩したり、写真を撮ったりします。",
+              furigana: "やすみのひはよくこうえんをさんぽしたり、しゃしんをとったりします。",
+              romaji: "Yasumi no hi wa yoku kouen o sanpo shitari, shashin o tottari shimasu.",
+              translation: "Ngày nghỉ tôi hay đi dạo công viên và chụp ảnh.",
+            },
+            {
+              japanese: "家でアニメを見たり、日本語を勉強したりしています。",
+              furigana: "いえでアニメをみたり、にほんごをべんきょうしたりしています。",
+              romaji: "Ie de anime o mitari, Nihongo o benkyou shitari shite imasu.",
+              translation: "Tôi ở nhà xem anime hoặc tự học tiếng Nhật.",
+            },
+          ],
+        };
+      }
+
+      // Turn 4+ (Closing)
       return {
         aiReply: {
-          japanese: "初めまして！お会いできて嬉しいです。日本に来てどのくらいになりますか？",
-          furigana: "はじめまして！おあいできてうれしいです。にほんにきてどのくらいになりますか？",
-          romaji: "Hajimemashite! Oai dekite ureshii desu. Nihon ni kite dono kurai ni narimasu ka?",
-          translation: "Rất vui được gặp bạn! Bạn đã sang Nhật được bao lâu rồi?",
+          japanese: "素敵ですね！これから同じクラスの仲間として、一緒に日本語の勉強を頑張りましょう！よろしくお願いしますね。",
+          furigana: "すてきですね！これからおなじクラスのなかまとして、いっしょににほんごのべんきょうをがんばりましょう！よろしくおねがいしますね。",
+          romaji: "Suteki desu ne! Korekara onaji kurasu no nakama toshite, issho ni Nihongo no benkyou o gambarimashou! Yoroshiku onegaishimasu ne.",
+          translation: "Tuyệt vời quá! Từ giờ là bạn cùng lớp rồi, chúng mình cùng nhau cố gắng học tiếng Nhật nhé! Rất mong được giúp đỡ.",
+        },
+        userEvaluation: {
+          naturalnessScore: 96,
+          grammarAdvice: "Cuộc đối thoại diễn ra rất lưu loát và tự nhiên. Bạn có phản xạ tiếng Nhật rất tốt!",
+          betterExpression: "はい！こちらこそ、どうぞよろしくお願いします！",
+          betterExpressionFurigana: "はい！こちらこそ、どうぞよろしくおねがいします！",
+        },
+        suggestedAnswers: [
+          {
+            japanese: "はい！こちらこそ、どうぞよろしくお願いします！",
+            furigana: "はい！こちらこそ、どうぞよろしくおねがいします！",
+            romaji: "Hai! Kochira koso, douzo yoroshiku onegaishimasu!",
+            translation: "Vâng! Tôi cũng rất mong nhận được sự giúp đỡ của bạn!",
+          },
+          {
+            japanese: "ありがとうございます！仲良くしてくださいね。",
+            furigana: "ありがとうございます！なかよくしてくださいね。",
+            romaji: "Arigatou gozaimasu! Nakayoku shite kudasai ne.",
+            translation: "Cảm ơn bạn! Chúng mình hãy làm bạn tốt nhé.",
+          },
+        ],
+      };
+    }
+
+    // 3. Kịch bản: Quán cà phê (カフェ / Cafe / ドリンク)
+    if (
+      scenarioTitle.includes("カフェ") ||
+      scenarioTitle.includes("Cafe") ||
+      /cafe|cà phê|đồ uống|gọi món/i.test(scenarioTitle) ||
+      cleanMsg.includes("コーヒー") ||
+      cleanMsg.includes("ラテ")
+    ) {
+      if (currentTurn === 1) {
+        return {
+          aiReply: {
+            japanese: "いらっしゃいませ！ご注文はお決まりですか？",
+            furigana: "いらっしゃいませ！ごちゅうもんはおきまりですか？",
+            romaji: "Irasshaimase! Gochuumon wa okimari desu ka?",
+            translation: "Kính chào quý khách! Quý khách đã chọn được đồ uống chưa ạ?",
+          },
+          userEvaluation: {
+            naturalnessScore: 88,
+            grammarAdvice: "Có thể dùng mẫu câu '[Tên món] をお願いします' để gọi món lịch sự.",
+            betterExpression: "アイスカフェラテをひとつお願いします。",
+            betterExpressionFurigana: "アイスカフェラテをひとつおねがいします。",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "アイスカフェラテのMサイズをひとつお願いします。",
+              furigana: "アイスカフェラテのエムサイズをひとつおねがいします。",
+              romaji: "Aisukaferate no M-saizu o hitotsu onegaishimasu.",
+              translation: "Cho tôi một ly cafe latte đá size M ạ.",
+            },
+            {
+              japanese: "おすすめのドリンクは何ですか？",
+              furigana: "おすすめのドリンクはなんですか？",
+              romaji: "Osusume no dorinku wa nan desu ka?",
+              translation: "Món đồ uống đặc biệt gợi ý hôm nay là gì vậy ạ?",
+            },
+          ],
+        };
+      }
+
+      if (currentTurn === 2) {
+        return {
+          aiReply: {
+            japanese: "かしこまりました！サイズはいかがなさいますか？また、店内でお召し上がりですか、お持ち帰りですか？",
+            furigana: "かしこまりました！サイズはいかがなさいますか？また、てんないでおめしあがりですか、おもちかえりですか？",
+            romaji: "Kashikomarimashita! Saizu wa ikaga nasaimasu ka? Mata, tennai de omeshiagari desu ka, omochikaeri desu ka?",
+            translation: "Dạ vâng! Quý khách chọn size nào ạ? Và quý khách dùng tại quán hay mang đi ạ?",
+          },
+          userEvaluation: {
+            naturalnessScore: 90,
+            grammarAdvice: "Gọi món rất rõ ràng. Phát âm và ngữ điệu tự nhiên.",
+            betterExpression: `${userMessage}。店内でお願いします。`,
+            betterExpressionFurigana: `${userMessage}。てんないでおねがいします。`,
+          },
+          suggestedAnswers: [
+            {
+              japanese: "Mサイズで、店内でお願いします。",
+              furigana: "エムサイズで、てんないでおねがいします。",
+              romaji: "M-saizu de, tennai de onegaishimasu.",
+              translation: "Size M và cho tôi dùng tại quán ạ.",
+            },
+            {
+              japanese: "持ち帰りでお願いします。",
+              furigana: "もちかえりでおねがいします。",
+              romaji: "Mochikaeri de onegaishimasu.",
+              translation: "Cho tôi mang về ạ.",
+            },
+          ],
+        };
+      }
+
+      return {
+        aiReply: {
+          japanese: "かしこまりました。お会計は650円になります。お支払いはどうされますか？",
+          furigana: "かしこまりました。おかいけいはろっぴゃくごじゅうえんになります。おしはらいはどうされますか？",
+          romaji: "Kashikomarimashita. Okaikei wa roppyaku-gojuu-en ni narimasu. Oshiharai wa dou saremasu ka?",
+          translation: "Dạ vâng. Hóa đơn là 650 yên. Quý khách muốn thanh toán bằng hình thức nào ạ?",
         },
         userEvaluation: {
           naturalnessScore: 92,
-          grammarAdvice: "Lời chào hỏi rất tự nhiên và đúng lễ nghi giao tiếp của người Nhật.",
-          betterExpression: "初めまして、どうぞよろしくお願いします。",
-          betterExpressionFurigana: "はじめまして、どうぞよろしくおねがいします。",
+          grammarAdvice: "Câu trả lời đúng trọng tâm và cách xưng hô rất chuẩn.",
+          betterExpression: "PayPayで支払いたいです。",
+          betterExpressionFurigana: "ペイペイでしはらいたいです。",
         },
         suggestedAnswers: [
           {
-            japanese: "まだ半年くらいです。",
-            furigana: "まだはんとし・はんねんくらいです。",
-            romaji: "Mada hantoshi kurai desu.",
-            translation: "Mới khoảng nửa năm thôi ạ.",
+            japanese: "PayPayで支払いたいのですが、QRコードを読み取ってもいいですか？",
+            furigana: "ペイペイでしはらいたいのですが、キューアールコードをよみとってもいいですか？",
+            romaji: "Peipei de shiharaitai no desu ga, kyuuaarukoudo o yomitotte mo ii desu ka?",
+            translation: "Tôi muốn trả bằng PayPay, tôi quét mã QR này được không?",
           },
           {
-            japanese: "先月日本に来たばかりです。",
-            furigana: "せんげつにほんにきたばかりです。",
-            romaji: "Sengetsu Nihon ni kita bakari desu.",
-            translation: "Tôi vừa sang Nhật hồi tháng trước ạ.",
+            japanese: "クレジットカードでお願いします。",
+            furigana: "クレジットカードでおねがいします。",
+            romaji: "Kurejittokaado de onegaishimasu.",
+            translation: "Cho tôi thanh toán bằng thẻ tín dụng ạ.",
           },
         ],
       };
     }
 
-    // Station / Asking directions
-    if (scenarioTitle.includes("駅") || scenarioTitle.includes("道") || cleanMsg.includes("駅") || cleanMsg.includes("電車")) {
+    // 4. Kịch bản: Ga tàu / Hỏi đường (駅 / 道 / 電車)
+    if (
+      scenarioTitle.includes("駅") ||
+      scenarioTitle.includes("道") ||
+      /ga tàu|hỏi đường|đi tàu|tàu điện|shinjuku/i.test(scenarioTitle) ||
+      cleanMsg.includes("駅") ||
+      cleanMsg.includes("電車")
+    ) {
+      if (currentTurn === 1) {
+        return {
+          aiReply: {
+            japanese: "すみません、駅員です。何かお困りですか？",
+            furigana: "すみません、えきいんです。なにかおこまりですか？",
+            romaji: "Sumimasen, ekiin desu. Nanika okomari desu ka?",
+            translation: "Xin lỗi bạn, tôi là nhân viên nhà ga. Bạn đang cần hỗ trợ gì chăng?",
+          },
+          userEvaluation: {
+            naturalnessScore: 86,
+            grammarAdvice: "Dùng すみません để bắt đầu câu hỏi đường rất lịch sự.",
+            betterExpression: "すみません、新宿駅へはどう行けばいいですか？",
+            betterExpressionFurigana: "すみません、しんじゅくえきへはどういけばいいですか？",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "すみません、新宿駅に行きたいんですが、どの電車に乗ればいいですか？",
+              furigana: "すみません、しんじゅくえきにいきたいんですが、どのでんしゃにのればいいですか？",
+              romaji: "Sumimasen, Shinjuku-eki ni ikitai n desu ga, dono densha ni noreba ii desu ka?",
+              translation: "Xin lỗi, tôi muốn đến ga Shinjuku thì nên đi chuyến tàu nào ạ?",
+            },
+            {
+              japanese: "切符売り場はどこですか？",
+              furigana: "きっぷうりばはどこですか？",
+              romaji: "Kippu uriba wa doko desu ka?",
+              translation: "Quầy bán vé ở đâu vậy ạ?",
+            },
+          ],
+        };
+      }
+
+      if (currentTurn === 2) {
+        return {
+          aiReply: {
+            japanese: "3番線の山手線外回りに乗ってください。約15分で到着しますよ。Suicaはお持ちですか？",
+            furigana: "さんばんせんのやまのてせんそとまわりにのってください。やくじゅうごふんでとうちゃくしますよ。スイカはおもちですか？",
+            romaji: "Sanban-sen no Yamanote-sen sotomawari ni notte kudasai. Yaku juugofun de touchaku shimasu yo. Suica wa omochi desu ka?",
+            translation: "Bạn đón tuyến Yamanote đường ray số 3 nhé, khoảng 15 phút là đến nơi. Bạn có thẻ Suica chưa?",
+          },
+          userEvaluation: {
+            naturalnessScore: 90,
+            grammarAdvice: "Cách đặt câu hỏi điểm đến bằng trợ từ に và 行きたいんですが rất tự nhiên.",
+            betterExpression: "ありがとうございます。Suicaを持っています。",
+            betterExpressionFurigana: "ありがとうございます。スイカをもっています。",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "はい、Suicaを持っています。チャージ機はどこですか？",
+              furigana: "はい、スイカをもっています。チャージきはどこですか？",
+              romaji: "Hai, Suica o motte imasu. Chaaji-ki wa doko desu ka?",
+              translation: "Vâng tôi có thẻ Suica rồi. Máy nạp tiền ở đâu ạ?",
+            },
+            {
+              japanese: "いいえ、切符を買いたいです。",
+              furigana: "いいえ、きっぷをかいたいです。",
+              romaji: "Iie, kippu o kaitai desu.",
+              translation: "Dạ chưa, tôi muốn mua vé lẻ.",
+            },
+          ],
+        };
+      }
+
       return {
         aiReply: {
-          japanese: "新宿駅ですね！ここから山手線で約15分で行けますよ。切符はお持ちですか？",
-          furigana: "しんじゅくえきですね！ここからやまのてせんでやくじゅうごふんでいけますよ。きっぷはおもちですか？",
-          romaji: "Shinjuku-eki desu ne! Koko kara Yamanote-sen de yaku juugofun de ikemasu yo. Kippu wa omochi desu ka?",
-          translation: "Ga Shinjuku đúng không bạn! Từ đây đi tuyến Yamanote khoảng 15 phút là tới. Bạn đã có vé chưa?",
+          japanese: "改札の手前、左側にピンクの券売機があります。そこでチャージや購入ができますよ。お気をつけて！",
+          furigana: "かいさつのてまえ、ひだりがわにピンクのけんばいきがあります。そこでチャージやこうにゅうができますよ。おきをつけて！",
+          romaji: "Kaisatsu no temae, hidarigawa ni pinku no kenbaiki ga arimasu. Sokode chaaji ya kounyuu ga dekimasu yo. Oki o tsukete!",
+          translation: "Ngay trước cổng soát vé phía bên trái có máy bán vé màu hồng. Nạp tiền hay mua vé ở đó nhé. Chúc bạn lên đường may mắn!",
         },
         userEvaluation: {
-          naturalnessScore: 86,
-          grammarAdvice: "Dùng すみません để bắt đầu câu hỏi đường rất lịch sự và tự nhiên.",
-          betterExpression: "すみません、新宿駅へはどう行けばいいですか？",
-          betterExpressionFurigana: "すみません、しんじゅくえきへはどういけばいいですか？",
+          naturalnessScore: 94,
+          grammarAdvice: "Giao tiếp hỏi đường rất tự tin và lịch sự.",
+          betterExpression: "分かりました！教えていただきありがとうございます。",
+          betterExpressionFurigana: "わかりました！おしえていただきありがとうございます。",
         },
         suggestedAnswers: [
           {
-            japanese: "はい、Suicaを持っています。",
-            furigana: "はい、スイカをもっています。",
-            romaji: "Hai, Suica o motte imasu.",
-            translation: "Vâng, tôi có thẻ Suica rồi.",
+            japanese: "分かりました！とても親切に教えていただき、ありがとうございます。",
+            furigana: "わかりました！とてもしんせつにおしえていただき、ありがとうございます。",
+            romaji: "Wakarimashita! Totemo shinsetsu ni oshiete itadaki, arigatou gozaimasu.",
+            translation: "Tôi hiểu rồi! Cảm ơn bạn đã chỉ dẫn rất nhiệt tình.",
           },
           {
-            japanese: "切符売り場はどこですか？",
-            furigana: "きっぷうりばはどこですか？",
-            romaji: "Kippu uriba wa doko desu ka?",
-            translation: "Quầy bán vé ở đâu vậy ạ?",
+            japanese: "助かりました。行ってきます！",
+            furigana: "たすかりました。いってきます！",
+            romaji: "Tasukarimashita. Ittekimasu!",
+            translation: "May quá có bạn giúp đỡ. Tôi đi đây ạ!",
           },
         ],
       };
     }
 
-    // General conversational fallback
+    // 5. Phản xạ đa lượt tổng quát cho bất kỳ chủ đề nào khác (Luôn tiến về phía trước, không lặp câu hỏi)
+    if (currentTurn === 1) {
+      return {
+        aiReply: {
+          japanese: "なるほど、よく分かりました！それについて、具体的にどう思われますか？",
+          furigana: "なるほど、よくわかりました！それについて、ぐたいてきにどうおもわれますか？",
+          romaji: "Naruhodo, yoku wakarimashita! Sore ni tsuite, gutaiteki ni dou omowaremasu ka?",
+          translation: "Thì ra là vậy, tôi hiểu rồi! Cụ thể hơn thì bạn suy nghĩ như thế nào về điều đó?",
+        },
+        userEvaluation: {
+          naturalnessScore: 85,
+          grammarAdvice: "Câu trả lời đúng ngữ cảnh và phát âm tương đối dễ hiểu. Hãy tự tin tiếp tục trò chuyện nhé!",
+          betterExpression: userMessage ? `${userMessage}と思います。` : "はい、そうです。",
+          betterExpressionFurigana: userMessage ? `${userMessage}とおもいます。` : "はい、そうです。",
+        },
+        suggestedAnswers: [
+          {
+            japanese: "とても興味深くて、面白いと思います。",
+            furigana: "とてもきょうみぶかくて、おもしろいとおもいます。",
+            romaji: "Totemo kyoumibukakute, omoshiroi to omoimasu.",
+            translation: "Tôi thấy rất thú vị và bổ ích.",
+          },
+          {
+            japanese: "少し難しいですが、もっと知りたいです。",
+            furigana: "すこしむずかしいですが、もっとしりたいです。",
+            romaji: "Sukoshi muzukashii desu ga, motto shiritai desu.",
+            translation: "Có một chút khó, nhưng tôi muốn tìm hiểu thêm.",
+          },
+        ],
+      };
+    }
+
+    if (currentTurn === 2) {
+      return {
+        aiReply: {
+          japanese: "そうなんですね！面白い視点ですね。普段からよくそうされているのですか？",
+          furigana: "そうなんですね！おもしろいしてんですね。ふだんからよくそうされているのですか？",
+          romaji: "Sou nan desu ne! Omoshiroi shiten desu ne. Fudan kara yoku sou sarete iru no desu ka?",
+          translation: "Ra là vậy! Góc nhìn thú vị quá. Thường ngày bạn cũng hay làm như vậy sao?",
+        },
+        userEvaluation: {
+          naturalnessScore: 88,
+          grammarAdvice: "Bạn diễn đạt suy nghĩ của bản thân rất mạch lạc và tự nhiên.",
+          betterExpression: `${userMessage}。いつもそう意識しています。`,
+          betterExpressionFurigana: `${userMessage}。いつもそういしきしています。`,
+        },
+        suggestedAnswers: [
+          {
+            japanese: "はい、時間がある時はいつもそうしています。",
+            furigana: "はい、じかんがあるときはいつもそうしています。",
+            romaji: "Hai, jikan ga aru toki wa itsumo sou shite imasu.",
+            translation: "Vâng, mỗi khi có thời gian tôi đều làm như vậy.",
+          },
+          {
+            japanese: "いいえ、最近始めたばかりです。",
+            furigana: "いいえ、さいきんはじめたばかりです。",
+            romaji: "Iie, saikin hajimeta bakari desu.",
+            translation: "Dạ không, tôi cũng vừa mới bắt đầu gần đây thôi.",
+          },
+        ],
+      };
+    }
+
     return {
       aiReply: {
-        japanese: "なるほど、よく分かりました！それについてもっと詳しく教えていただけますか？",
-        furigana: "なるほど、よくわかりました！それについてもっとくわしくおしえていただけますか？",
-        romaji: "Naruhodo, yoku wakarimashita! Sore ni tsuite motto kuwashiku oshiete itadakemasu ka?",
-        translation: "Thì ra là vậy, tôi hiểu rồi! Bạn có thể chia sẻ thêm một chút về điều đó không?",
+        japanese: "素晴らしいお話を聞かせていただき、ありがとうございます！とても楽しく会話ができましたね。",
+        furigana: "すばらしいおはなしをきかせていただき、ありがとうございます！とてもたのしくかいわができましたね。",
+        romaji: "Subarashii ohanashi o kikasete itadaki, arigatou gozaimasu! Totemo tanoshiku kaiwa ga dekimashita ne.",
+        translation: "Cảm ơn bạn đã chia sẻ câu chuyện tuyệt vời này! Cuộc trò chuyện hôm nay thật vui và ý nghĩa.",
       },
       userEvaluation: {
-        naturalnessScore: 85,
-        grammarAdvice: "Câu trả lời đúng ngữ cảnh và phát âm tương đối dễ hiểu. Hãy tự tin tiếp tục trò chuyện nhé!",
-        betterExpression: userMessage ? `${userMessage}と思います。` : "はい、そうです。",
-        betterExpressionFurigana: userMessage ? `${userMessage}とおもいます。` : "はい、そうです。",
+        naturalnessScore: 92,
+        grammarAdvice: "Cuộc trò chuyện đã hoàn thành rất trọn vẹn và tự nhiên. Kỹ năng giao tiếp của bạn tiến bộ rõ rệt!",
+        betterExpression: "こちらこそ、楽しくお話しできて嬉しかったです。",
+        betterExpressionFurigana: "こちらこそ、たのしくおはなしできてうれしかったです。",
       },
       suggestedAnswers: [
         {
-          japanese: "はい、喜んでお話しします。",
-          furigana: "はい、よろこんでおはなしします。",
-          romaji: "Hai, yorokonde ohanashi shimasu.",
-          translation: "Vâng, tôi rất sẵn lòng.",
+          japanese: "こちらこそ、楽しくお話しできて嬉しかったです！",
+          furigana: "こちらこそ、たのしくおはなしできてうれしかったです！",
+          romaji: "Kochira koso, tanoshiku ohanashi dekite ureshikatta desu!",
+          translation: "Chính tôi cũng rất vui khi được trò chuyện cùng bạn!",
         },
         {
-          japanese: "例えば、休みの日はよく日本語を勉強しています。",
-          furigana: "たとえば、やすみのひはよくにほんごをべんきょうしています。",
-          romaji: "Tatoeba, yasumi no hi wa yoku nihongo o benkyou shite imasu.",
-          translation: "Ví dụ như ngày nghỉ tôi thường chăm chỉ học tiếng Nhật.",
+          japanese: "また次回もよろしくお願いします！",
+          furigana: "またじかいもよろしくおねがいします！",
+          romaji: "Mata jikai mo yoroshiku onegaishimasu!",
+          translation: "Lần tới cũng nhờ bạn giúp đỡ tiếp nhé!",
         },
       ],
     };
@@ -882,8 +1377,8 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
     aiMessage = "",
     conversationHistory = [],
   }) {
-    // 1. Try Google Gemini
-    if (config.ai.geminiApiKey) {
+    // 1. Try Google Gemini Key Pool (Multi-key round-robin & auto-failover)
+    if (this.hasGeminiKeys()) {
       try {
         const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory });
         const rawContent = await this.callGemini({ prompt, temperature: 0.7, isJson: true });
@@ -892,7 +1387,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
           return parsed;
         }
       } catch (err) {
-        console.warn("Lỗi gọi Gemini cho roleplay-suggestions, thử Claude/OpenAI/Fallback:", err.message);
+        console.warn("Lỗi gọi Gemini Key Pool cho roleplay-suggestions, thử Claude/OpenAI/Fallback:", err.message);
       }
     }
 

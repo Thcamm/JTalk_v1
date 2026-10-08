@@ -23,8 +23,19 @@ export const config = {
   },
 
   ai: {
-    geminiApiKey: process.env.GEMINI_API_KEY || "",
-    geminiModel: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
+    // Google Gemini Key Pool (Hỗ trợ danh sách nhiều API Keys để phân tải Round-Robin & tự động vượt 429)
+    geminiApiKeys: (() => {
+      const list = [];
+      if (process.env.GEMINI_API_KEYS) {
+        list.push(...process.env.GEMINI_API_KEYS.split(",").map((k) => k.trim()));
+      }
+      if (process.env.GEMINI_API_KEY) {
+        list.push(process.env.GEMINI_API_KEY.trim());
+      }
+      return [...new Set(list)].filter((k) => k && !k.startsWith("your_"));
+    })(),
+    geminiApiKey: (process.env.GEMINI_API_KEY || "").trim(),
+    geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     openaiApiKey: process.env.OPENAI_API_KEY || "",
     openaiModel: process.env.OPENAI_MODEL || "gpt-4o",
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",

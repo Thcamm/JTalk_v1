@@ -28,6 +28,7 @@ export const API_BASE_URL = getNormalizedApiUrl();
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
+  timeout: 45000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -65,7 +66,7 @@ api.interceptors.response.use(
 
     const status = error.response?.status;
 
-    if ((status === 401 || status === 403) && !originalRequest._retry) {
+    if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
