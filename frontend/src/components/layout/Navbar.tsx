@@ -164,8 +164,8 @@ export default function Navbar() {
               />
               <span>
                 {remainingFreePractices > 0
-                  ? `Còn ${remainingFreePractices}/2 lượt`
-                  : "Hết lượt (0/2)"}
+                  ? `Còn ${remainingFreePractices}/5 lượt`
+                  : "Hết lượt (0/5)"}
               </span>
               <span className="font-extrabold underline underline-offset-2 ml-0.5">
                 Nâng cấp

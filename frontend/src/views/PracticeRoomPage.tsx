@@ -748,8 +748,8 @@ export const PracticeRoomPage = () => {
             >
               <span>
                 {remainingFreePractices > 0
-                  ? `Còn ${remainingFreePractices}/2 lượt`
-                  : "Hết lượt hôm nay (0/2)"}
+                  ? `Còn ${remainingFreePractices}/5 lượt`
+                  : "Hết lượt hôm nay (0/5)"}
               </span>
               <span
                 className="text-rose-600 dark:text-rose-400 font-bold underline ml-0.5"
@@ -1153,11 +1153,11 @@ export const PracticeRoomPage = () => {
                 ) : !isPremium && remainingFreePractices <= 0 ? (
                   <div className="flex flex-col items-center gap-2.5 p-5 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/30 border border-rose-200 dark:border-rose-800 rounded-3xl text-center max-w-md shadow-xs animate-in fade-in duration-200">
                     <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black text-sm">
-                      0/2
+                      0/5
                     </div>
                     <div>
                       <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                        Bạn đã hoàn thành hết 2 lượt luyện nói miễn phí hôm nay
+                        Bạn đã hoàn thành hết 5 lượt luyện nói miễn phí hôm nay
                       </h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                         Nâng cấp tài khoản JTalk Premium (chỉ 99k/tháng) để luyện phản xạ AI không giới hạn, mở khóa toàn bộ kịch bản chuyên sâu!

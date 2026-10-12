@@ -85,12 +85,8 @@ export function Breadcrumbs() {
       return [{ label: "Bảng xếp hạng" }];
     }
 
-    if (pathname === "/progress") {
-      return [{ label: "Tiến trình & Thống kê" }];
-    }
-
-    if (pathname === "/profile") {
-      return [{ label: "Trang cá nhân" }];
+    if (pathname === "/progress" || pathname === "/profile") {
+      return [{ label: "Hồ sơ & Tiến trình" }];
     }
 
     if (pathname === "/checkout") {

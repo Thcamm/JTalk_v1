@@ -18,6 +18,8 @@ import {
   Smartphone,
   Landmark,
   Info,
+  Crown,
+  Mic,
 } from "lucide-react";
 import { paymentService } from "@/services/payment.service";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,15 +40,47 @@ interface ActiveOrderState {
 
 export const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { fetchMe } = useAuth();
+  const { user, isPremium, fetchMe } = useAuth();
   const [selectedMethod, setSelectedMethod] = useState<"vietqr" | "momo">("vietqr");
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [activeOrder, setActiveOrder] = useState<ActiveOrderState | null>(null);
+  const [showRenewForm, setShowRenewForm] = useState(false);
 
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [countdown, setCountdown] = useState(900); // 15 minutes
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const formatExpiryDate = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      return d.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  const getDaysRemaining = (dateStr?: string | null) => {
+    if (!dateStr) return null;
+    try {
+      const target = new Date(dateStr).getTime();
+      if (isNaN(target)) return null;
+      const diffMs = target - Date.now();
+      const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      return days > 0 ? days : 0;
+    } catch {
+      return null;
+    }
+  };
+
+  const expiryFormatted = formatExpiryDate(user?.subscription?.expiresAt);
+  const daysRemaining = getDaysRemaining(user?.subscription?.expiresAt);
 
   // Timer countdown for active order
   useEffect(() => {
@@ -539,9 +573,207 @@ export const CheckoutPage = () => {
               </div>
             </div>
           </div>
+        ) : isPremium && !showRenewForm ? (
+          /* Màn hình Gói Premium Đã Kích Hoạt / Đang Hoạt Động */
+          <div className="bg-white dark:bg-slate-900 border border-emerald-500/30 dark:border-emerald-800/60 rounded-3xl overflow-hidden shadow-xl animate-fade-in">
+            {/* Header */}
+            <div className="relative bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 p-8 sm:p-10 text-white overflow-hidden">
+              <div className="absolute top-0 right-0 -mr-12 -mt-12 w-56 h-56 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 -ml-12 -mb-12 w-56 h-56 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 border border-white/25 text-white text-xs font-black uppercase tracking-wider backdrop-blur-md mb-4 shadow-xs relative z-10">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-ping" />
+                <Crown className="w-3.5 h-3.5 text-amber-300" />
+                <span>Gói Dịch Vụ Đã Kích Hoạt · Đang Hoạt Động</span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight relative z-10">
+                Tài Khoản JTalk Premium Của Bạn
+              </h1>
+              <p className="text-emerald-100/90 text-sm sm:text-base mt-2 max-w-xl relative z-10 font-medium leading-relaxed">
+                Xin chào <span className="font-bold text-white">{user?.displayName || user?.username}</span>! Bạn đang sở hữu trọn bộ đặc quyền cao cấp nhất của JTalk AI để bứt phá phản xạ giao tiếp tiếng Nhật.
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 sm:p-8 space-y-8">
+              {/* 3 Status Bento Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Trạng thái */}
+                <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+                      Trạng thái gói
+                    </span>
+                    <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Đang hoạt động</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                  </div>
+                  <p className="text-2xs font-semibold text-emerald-700/90 dark:text-emerald-400/90">
+                    {user?.role === "admin" ? "Đặc quyền Quản trị viên" : "JTalk Premium Pass (30 ngày)"}
+                  </p>
+                </div>
+
+                {/* Thời hạn sử dụng */}
+                <div className="p-5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+                      Thời hạn sử dụng
+                    </span>
+                    <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-300 flex items-center justify-center">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
+                    {user?.role === "admin"
+                      ? "Vô thời hạn"
+                      : expiryFormatted || "30 ngày"}
+                  </div>
+                  <p className="text-2xs font-semibold text-amber-700/90 dark:text-amber-400/90">
+                    {user?.role === "admin"
+                      ? "Trọn đời hệ thống"
+                      : daysRemaining !== null
+                      ? `Còn lại ${daysRemaining} ngày sử dụng`
+                      : "Đang có hiệu lực"}
+                  </p>
+                </div>
+
+                {/* Hạn mức đàm thoại */}
+                <div className="p-5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xs font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">
+                      Lượt đàm thoại AI
+                    </span>
+                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 flex items-center justify-center">
+                      <Zap className="w-4 h-4 fill-indigo-600 dark:fill-indigo-400" />
+                    </div>
+                  </div>
+                  <div className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400">
+                    Vô hạn lượt
+                  </div>
+                  <p className="text-2xs font-semibold text-indigo-700/90 dark:text-indigo-400/90">
+                    Không giới hạn số bài luyện/ngày
+                  </p>
+                </div>
+              </div>
+
+              {/* Danh sách đặc quyền VIP */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>Toàn bộ đặc quyền VIP đã kích hoạt</span>
+                  </h3>
+                  <span className="text-2xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full">
+                    Đã mở khóa 100%
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {perks.map((perk, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
+                    >
+                      <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </div>
+                      <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium leading-tight">
+                        {perk}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nút hành động chính */}
+              <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    onClick={() => navigate("/speaking")}
+                    type="button"
+                    className="w-full sm:flex-1 py-4 px-6 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2.5 transition-all cursor-pointer"
+                  >
+                    <Mic className="w-5 h-5 animate-pulse" />
+                    <span>Luyện Nói Phản Xạ AI Ngay</span>
+                    <ArrowRight className="w-4 h-4 ml-auto sm:ml-0" />
+                  </button>
+
+                  <button
+                    onClick={() => navigate("/courses")}
+                    type="button"
+                    className="w-full sm:w-auto py-4 px-6 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm sm:text-base rounded-2xl transition-all cursor-pointer"
+                  >
+                    <span>Khám Phá Khóa Học</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigate("/dashboard")}
+                    type="button"
+                    className="w-full sm:w-auto py-4 px-6 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm sm:text-base rounded-2xl transition-all cursor-pointer"
+                  >
+                    <span>Bảng Điều Khiển</span>
+                  </button>
+                </div>
+
+                {/* Banner tùy chọn gia hạn nếu cần */}
+                {user?.role !== "admin" && (
+                  <div className="pt-2">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl text-center sm:text-left">
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Bạn muốn gia hạn thêm thời gian sử dụng?
+                        </p>
+                        <p className="text-2xs text-slate-500 dark:text-slate-400">
+                          30 ngày mới sẽ được tự động cộng dồn nối tiếp vào hạn dùng hiện tại của bạn.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowRenewForm(true)}
+                        className="px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-2xs hover:border-slate-400"
+                      >
+                        Gia hạn thêm gói (99.000đ)
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         ) : (
           /* Initial Plan Selection & Pricing Card */
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs space-y-0">
+            {/* Top banner if in renew mode */}
+            {isPremium && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Chế độ gia hạn gói Premium
+                    </p>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400">
+                      Thời gian 30 ngày sẽ được tự động cộng dồn nối tiếp vào hạn dùng hiện tại của bạn.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRenewForm(false)}
+                  className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer shrink-0"
+                >
+                  ← Quay lại thông tin gói đã kích hoạt
+                </button>
+              </div>
+            )}
+
             <div className="relative bg-gradient-to-br from-rose-600 via-rose-700 to-slate-900 p-8 text-white overflow-hidden">
               {/* Subtle Ambient orbs */}
               <div className="absolute top-0 right-0 -mr-10 -mt-10 w-48 h-48 bg-amber-400/20 rounded-full blur-2xl pointer-events-none" />
@@ -549,10 +781,10 @@ export const CheckoutPage = () => {
 
               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/15 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider mb-4 relative z-10">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin-slow" />
-                <span>Nâng cấp tài khoản JTalk Premium</span>
+                <span>{isPremium ? "Gia hạn tài khoản JTalk Premium" : "Nâng cấp tài khoản JTalk Premium"}</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight relative z-10">
-                Bứt phá phản xạ nói tiếng Nhật cùng AI
+                {isPremium ? "Tiếp tục bứt phá phản xạ nói cùng AI" : "Bứt phá phản xạ nói tiếng Nhật cùng AI"}
               </h1>
               <p className="text-rose-100 text-sm mt-2 max-w-xl relative z-10 font-medium leading-relaxed">
                 Tự tin giao tiếp tiếng Nhật trôi chảy, sửa lỗi phát âm và luyện phản xạ không giới hạn
@@ -565,11 +797,13 @@ export const CheckoutPage = () => {
               <div className="border-2 border-rose-500/30 dark:border-rose-800/60 bg-rose-50/40 dark:bg-rose-950/20 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200 text-xs font-bold">
-                    <Zap className="w-3 h-3 text-amber-500 fill-amber-500" /> Gói 30 ngày linh hoạt
+                    <Zap className="w-3 h-3 text-amber-500 fill-amber-500" /> {isPremium ? "Gia hạn thêm 30 ngày" : "Gói 30 ngày linh hoạt"}
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">JTalk Premium Pass (1 Tháng)</h3>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                    {isPremium ? "Gia Hạn Premium Pass (+30 Ngày)" : "JTalk Premium Pass (1 Tháng)"}
+                  </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Thời hạn 30 ngày kể từ lúc kích hoạt thành công
+                    {isPremium ? "Cộng dồn thêm 30 ngày vào tài khoản của bạn" : "Thời hạn 30 ngày kể từ lúc kích hoạt thành công"}
                   </p>
                 </div>
 

@@ -19,7 +19,7 @@ export const config = {
   },
 
   quota: {
-    freeDailyPracticeLimit: parseInt(process.env.FREE_DAILY_PRACTICE_LIMIT || "2", 10),
+    freeDailyPracticeLimit: parseInt(process.env.FREE_DAILY_PRACTICE_LIMIT || "5", 10),
   },
 
   ai: {

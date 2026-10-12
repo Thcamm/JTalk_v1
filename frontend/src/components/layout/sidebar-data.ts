@@ -3,7 +3,6 @@ import {
   Mic,
   Video,
   BookOpen,
-  ChartNoAxesColumn,
   Trophy,
   User,
 } from "lucide-react";
@@ -35,13 +34,8 @@ export const sidebarItems = [
     to: "/leaderboard",
   },
   {
-    icon: ChartNoAxesColumn,
-    text: "Tiến trình & Thống kê",
-    to: "/progress",
-  },
-  {
     icon: User,
-    text: "Trang cá nhân",
+    text: "Hồ sơ & Tiến trình",
     to: "/profile",
   },
 ];

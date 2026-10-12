@@ -21,7 +21,10 @@ export default function SidebarItem({
 }: SidebarItemProps) {
   const pathname = usePathname();
   const { setCollapsed } = useSidebarStore();
-  const isActive = to === "/" ? pathname === "/" : pathname?.startsWith(to);
+  const isActive =
+    to === "/"
+      ? pathname === "/"
+      : pathname?.startsWith(to) || (to === "/profile" && pathname?.startsWith("/progress"));
 
   const handleClick = () => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {

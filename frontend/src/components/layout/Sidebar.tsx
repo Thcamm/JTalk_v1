@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Crown,
   X,
   ShieldCheck,
 } from "lucide-react";
@@ -176,12 +177,20 @@ export default function Sidebar() {
               <Sparkles size={18} className="text-amber-200" />
             </Link>
           ) : isPremium ? (
-            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 p-3 text-center">
-              <span className="text-xs font-black text-rose-800 dark:text-rose-300 flex items-center justify-center gap-1.5">
-                <Zap size={14} className="text-amber-500 fill-amber-500" />
-                <span>Gói Premium Vô Hạn</span>
+            <Link
+              to="/checkout"
+              onClick={handleMobileClose}
+              className="block rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 p-3 text-center hover:scale-[1.02] active:scale-[0.99] transition-all cursor-pointer shadow-2xs group"
+              title="Xem chi tiết gói Premium đã kích hoạt"
+            >
+              <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1.5">
+                <Crown size={14} className="text-amber-500 fill-amber-500" />
+                <span>Gói Premium Đang Hoạt Động</span>
               </span>
-            </div>
+              <span className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 block mt-0.5 font-bold group-hover:underline">
+                Đã kích hoạt · Bấm để xem chi tiết
+              </span>
+            </Link>
           ) : (
             <Link
               to="/checkout"

@@ -534,8 +534,11 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
     const userCount = authStore.user?.dailyUsage?.practiceCount ?? 0;
     const currentUsed = Math.max(userCount, authStore.dailyPracticeCount);
 
-    if (!isPremium && currentUsed >= 2) {
-      toast.error("Bạn đã dùng hết 2 lượt luyện nói miễn phí trong ngày. Nâng cấp Premium để trò chuyện vô hạn!");
+    const freeLimit =
+      typeof authStore.user?.quota?.limit === "number" ? authStore.user.quota.limit : 5;
+
+    if (!isPremium && currentUsed >= freeLimit) {
+      toast.error(`Bạn đã dùng hết ${freeLimit} lượt luyện nói miễn phí trong ngày. Nâng cấp Premium để trò chuyện vô hạn!`);
       return;
     }
 
