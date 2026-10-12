@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { Outlet } from "@/lib/react-router-compat";
 import { useSidebarStore } from "@/stores/useSidebarStore";
+import { Breadcrumbs } from "@/components/common/Breadcrumbs";
 
 export default function MainLayout() {
   const { isCollapsed } = useSidebarStore();
@@ -22,6 +23,7 @@ export default function MainLayout() {
         <Navbar />
 
         <main className="flex-1 overflow-y-auto bg-slate-50/60 dark:bg-[#0b0f17] transition-colors duration-200">
+          <Breadcrumbs />
           <Outlet />
         </main>
       </div>

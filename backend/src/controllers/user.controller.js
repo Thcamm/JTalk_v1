@@ -75,5 +75,33 @@ export const getLeaderboard = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/users/claim-quest
+ * Claims daily or weekly quest XP reward and saves to user document
+ */
+export const claimQuest = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { questId, xpReward, questType, date } = req.body;
+
+    const result = await UserService.claimQuestReward({
+      userId,
+      questId,
+      xpReward,
+      questType: questType || "daily",
+      clientDate: date || null,
+    });
+
+    return res.status(200).json({
+      success: result.success,
+      message: result.message,
+      data: result,
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Aliases for compatibility
 export const authMe = getMe;

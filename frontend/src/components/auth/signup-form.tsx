@@ -47,8 +47,11 @@ export function SignupForm() {
     try {
       setIsSubmitting(true);
       const { firstname, lastname, username, email, password } = data;
-      await signUp(username, password, email, firstname, lastname);
-      navigate("/signin");
+      // In Vietnamese naming: Họ (lastname) + Tên (firstname)
+      const fullName = `${lastname.trim()} ${firstname.trim()}`.trim();
+      await signUp(username, password, email, firstname.trim(), lastname.trim(), fullName);
+      // Auto-redirect directly to dashboard for instant onboarding without double typing
+      navigate("/dashboard");
     } catch {
       // Toast notification is handled in authStore
     } finally {

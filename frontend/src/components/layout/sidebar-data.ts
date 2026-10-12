@@ -6,7 +6,6 @@ import {
   ChartNoAxesColumn,
   Trophy,
   User,
-  Sparkles,
 } from "lucide-react";
 
 export const sidebarItems = [
@@ -44,11 +43,5 @@ export const sidebarItems = [
     icon: User,
     text: "Trang cá nhân",
     to: "/profile",
-  },
-  {
-    icon: Sparkles,
-    text: "Gói Premium",
-    to: "/checkout",
-    highlight: true,
   },
 ];

@@ -18,6 +18,8 @@ import ProfilePage from "@/views/ProfilePage";
 import ProgressPage from "@/views/ProgressPage";
 import CheckoutPage from "@/views/CheckoutPage";
 import MoMoCallbackPage from "@/views/MoMoCallbackPage";
+import VocabularyNotebookPage from "../views/VocabularyNotebookPage";
+import LeaderboardView from "../views/LeaderboardView";
 
 // Dynamic Home Route: Guests see modern LandingPage, authenticated students go straight to Dashboard
 const HomeRoute = () => {
@@ -46,6 +48,8 @@ export default function AppRoutes() {
           <Route path="/courses/:courseId" element={<LessonListCoursePage />} />
           <Route path="/speaking" element={<SpeakingPage />} />
           <Route path="/speaking/topic/:topicId" element={<LessonListPage />} />
+          <Route path="/vocabulary" element={<VocabularyNotebookPage />} />
+          <Route path="/leaderboard" element={<LeaderboardView />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />

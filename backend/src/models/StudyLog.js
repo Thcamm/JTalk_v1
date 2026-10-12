@@ -28,6 +28,10 @@ const studyLogSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    checkedIn: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

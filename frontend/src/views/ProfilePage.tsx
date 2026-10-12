@@ -259,7 +259,7 @@ export const ProfilePage = () => {
               <span>Điểm kinh nghiệm</span>
             </div>
             <div className="text-2xl font-black text-slate-900 dark:text-white">{totalXp} XP</div>
-            <p className="text-2xs font-bold text-slate-400">Cấp độ {Math.floor(totalXp / 100) + 1}</p>
+            <p className="text-2xs font-bold text-slate-400">Cấp độ {user?.gamification?.level || Math.floor(totalXp / 100) + 1}</p>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs space-y-1 hover:border-amber-400 transition-colors">

@@ -30,9 +30,15 @@ export default function Navbar() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showQuickSearch, setShowQuickSearch] = useState(false);
+  const [shortcutLabel, setShortcutLabel] = useState("Ctrl + K");
 
-  // Global Cmd+K / Ctrl+K keyboard shortcut listener
+  // Global Cmd+K / Ctrl+K keyboard shortcut listener & OS detection
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isMac = /(Mac|iPhone|iPod|iPad)/i.test(navigator.userAgent || navigator.platform || "");
+      setShortcutLabel(isMac ? "⌘K" : "Ctrl + K");
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -67,7 +73,7 @@ export default function Navbar() {
             type="button"
             className="sm:hidden w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
             aria-label="Tìm kiếm nhanh"
-            title="Tìm kiếm bài học & từ vựng (⌘K)"
+            title={`Tìm kiếm bài học & từ vựng (${shortcutLabel})`}
           >
             <Search size={16} />
           </button>
@@ -84,8 +90,8 @@ export default function Navbar() {
             <span className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors truncate">
               Tìm bài học, kịch bản phỏng vấn, từ vựng...
             </span>
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-3xs font-bold text-slate-400 dark:text-slate-500 bg-white/80 dark:bg-slate-700/80 px-1.5 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-600 group-hover:border-rose-300">
-              ⌘K
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-3xs font-mono font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700/80 px-2 py-0.5 rounded-md border border-slate-200/90 dark:border-slate-600 shadow-2xs group-hover:border-rose-300 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors tracking-tight">
+              {shortcutLabel}
             </span>
           </div>
         </div>

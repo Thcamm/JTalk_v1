@@ -4,6 +4,8 @@ import {
   login,
   refresh,
   logout,
+  forgotPassword,
+  resetPassword,
   signUp,
   signIn,
   signOut,
@@ -17,6 +19,8 @@ router.post("/register", register);
 router.post("/login", login);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 // Backward-compatible aliases for existing client
 router.post("/signup", signUp);

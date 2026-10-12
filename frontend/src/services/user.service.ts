@@ -36,6 +36,16 @@ export interface ChangePasswordPayload {
   newPassword: string;
 }
 
+export interface ClaimQuestResponse {
+  success: boolean;
+  message?: string;
+  alreadyClaimed?: boolean;
+  totalXp?: number;
+  level?: number;
+  xpEarned?: number;
+  questId?: string;
+}
+
 export const userService = {
   getLeaderboard: async (
     type: "xp" | "streak" = "xp",
@@ -70,6 +80,21 @@ export const userService = {
         type,
       };
     }
+  },
+
+  claimQuestReward: async (payload: {
+    questId: string;
+    xpReward?: number;
+    questType?: "daily" | "weekly";
+    date?: string;
+  }): Promise<ClaimQuestResponse> => {
+    const res = await api.post("/users/claim-quest", {
+      questId: payload.questId,
+      xpReward: payload.xpReward ?? 30,
+      questType: payload.questType ?? "daily",
+      date: payload.date || new Date().toISOString().split("T")[0],
+    });
+    return res.data;
   },
 
   updateProfile: async (payload: UpdateProfilePayload): Promise<User> => {

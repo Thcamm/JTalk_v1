@@ -8,7 +8,8 @@ import { successResponse } from "../utils/apiResponse.js";
 export const getWeeklyStudyLogs = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const weeklyData = await StudyLogService.getWeeklyStudyData(userId);
+    const clientDate = req.query.date || null;
+    const weeklyData = await StudyLogService.getWeeklyStudyData(userId, clientDate);
 
     return res.status(200).json({
       success: true,
@@ -20,3 +21,28 @@ export const getWeeklyStudyLogs = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/v1/studylogs/checkin
+ * Performs authentic daily check-in with Hanko stamp and updates streak & XP
+ */
+export const dailyCheckIn = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const clientDate = req.body?.date || null;
+
+    const result = await StudyLogService.performDailyCheckIn(userId, clientDate);
+    const weeklyData = await StudyLogService.getWeeklyStudyData(userId, clientDate);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+      ...result,
+      weeklyData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

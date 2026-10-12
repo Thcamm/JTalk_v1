@@ -44,6 +44,12 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
 
     // 1. Profile học viên
     profile: {
@@ -89,6 +95,14 @@ const userSchema = new mongoose.Schema(
         type: Number,
         default: 1,
       },
+      claimedQuests: [
+        {
+          questId: { type: String, required: true },
+          dateKey: { type: String, required: true }, // YYYY-MM-DD for daily, YYYY-Www for weekly
+          claimedAt: { type: Date, default: Date.now },
+          xpEarned: { type: Number, default: 0 },
+        },
+      ],
     },
 
     // 3. Freemium Quota & Subscription Snapshot

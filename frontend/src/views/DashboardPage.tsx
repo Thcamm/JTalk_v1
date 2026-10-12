@@ -109,13 +109,13 @@ export const DashboardPage = () => {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black bg-rose-600 text-white shadow-xs">
             <Compass size={14} />
-            <span>TỔNG QUAN HỌC TẬP</span>
+            <span>Tổng quan học tập</span>
           </div>
           <Link
             to="/speaking"
             className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
           >
-            <span>Phòng Luyện AI</span>
+            <span>Luyện nói AI</span>
           </Link>
           <Link
             to="/courses"

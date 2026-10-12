@@ -15,18 +15,8 @@ export const protectedRoute = async (req, res, next) => {
       return errorResponse(res, "Không tìm thấy Access Token. Vui lòng đăng nhập.", 401);
     }
 
-    jwt.verify(token, config.jwt.accessTokenSecret, async (err, decoded) => {
-      if (err) {
-        if (err.name === "TokenExpiredError") {
-          return errorResponse(res, "Access Token đã hết hạn. Vui lòng làm mới token.", 401, {
-            code: "TOKEN_EXPIRED",
-          });
-        }
-        return errorResponse(res, "Access Token không hợp lệ.", 401, {
-          code: "INVALID_TOKEN",
-        });
-      }
-
+    try {
+      const decoded = jwt.verify(token, config.jwt.accessTokenSecret);
       const user = await User.findById(decoded.userId).select("-hashedPassword");
 
       if (!user) {
@@ -34,8 +24,17 @@ export const protectedRoute = async (req, res, next) => {
       }
 
       req.user = user;
-      next();
-    });
+      return next();
+    } catch (err) {
+      if (err.name === "TokenExpiredError") {
+        return errorResponse(res, "Access Token đã hết hạn. Vui lòng làm mới token.", 401, {
+          code: "TOKEN_EXPIRED",
+        });
+      }
+      return errorResponse(res, "Access Token không hợp lệ.", 401, {
+        code: "INVALID_TOKEN",
+      });
+    }
   } catch (error) {
     console.error("Lỗi trong auth.middleware:", error);
     return errorResponse(res, "Lỗi xác thực người dùng", 500);

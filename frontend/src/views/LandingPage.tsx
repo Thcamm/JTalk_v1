@@ -41,10 +41,40 @@ export default function LandingPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
-  // Sample prompt for the interactive hero widget
-  const sampleJapaneseQuestion = "初めまして！お名前と、日本で挑戦したいことを教えてください。";
-  const sampleTranslationQuestion = "Rất vui được gặp bạn! Hãy cho tôi biết tên của bạn và điều bạn muốn thử thách tại Nhật Bản nhé.";
-  const sampleAnswer = "初めまして、ナムと申します。ITエンジニアとして日本の技術を学びたいです！";
+  // Realistic interview scenarios matching both student Baito & IT job seekers
+  type ScenarioKey = "combini" | "it";
+  const [activeScenario, setActiveScenario] = useState<ScenarioKey>("combini");
+
+  const SCENARIOS = {
+    combini: {
+      badge: "Phỏng vấn xin việc thêm (Baito Combini)",
+      subtitle: "Phù hợp du học sinh & người mới đến Nhật",
+      rawQuestion: "初めまして！お名前と、ここでアルバイトをしたい理由を教えてください。",
+      questionRuby: (
+        <>
+          <ruby>初<rt className="text-rose-500 dark:text-rose-400 font-bold">はじ</rt></ruby>めまして！お<ruby>名前<rt className="text-rose-500 dark:text-rose-400 font-bold">なまえ</rt></ruby>と、ここでアルバイトをしたい<ruby>理由<rt className="text-rose-500 dark:text-rose-400 font-bold">りゆう</rt></ruby>を<ruby>教<rt className="text-rose-500 dark:text-rose-400 font-bold">おし</rt></ruby>えてください。
+        </>
+      ),
+      translationQuestion: "Rất vui được gặp bạn! Hãy cho tôi biết tên và lý do bạn muốn làm thêm tại cửa hàng tiện lợi này nhé.",
+      sampleAnswer: "初めまして、ナムと申します。接客を通じて日本語を上達させたいと思い、応募しました！",
+      answerTranslation: "Rất vui được gặp bạn, tôi tên là Nam. Tôi ứng tuyển vì muốn nâng cao tiếng Nhật qua giao tiếp phục vụ khách hàng ạ!",
+    },
+    it: {
+      badge: "Phỏng vấn Kỹ sư IT (IT BrSE / Comtor)",
+      subtitle: "Phù hợp kỹ sư phần mềm & lập trình viên",
+      rawQuestion: "初めまして！お名前と、日本で挑戦したいことを教えてください。",
+      questionRuby: (
+        <>
+          <ruby>初<rt className="text-rose-500 dark:text-rose-400 font-bold">はじ</rt></ruby>めまして！お<ruby>名前<rt className="text-rose-500 dark:text-rose-400 font-bold">なまえ</rt></ruby>と、<ruby>日本<rt className="text-rose-500 dark:text-rose-400 font-bold">にほん</rt></ruby>で<ruby>挑戦<rt className="text-rose-500 dark:text-rose-400 font-bold">ちょうせん</rt></ruby>したいことを<ruby>教<rt className="text-rose-500 dark:text-rose-400 font-bold">おし</rt></ruby>えてください。
+        </>
+      ),
+      translationQuestion: "Rất vui được gặp bạn! Hãy cho tôi biết tên của bạn và điều bạn muốn thử thách tại Nhật Bản nhé.",
+      sampleAnswer: "初めまして、ナムと申します。ITエンジニアとして日本の技術を学びたいです！",
+      answerTranslation: "Rất vui được gặp bạn, tôi tên là Nam. Tôi muốn học hỏi công nghệ Nhật Bản với tư cách là kỹ sư IT!",
+    },
+  };
+
+  const currentScenario = SCENARIOS[activeScenario];
   const landingAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // TTS speak function (Microsoft Edge Neural TTS first -> Browser Web Speech API fallback)
@@ -131,7 +161,7 @@ export default function LandingPage() {
   // Handle mock scoring or real trial
   const handleScoreTrial = (customText?: string) => {
     setDemoState("evaluating");
-    const chosenText = customText || sampleAnswer;
+    const chosenText = customText || currentScenario.sampleAnswer;
     setUserSpokenText(chosenText);
 
     setTimeout(() => {
@@ -338,6 +368,40 @@ export default function LandingPage() {
           {/* Right Column: Interactive Speaking Trial Widget */}
           <div id="trial" className="lg:col-span-6">
             <div className="relative rounded-3xl border-2 border-rose-200/90 dark:border-rose-900/60 bg-white/95 dark:bg-[#111827]/95 p-6 sm:p-8 shadow-2xl shadow-rose-500/10 backdrop-blur-md">
+              {/* Scenario Selector Tabs */}
+              <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 mb-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveScenario("combini");
+                    setUserSpokenText("");
+                    setDemoState("idle");
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    activeScenario === "combini"
+                      ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs border border-rose-200/80 dark:border-rose-900/60"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span>🏪 Phỏng vấn Baito Combini</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveScenario("it");
+                    setUserSpokenText("");
+                    setDemoState("idle");
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    activeScenario === "it"
+                      ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs border border-rose-200/80 dark:border-rose-900/60"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span>💻 Phỏng vấn IT BrSE / Comtor</span>
+                </button>
+              </div>
+
               {/* Widget Header */}
               <div className="flex items-center justify-between pb-4 border-b border-rose-100 dark:border-slate-800">
                 <div className="flex items-center gap-2.5">
@@ -349,7 +413,7 @@ export default function LandingPage() {
                       Sensei Yuki • Phòng Luyện Thử Phản Xạ
                     </h3>
                     <p className="text-3xs text-rose-600 dark:text-rose-400 font-extrabold uppercase tracking-wide">
-                      Phỏng vấn xin việc thêm (Baito Combini)
+                      {currentScenario.badge}
                     </p>
                   </div>
                 </div>
@@ -368,7 +432,7 @@ export default function LandingPage() {
                   </span>
 
                   <button
-                    onClick={() => speakJapanese(sampleJapaneseQuestion)}
+                    onClick={() => speakJapanese(currentScenario.rawQuestion)}
                     type="button"
                     className="flex items-center gap-1 px-2.5 py-1 rounded-full text-3xs font-bold bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-2xs hover:scale-105 active:scale-95 transition"
                     title="Nghe phát âm chuẩn người Tokyo"
@@ -379,11 +443,11 @@ export default function LandingPage() {
                 </div>
 
                 <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-jp leading-[2.4] tracking-normal">
-                  <ruby>初<rt className="text-rose-500 dark:text-rose-400 font-bold">はじ</rt></ruby>めまして！お<ruby>名前<rt className="text-rose-500 dark:text-rose-400 font-bold">なまえ</rt></ruby>と、<ruby>日本<rt className="text-rose-500 dark:text-rose-400 font-bold">にほん</rt></ruby>で<ruby>挑戦<rt className="text-rose-500 dark:text-rose-400 font-bold">ちょうせん</rt></ruby>したいことを<ruby>教<rt className="text-rose-500 dark:text-rose-400 font-bold">おし</rt></ruby>えてください。
+                  {currentScenario.questionRuby}
                 </p>
 
                 <p className="text-2xs text-slate-500 dark:text-slate-400 italic font-medium">
-                  "{sampleTranslationQuestion}"
+                  "{currentScenario.translationQuestion}"
                 </p>
               </div>
 
@@ -392,7 +456,7 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between text-2xs font-extrabold text-slate-500 dark:text-slate-400">
                   <span>Câu trả lời mẫu gợi ý:</span>
                   <button
-                    onClick={() => speakJapanese(sampleAnswer)}
+                    onClick={() => speakJapanese(currentScenario.sampleAnswer)}
                     className="text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1"
                   >
                     <Volume2 size={11} />
@@ -400,8 +464,13 @@ export default function LandingPage() {
                   </button>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
-                  {userSpokenText || sampleAnswer}
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                  <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 font-jp leading-relaxed">
+                    {userSpokenText || currentScenario.sampleAnswer}
+                  </p>
+                  <p className="text-3xs text-slate-400 dark:text-slate-500 italic font-medium">
+                    "{currentScenario.answerTranslation}"
+                  </p>
                 </div>
 
                 {/* Score result overlay if triggered */}

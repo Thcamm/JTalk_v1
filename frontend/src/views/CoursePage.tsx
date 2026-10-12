@@ -254,7 +254,7 @@ export const CoursePage = () => {
               className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg hover:shadow-rose-500/20 transition-all"
             >
               <Sparkles size={15} className="text-amber-300 animate-spin-slow" />
-              <span>Phòng Nói Đối Đáp AI</span>
+              <span>Luyện nói AI</span>
             </Link>
           </div>
         </div>

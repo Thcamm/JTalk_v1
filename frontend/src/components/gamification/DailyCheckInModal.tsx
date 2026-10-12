@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Flame, Sparkles, Trophy, Calendar, ArrowRight } from "lucide-react";
-import { HankoStampCard } from "./HankoStampCard";
+import { X, Flame, Sparkles, Trophy, Calendar, ArrowRight, CheckCircle2 } from "lucide-react";
+import { HankoStampCard, playHankoStampAudio } from "./HankoStampCard";
 import { Link } from "@/lib/react-router-compat";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { studylogService } from "@/services/studylog.service";
+import { toast } from "sonner";
 
 interface DailyCheckInModalProps {
   isOpen?: boolean;
@@ -18,7 +21,8 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
   autoCheckDaily = true,
 }) => {
   const [internalOpen, setInternalOpen] = useState(false);
-  const { streak } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { streak, practiceCountToday } = useAuth();
 
   const isControlled = controlledIsOpen !== undefined;
   const showModal = isControlled ? controlledIsOpen : internalOpen;
@@ -59,6 +63,47 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
       // ignore
     }
     handleClose();
+  };
+
+  const handleModalCheckIn = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      playHankoStampAudio();
+      const res = await studylogService.checkIn();
+      if (res.success) {
+        useAuthStore.getState().updateUserGamification({
+          streak: res.streak,
+          longestStreak: res.longestStreak,
+          totalXp: res.totalXp,
+          level: res.level,
+        });
+
+        useAuthStore.getState().updateUserDailyUsage({
+          practiceCount: Math.max(1, practiceCountToday),
+          minutesSpent: 5,
+        });
+
+        if (res.alreadyCheckedIn) {
+          toast.info("Hôm nay bạn đã hoàn thành điểm danh rồi!");
+        } else {
+          toast.success(
+            res.message || `Điểm danh thành công! Chuỗi ngày học đạt ${res.streak} ngày liên tiếp 🎉`
+          );
+        }
+
+        setTimeout(handleDismissToday, 600);
+      } else {
+        toast.error(res.message || "Không thể điểm danh lúc này");
+      }
+    } catch (err: any) {
+      console.error("Lỗi điểm danh:", err);
+      toast.error(
+        err?.response?.data?.message || "Lỗi khi điểm danh, vui lòng thử lại!"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!showModal) return null;
@@ -105,28 +150,37 @@ export const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
           </p>
         </div>
 
-        {/* Modal Body - Embedded Hanko Card */}
+        {/* Modal Body - Embedded Hanko Card without duplicate header */}
         <div className="p-5 sm:p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-          <HankoStampCard className="border-0 shadow-none p-0 bg-transparent" />
+          <HankoStampCard hideHeader={true} className="border-0 shadow-none p-0 bg-transparent" />
 
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleModalCheckIn}
+              className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:scale-[0.98] disabled:opacity-60 text-white text-xs font-black rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+            >
+              <Sparkles size={15} className={`text-amber-200 ${isSubmitting ? "animate-spin" : "animate-spin-slow"}`} />
+              <span>{isSubmitting ? "Đang điểm danh..." : "Điểm danh ngay"}</span>
+            </button>
+
             <Link
               to="/speaking"
               onClick={handleDismissToday}
-              className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-rose-600 to-amber-500 hover:brightness-105 active:scale-[0.98] text-white text-sm font-bold rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
+              className="w-full sm:w-auto py-3 px-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold rounded-2xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Sparkles size={16} />
-              <span>Luyện nói tích dấu ngay</span>
+              <span>Vào phòng Luyện nói</span>
               <ArrowRight size={14} />
             </Link>
 
             <button
               onClick={handleDismissToday}
               type="button"
-              className="w-full sm:w-auto py-3 px-4 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+              className="w-full sm:w-auto py-2.5 px-3 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
             >
-              Đã hiểu, đóng lại
+              Đóng
             </button>
           </div>
         </div>

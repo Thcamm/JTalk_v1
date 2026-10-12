@@ -211,7 +211,7 @@ export const LeaderboardView = () => {
                     </div>
 
                     <h4 className="mt-2 text-xs sm:text-sm font-bold text-slate-900 dark:text-white text-center max-w-[120px] truncate">
-                      {top2.displayName}
+                      {top2.displayName} {user?._id && top2._id === user._id.toString() ? "(Bạn)" : ""}
                     </h4>
                     <span className="text-3xs font-extrabold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
                       {top2.targetLevel}
@@ -262,7 +262,7 @@ export const LeaderboardView = () => {
                     </div>
 
                     <h4 className="mt-2 text-sm sm:text-base font-black text-slate-900 dark:text-white text-center max-w-[140px] truncate">
-                      {top1.displayName}
+                      {top1.displayName} {user?._id && top1._id === user._id.toString() ? "(Bạn)" : ""}
                     </h4>
                     <span className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300/80">
                       {top1.targetLevel} • Level {top1.level}
@@ -311,7 +311,7 @@ export const LeaderboardView = () => {
                     </div>
 
                     <h4 className="mt-2 text-xs sm:text-sm font-bold text-slate-900 dark:text-white text-center max-w-[120px] truncate">
-                      {top3.displayName}
+                      {top3.displayName} {user?._id && top3._id === user._id.toString() ? "(Bạn)" : ""}
                     </h4>
                     <span className="text-3xs font-extrabold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
                       {top3.targetLevel}

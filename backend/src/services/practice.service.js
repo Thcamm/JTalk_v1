@@ -181,12 +181,16 @@ export class PracticeService {
         user.dailyUsage?.date === todayStr ? user.dailyUsage.practiceCount || 0 : 0;
       userUsedToday = currentDailyPractices + 1;
 
+      const newTotalXp = (user.gamification?.totalXp || 0) + xpEarned;
+      const newLevel = Math.max(1, Math.floor(newTotalXp / 100) + 1);
+
       user.gamification = {
         ...user.gamification,
         streak: streakResult.newStreak,
         longestStreak: streakResult.newLongestStreak,
         lastActiveDate: new Date(),
-        totalXp: (user.gamification?.totalXp || 0) + xpEarned,
+        totalXp: newTotalXp,
+        level: newLevel,
       };
 
       user.dailyUsage = {
