@@ -99,6 +99,114 @@ class GeminiKeyPoolManager {
 const geminiPool = new GeminiKeyPoolManager();
 
 /**
+ * Tách câu tiếng Nhật thành các cụm từ / Bunsetsu tự nhiên,
+ * TUYỆT ĐỐI không cắt rời Kanji và Okurigana (ví dụ: giữ nguyên '初めまして', '申します', '教えてください').
+ */
+export function tokenizeJapaneseSentence(sentence) {
+  if (!sentence) return [];
+
+  // 1. Danh sách các cụm cố định và kính ngữ đặc biệt không được tách
+  const FIXED_PHRASES = [
+    "よろしくお願いいたします",
+    "よろしくおねがいします",
+    "よろしくお願いします",
+    "ありがとうございます",
+    "ありがとございます",
+    "ごちそうさまでした",
+    "お疲れ様です",
+    "おつかれさまです",
+    "いらっしゃいませ",
+    "失礼いたします",
+    "失礼します",
+    "初めまして",
+    "はじめまして",
+    "申します",
+    "もうします",
+    "教えてください",
+    "おしえてください",
+    "学びたいです",
+    "まなびたいです",
+    "応募しました",
+    "アルバイト",
+    "エンジニア",
+    "コンビニ",
+    "ユニットテスト",
+    "プロジェクト",
+    "ミーティング",
+  ];
+
+  const clean = sentence.replace(/[、。！？!?,.\s~…-]/g, " ").trim();
+  if (!clean) return [];
+
+  const segments = clean.split(/\s+/).filter(Boolean);
+  const tokens = [];
+
+  for (const seg of segments) {
+    let remaining = seg;
+
+    while (remaining.length > 0) {
+      // 1. Khớp cụm từ cố định
+      let matchedFixed = false;
+      for (const phrase of FIXED_PHRASES) {
+        if (remaining.startsWith(phrase)) {
+          tokens.push(phrase);
+          remaining = remaining.slice(phrase.length);
+          matchedFixed = true;
+          break;
+        }
+      }
+      if (matchedFixed) continue;
+
+      // 2. Khối Katakana (vd: アルバイト, クラウド) kèm trợ từ nếu có
+      const katakanaMatch = remaining.match(
+        /^([ァ-ヶー]+)(まで|から|より|では|には|とは|は|が|を|に|で|と|も|へ|ね|よ|か)?/
+      );
+      if (katakanaMatch) {
+        tokens.push(katakanaMatch[0]);
+        remaining = remaining.slice(katakanaMatch[0].length);
+        continue;
+      }
+
+      // 3. Khối Kanji + Okurigana / Động từ / Tính từ / Danh từ kèm trợ từ (vd: お名前と, 理由を, 日本で)
+      const kanjiOkuriganaMatch = remaining.match(
+        /^([おご]?[一-龯㐀-䶿]+[ぁ-ん]*)(まで|から|より|では|には|とは|は|が|を|に|で|と|も|へ|ね|よ|か)?/
+      );
+      if (kanjiOkuriganaMatch) {
+        tokens.push(kanjiOkuriganaMatch[0]);
+        remaining = remaining.slice(kanjiOkuriganaMatch[0].length);
+        continue;
+      }
+
+      // 4. Số + đơn vị đếm (vd: 2年間, 85%)
+      const numberMatch = remaining.match(
+        /^([0-9０-９]+[年月日回人時分秒%％]*)(まで|から|より|では|には|とは|は|が|を|に|で|と|も|へ|ね|よ|か)?/
+      );
+      if (numberMatch) {
+        tokens.push(numberMatch[0]);
+        remaining = remaining.slice(numberMatch[0].length);
+        continue;
+      }
+
+      // 5. Khối Hiragana (vd: ここで, したい, です)
+      const hiraganaMatch = remaining.match(
+        /^([ぁ-ん]{1,4})(まで|から|より|では|には|とは|は|が|を|に|で|と|も|へ|ね|よ|か)?/
+      );
+      if (hiraganaMatch) {
+        tokens.push(hiraganaMatch[0]);
+        remaining = remaining.slice(hiraganaMatch[0].length);
+        continue;
+      }
+
+      // 6. Ký tự còn lại
+      tokens.push(remaining.charAt(0));
+      remaining = remaining.slice(1);
+    }
+  }
+
+  return tokens.filter((t) => t.length > 0 && !/^[、。！？!?,.\s~…-]+$/.test(t));
+}
+
+/**
  * AI Service: Speech-to-Text (Azure/Whisper) and LLM Scoring Engine (Gemini Pool/Claude/OpenAI)
  */
 export class AiService {
@@ -543,7 +651,8 @@ Chấm điểm và phân tích chi tiết dựa trên 4 tiêu chí (thang điể
 4. completeness (Độ hoàn thiện): Nói đủ ý, không bỏ sót các thành phần câu.
 
 LƯU Ý ĐẶC BIỆT VỀ ĐÁNH GIÁ TỪNG TỪ (wordFeedback):
-- Phân rã câu thành danh sách các từ/cụm từ có nghĩa (kanji, trợ từ, đuôi động từ).
+- QUY TẮC BẮT BUỘC VỀ PHÂN TÁCH TỪ: Giữ nguyên toàn bộ từ hoặc cụm từ tự nhiên (Bunsetsu), TUYỆT ĐỐI KHÔNG cắt rời Kanji và Okurigana giữa chừng (Ví dụ: GIỮ NGUYÊN "初めまして", "申します", "よろしくお願いします", "教えてください", "学びたいです"; KHÔNG ĐƯỢC CẮT thành "初めま" + "して", "申しま" + "す").
+- Với Katakana (vd: "アルバイト", "エンジニア", "ユニットテスト") và danh từ ghép, phải giữ nguyên toàn bộ từ.
 - Nếu từ/cụm từ đó được phát âm đúng hoặc khớp với câu mẫu, BẮT BUỘC gán "isCorrect": true (màu Xanh) và "accuracyScore" >= 90.
 - CHỈ gán "isCorrect": false khi từ đó bị phát âm sai lệch nghiêm trọng, thiếu hoặc dùng sai trợ từ.
 - Tuyệt đối không đánh dấu toàn bộ câu là màu đỏ nếu người học đã nói đúng hoặc nói gần đúng câu mẫu!
@@ -613,11 +722,11 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
       };
     }
 
-    // Segment expected sentence into words, filtering out pure punctuation marks
-    const rawTokens = expectedSentence.split(/([、。！？!?,.\s~…]+|(?<=[はがをにでともへからまで]))/).filter(Boolean);
-    const words = rawTokens
-      .map((w) => w.trim())
-      .filter((w) => w.length > 0 && !/^[、。！？!?,.\s~…-]+$/.test(w));
+    // Segment expected sentence into words using Bunsetsu tokenizer to keep Kanji + Okurigana intact
+    const tokenized = tokenizeJapaneseSentence(expectedSentence);
+    const words = tokenized.length > 0
+      ? tokenized
+      : [expectedSentence];
 
     const wordFeedback = words.map((w, index) => {
       const cleanWord = w.replace(/[、。！？!?,.\s~…-]/g, "").toLowerCase();

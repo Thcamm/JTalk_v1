@@ -10,24 +10,63 @@ export const formatDateToString = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-export const getTodayDateString = () => {
+export const getTodayDateString = (clientDate = null) => {
+  if (clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate)) {
+    return clientDate;
+  }
   return formatDateToString(new Date());
 };
 
-export const getYesterdayDateString = () => {
+export const getYesterdayDateString = (baseDateStr = null) => {
+  if (baseDateStr && /^\d{4}-\d{2}-\d{2}$/.test(baseDateStr)) {
+    const [y, m, d] = baseDateStr.split("-").map(Number);
+    const date = new Date(y, m - 1, d, 12, 0, 0);
+    date.setDate(date.getDate() - 1);
+    return formatDateToString(date);
+  }
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return formatDateToString(d);
 };
 
-export const getPastNDaysDates = (n = 7) => {
+export const getPastNDaysDates = (n = 7, baseDateStr = null) => {
+  const today = baseDateStr && /^\d{4}-\d{2}-\d{2}$/.test(baseDateStr)
+    ? (() => {
+        const [y, m, d] = baseDateStr.split("-").map(Number);
+        return new Date(y, m - 1, d, 12, 0, 0);
+      })()
+    : new Date();
+
   const dates = [];
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
     dates.push(formatDateToString(d));
   }
   return dates;
+};
+
+/**
+ * Gets the current week identifier, e.g. "2026-W41"
+ */
+export const getWeekIdentifier = (baseDateStr = null) => {
+  const d = baseDateStr && /^\d{4}-\d{2}-\d{2}$/.test(baseDateStr)
+    ? (() => {
+        const [y, m, day] = baseDateStr.split("-").map(Number);
+        return new Date(y, m - 1, day, 12, 0, 0);
+      })()
+    : new Date();
+
+  const target = new Date(d.valueOf());
+  const dayNr = (d.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+  }
+  const weekNumber = 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+  return `${d.getFullYear()}-W${String(weekNumber).padStart(2, "0")}`;
 };
 
 /**
@@ -37,10 +76,10 @@ export const getPastNDaysDates = (n = 7) => {
  * 2. User practiced yesterday, so today's practice is pending before midnight (lastActiveStr === yesterdayStr)
  * Otherwise, streak is broken and returns 0.
  */
-export const getActiveStreak = (lastActiveDate, currentStreak = 0) => {
+export const getActiveStreak = (lastActiveDate, currentStreak = 0, clientDate = null) => {
   if (!lastActiveDate || currentStreak <= 0) return 0;
-  const todayStr = getTodayDateString();
-  const yesterdayStr = getYesterdayDateString();
+  const todayStr = getTodayDateString(clientDate);
+  const yesterdayStr = getYesterdayDateString(todayStr);
   const lastActiveStr = formatDateToString(new Date(lastActiveDate));
 
   if (lastActiveStr === todayStr || lastActiveStr === yesterdayStr) {
@@ -52,26 +91,33 @@ export const getActiveStreak = (lastActiveDate, currentStreak = 0) => {
 /**
  * Calculates new streak status based on user's lastActiveDate
  */
-export const calculateNewStreak = (lastActiveDate, currentStreak = 0, currentLongestStreak = 0) => {
-  const todayStr = getTodayDateString();
-  const yesterdayStr = getYesterdayDateString();
+export const calculateNewStreak = (
+  lastActiveDate,
+  currentStreak = 0,
+  currentLongestStreak = 0,
+  clientDate = null
+) => {
+  const todayStr = getTodayDateString(clientDate);
+  const yesterdayStr = getYesterdayDateString(todayStr);
 
   if (!lastActiveDate) {
     return {
       newStreak: 1,
       newLongestStreak: Math.max(1, currentLongestStreak),
       isStreakIncremented: true,
+      alreadyActiveToday: false,
     };
   }
 
   const lastActiveStr = formatDateToString(new Date(lastActiveDate));
 
   if (lastActiveStr === todayStr) {
-    // Already practiced today, keep current streak
+    // Already practiced/checked in today, keep current streak
     return {
       newStreak: currentStreak > 0 ? currentStreak : 1,
       newLongestStreak: Math.max(currentStreak, currentLongestStreak),
       isStreakIncremented: false,
+      alreadyActiveToday: true,
     };
   } else if (lastActiveStr === yesterdayStr) {
     // Practiced yesterday, consecutive streak!
@@ -80,6 +126,7 @@ export const calculateNewStreak = (lastActiveDate, currentStreak = 0, currentLon
       newStreak,
       newLongestStreak: Math.max(newStreak, currentLongestStreak),
       isStreakIncremented: true,
+      alreadyActiveToday: false,
     };
   } else {
     // Streak broken, reset to 1
@@ -87,6 +134,7 @@ export const calculateNewStreak = (lastActiveDate, currentStreak = 0, currentLon
       newStreak: 1,
       newLongestStreak: Math.max(1, currentLongestStreak),
       isStreakIncremented: true,
+      alreadyActiveToday: false,
     };
   }
 };

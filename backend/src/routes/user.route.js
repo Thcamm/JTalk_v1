@@ -1,5 +1,11 @@
 import express from "express";
-import { getMe, updateProfile, changePassword, getLeaderboard } from "../controllers/user.controller.js";
+import {
+  getMe,
+  updateProfile,
+  changePassword,
+  getLeaderboard,
+  claimQuest,
+} from "../controllers/user.controller.js";
 import { protectedRoute } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -9,6 +15,9 @@ router.use(protectedRoute);
 
 // GET /api/v1/users/leaderboard
 router.get("/leaderboard", getLeaderboard);
+
+// POST /api/v1/users/claim-quest
+router.post("/claim-quest", claimQuest);
 
 // GET /api/v1/users/me (or /api/users/me)
 router.get("/me", getMe);

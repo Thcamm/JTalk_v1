@@ -8,12 +8,20 @@ export interface UserProfile {
   dailyTargetMinutes?: number;
 }
 
+export interface ClaimedQuestItem {
+  questId: string;
+  dateKey: string;
+  claimedAt?: string;
+  xpEarned?: number;
+}
+
 export interface UserGamification {
   streak: number;
   longestStreak: number;
   lastActiveDate?: string;
   totalXp: number;
   level: number;
+  claimedQuests?: ClaimedQuestItem[];
 }
 
 export interface UserSubscription {
@@ -71,8 +79,9 @@ export interface AuthState {
     password: string,
     email: string,
     firstName: string,
-    lastName: string
-  ) => Promise<void>;
+    lastName: string,
+    displayName?: string
+  ) => Promise<any>;
   signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   fetchMe: () => Promise<void>;
@@ -80,6 +89,7 @@ export interface AuthState {
   initSession: () => Promise<void>;
   dailyPracticeCount: number;
   incrementDailyPracticeCount: () => void;
+  updateUser: (fields: Partial<User>) => void;
   updateUserGamification: (gamification: Partial<UserGamification>) => void;
   updateUserDailyUsage: (usage: Partial<UserDailyUsage>) => void;
   updateUserSubscription: (subscription: Partial<UserSubscription>) => void;

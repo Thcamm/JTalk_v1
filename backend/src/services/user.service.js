@@ -2,7 +2,11 @@ import bcrypt from "bcrypt";
 import User from "../models/User.js";
 import Subscription from "../models/Subscription.js";
 import StudyLog from "../models/StudyLog.js";
-import { getTodayDateString, getActiveStreak } from "../utils/dateUtils.js";
+import {
+  getTodayDateString,
+  getActiveStreak,
+  getWeekIdentifier,
+} from "../utils/dateUtils.js";
 import config from "../config/index.js";
 
 export class UserService {
@@ -15,6 +19,12 @@ export class UserService {
       const error = new Error("Không tìm thấy thông tin người dùng.");
       error.statusCode = 404;
       throw error;
+    }
+
+    // Ensure displayName is always populated with at least username if empty
+    if (!user.displayName || !user.displayName.trim()) {
+      user.displayName = user.username;
+      await user.save();
     }
 
     const now = new Date();
@@ -317,9 +327,15 @@ export class UserService {
       if (found) {
         currentUserItem = found;
       } else {
-        // Fallback if user is beyond top 50
-        const userDoc = await User.findById(currentUserId).select("displayName avatarUrl profile gamification subscription").lean();
+        // Fallback if user is beyond top 50 in combined list
+        const userDoc = await User.findById(currentUserId)
+          .select("displayName avatarUrl profile gamification subscription")
+          .lean();
         if (userDoc) {
+          const userVal = type === "streak" ? (userDoc.gamification?.streak || 0) : (userDoc.gamification?.totalXp || 0);
+          const countAhead = await User.countDocuments({ [sortField]: { $gt: userVal } });
+          const realRank = countAhead + 1;
+
           currentUserItem = {
             _id: stringUserId,
             displayName: userDoc.displayName || "Bạn",
@@ -329,7 +345,7 @@ export class UserService {
             streak: userDoc.gamification?.streak || 0,
             level: userDoc.gamification?.level || 1,
             isPremium: userDoc.subscription?.tier === "premium",
-            rank: rankedUsers.length + 1,
+            rank: realRank,
           };
         }
       }
@@ -340,6 +356,87 @@ export class UserService {
       currentUser: currentUserItem,
       timeframe,
       type,
+    };
+  }
+
+  /**
+   * Claims quest reward (daily or weekly), records into DB and increments totalXp
+   */
+  static async claimQuestReward({
+    userId,
+    questId,
+    xpReward = 30,
+    questType = "daily",
+    clientDate = null,
+  }) {
+    if (!questId) {
+      const error = new Error("Thiếu mã nhiệm vụ (questId).");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("Không tìm thấy thông tin người dùng.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // Determine cycle key: date string for daily, week string for weekly
+    const dateKey = questType === "weekly"
+      ? getWeekIdentifier(clientDate)
+      : getTodayDateString(clientDate);
+
+    // Ensure claimedQuests array exists
+    user.gamification = user.gamification || {};
+    user.gamification.claimedQuests = user.gamification.claimedQuests || [];
+
+    // Check if already claimed in this cycle
+    const alreadyClaimed = user.gamification.claimedQuests.some(
+      (q) => q.questId === questId && q.dateKey === dateKey
+    );
+
+    if (alreadyClaimed) {
+      return {
+        success: false,
+        alreadyClaimed: true,
+        message: "Nhiệm vụ này đã được nhận thưởng trong chu kỳ hiện tại!",
+        totalXp: user.gamification.totalXp || 0,
+        level: user.gamification.level || 1,
+        xpEarned: 0,
+      };
+    }
+
+    // Calculate new total XP and Level
+    const newTotalXp = (user.gamification.totalXp || 0) + Number(xpReward);
+    const newLevel = Math.max(1, Math.floor(newTotalXp / 100) + 1);
+
+    user.gamification.totalXp = newTotalXp;
+    user.gamification.level = newLevel;
+    user.gamification.claimedQuests.push({
+      questId,
+      dateKey,
+      claimedAt: new Date(),
+      xpEarned: Number(xpReward),
+    });
+
+    await user.save();
+
+    // Also record XP gain in today's StudyLog
+    await StudyLog.findOneAndUpdate(
+      { userId, date: getTodayDateString(clientDate) },
+      { $inc: { xpEarned: Number(xpReward) } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    return {
+      success: true,
+      alreadyClaimed: false,
+      message: `Nhận thưởng thành công! Bạn nhận được +${xpReward} XP 🎉`,
+      totalXp: newTotalXp,
+      level: newLevel,
+      xpEarned: Number(xpReward),
+      questId,
     };
   }
 }

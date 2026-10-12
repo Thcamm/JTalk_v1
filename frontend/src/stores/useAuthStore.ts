@@ -65,17 +65,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signUp: async (username, password, email, firstName, lastName) => {
+  signUp: async (username, password, email, firstName, lastName, displayName) => {
     try {
+      get().clearState();
       set({ loading: true });
-      await authService.signUp(username, password, email, firstName, lastName);
-      toast.success("Đăng ký thành công! Bạn sẽ được chuyển sang trang đăng nhập.");
+      const res = await authService.signUp(username, password, email, firstName, lastName, displayName);
+
+      // Auto login if backend returned access token
+      if (res?.accessToken) {
+        get().setAccessToken(res.accessToken);
+        if (res.user) {
+          set({ user: res.user });
+        }
+        await get().fetchMe();
+        const welcomeName = get().user?.displayName || res.user?.displayName || username;
+        toast.success(`Đăng ký thành công! Chào mừng ${welcomeName} gia nhập JTalk AI.`);
+      } else {
+        toast.success("Đăng ký tài khoản thành công!");
+      }
+      return res;
     } catch (error: any) {
       console.error("Sign up error:", error);
       const msg =
         error.response?.data?.message ||
         (error.message === "Network Error"
-          ? "Không thể kết nối tới máy chủ Backend. Vui lòng kiểm tra lại URL API hoặc server Render."
+          ? "Không thể kết nối tới máy chủ Backend. Vui lòng kiểm tra lại kết nối mạng hoặc server Render."
           : "Đăng ký không thành công");
       toast.error(msg);
       throw error;
@@ -86,14 +100,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signIn: async (username, password) => {
     try {
+      get().clearState();
       set({ loading: true });
 
-      const { accessToken } = await authService.signIn(username, password);
-      get().setAccessToken(accessToken);
+      const res = await authService.signIn(username, password);
+      const accessToken = res?.accessToken;
+      const loggedInUser = res?.user;
+
+      if (accessToken) {
+        get().setAccessToken(accessToken);
+      }
+      if (loggedInUser) {
+        set({ user: loggedInUser });
+      }
 
       await get().fetchMe();
 
-      toast.success("Chào mừng bạn quay lại với JTalk AI");
+      const welcomeName = get().user?.displayName || loggedInUser?.displayName || username;
+      toast.success(`Chào mừng ${welcomeName} quay lại với JTalk AI`);
     } catch (error: any) {
       console.error("Sign in error:", error);
       const msg =
@@ -111,7 +135,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     try {
       await authService.signOut();
-      toast.success("Logout thành công!");
+      toast.success("Đăng xuất thành công!");
     } catch (error) {
       console.error(error);
     } finally {
@@ -214,6 +238,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw error;
     } finally {
       set({ loading: false });
+    }
+  },
+
+  updateUser: (fields) => {
+    const currentUser = get().user;
+    if (currentUser) {
+      set({
+        user: {
+          ...currentUser,
+          ...fields,
+        },
+      });
     }
   },
 

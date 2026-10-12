@@ -17,6 +17,7 @@ import {
   Flame,
   ArrowRight,
   ExternalLink,
+  Trophy,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -52,7 +53,7 @@ const STATIC_SEARCH_ITEMS: SearchItem[] = [
   },
   {
     id: "nav-speaking",
-    title: "Phòng Luyện nói AI & Phản xạ",
+    title: "Luyện nói AI & Phản xạ",
     subtitle: "Luyện phát âm, đối đáp tự do và shadowing đa tình huống",
     category: "navigation",
     url: "/speaking",

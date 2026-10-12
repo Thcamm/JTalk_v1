@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, User, Target, Clock, Sparkles, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { userService } from "@/services/user.service";
+import { useAuthStore } from "@/stores/useAuthStore";
 import type { User as UserType } from "@/types";
 
 interface EditProfileModalProps {
@@ -60,13 +61,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
     try {
       setSubmitting(true);
-      await userService.updateProfile({
+      const updated = await userService.updateProfile({
         displayName: displayName.trim(),
         bio: bio.trim(),
         targetLevel,
         goal,
         dailyTargetMinutes,
       });
+
+      // Synchronize freshly updated display name into auth store immediately
+      if (updated) {
+        useAuthStore.getState().updateUser({
+          displayName: updated.displayName || displayName.trim(),
+          bio: updated.bio,
+          profile: updated.profile,
+        });
+      }
 
       toast.success("Cập nhật thông tin hồ sơ thành công!");
       if (onSuccess) onSuccess();

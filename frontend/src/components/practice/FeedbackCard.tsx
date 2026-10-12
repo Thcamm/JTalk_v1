@@ -154,7 +154,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
               {theme.label}
             </div>
             <h4 className="text-lg font-bold text-slate-800 dark:text-white">Kết quả đánh giá phản xạ</h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Chấm điểm tự động bằng mô hình AI chuẩn Nhật</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Chấm điểm tự động bằng mô hình AI chuẩn Nhật</p>
           </div>
         </div>
 
@@ -295,15 +295,15 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
           </div>
 
           {feedback.generalAdvice && (
-            <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+            <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
               {feedback.generalAdvice}
             </p>
           )}
 
           {feedback.grammarSuggestions && feedback.grammarSuggestions.length > 0 && (
             <div className="space-y-1 pt-1">
-              <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">Mẫu câu nói tự nhiên hơn:</span>
-              <ul className="list-disc list-inside text-xs text-amber-800 dark:text-amber-300 space-y-0.5 pl-1">
+              <span className="text-sm font-semibold text-amber-900 dark:text-amber-200">Mẫu câu nói tự nhiên hơn:</span>
+              <ul className="list-disc list-inside text-sm text-amber-800 dark:text-amber-300 space-y-1 pl-1">
                 {feedback.grammarSuggestions.map((sug, i) => (
                   <li key={i}>{sug}</li>
                 ))}
