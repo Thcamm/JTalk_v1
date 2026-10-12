@@ -46,7 +46,11 @@ export const checkPracticeQuota = async (req, res, next) => {
 
     // 2. Với User FREE: Kiểm tra số lượt luyện tập hôm nay
     const todayStr = getTodayDateString();
-    const freeLimit = config.quota.freeDailyPracticeLimit; // Mặc định 5 lượt/ngày
+    const baseLimit = config.quota.freeDailyPracticeLimit; // Mặc định 5 lượt/ngày
+    const bonusPractices = (user.dailyUsage && user.dailyUsage.date === todayStr)
+      ? (user.dailyUsage.earnedBonusPractices || 0)
+      : 0;
+    const effectiveLimit = baseLimit + bonusPractices;
 
     // Kiểm tra số lượt đã thực hành hôm nay từ StudyLog
     const todayLog = await StudyLog.findOne({
@@ -70,14 +74,18 @@ export const checkPracticeQuota = async (req, res, next) => {
       });
     }
 
-    if (usedToday >= freeLimit) {
+    if (usedToday >= effectiveLimit) {
       return errorResponse(
         res,
-        `Bạn đã sử dụng hết ${freeLimit} lượt luyện nói miễn phí trong ngày hôm nay. Vui lòng nâng cấp gói Premium (99.000đ/tháng) để luyện tập không giới hạn!`,
+        `Bạn đã sử dụng hết ${effectiveLimit} lượt luyện nói hôm nay (${baseLimit} lượt gốc + ${bonusPractices} lượt hồi). Vui lòng nâng cấp gói Premium hoặc ôn tập từ vựng để hồi thêm lượt!`,
         403,
         {
           quotaExceeded: true,
-          limit: freeLimit,
+          limit: effectiveLimit,
+          baseLimit,
+          bonusPractices,
+          maxBonus: 2,
+          canEarnBonus: bonusPractices < 2,
           usedToday,
           remaining: 0,
           upgradeUrl: "/pricing",
@@ -88,9 +96,13 @@ export const checkPracticeQuota = async (req, res, next) => {
     req.isPremium = false;
     req.quota = {
       isUnlimited: false,
-      limit: freeLimit,
+      limit: effectiveLimit,
+      baseLimit,
+      bonusPractices,
+      maxBonus: 2,
+      canEarnBonus: bonusPractices < 2,
       usedToday,
-      remaining: Math.max(0, freeLimit - usedToday),
+      remaining: Math.max(0, effectiveLimit - usedToday),
     };
 
     next();

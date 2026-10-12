@@ -103,5 +103,47 @@ export const claimQuest = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/users/buy-streak-freeze
+ * Purchases a streak freeze equipped shield using 100 XP
+ */
+export const buyStreakFreeze = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const result = await UserService.buyStreakFreeze(userId);
+    return successResponse(res, result, result.message);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/users/claim-practice-bonus
+ * Practice-to-Earn: Claims +1 speaking practice quota after reviewing 5 flashcards
+ */
+export const claimPracticeBonus = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const result = await UserService.claimPracticeBonus(userId);
+    return successResponse(res, result, result.message);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/users/onboarding-quiz
+ * Submits Onboarding Placement Quiz answers and rewards +50 XP
+ */
+export const completeOnboardingQuiz = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const result = await UserService.completeOnboardingQuiz(userId, req.body);
+    return successResponse(res, result, result.message);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Aliases for compatibility
 export const authMe = getMe;

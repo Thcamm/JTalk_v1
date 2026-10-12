@@ -22,22 +22,56 @@ import {
   EyeOff,
   Flame,
   BrainCircuit,
+  Clock,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   vocabularyService,
   DEFAULT_STARTER_VOCABULARY,
 } from "@/services/vocabulary.service";
+import { userService } from "@/services/user.service";
+import { soundEffects } from "@/utils/soundEffects";
+import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/stores/useAuthStore";
 import type { VocabularyItem, CreateVocabularyPayload } from "@/types";
 
 export default function VocabularyNotebookPage() {
+  const { user, isPremium, bonusPractices, canEarnBonus, fetchMe } = useAuth();
   const [activeTab, setActiveTab] = useState<"notebook" | "flashcard">("notebook");
   const [vocabularies, setVocabularies] = useState<VocabularyItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dueCount, setDueCount] = useState<number>(0);
+  const [isReviewingSRS, setIsReviewingSRS] = useState(false);
+  const [claimingBonus, setClaimingBonus] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const reviewsToday = user?.dailyUsage?.vocabReviewsToday ?? user?.quota?.vocabReviewsToday ?? 0;
+  const reviewsTarget = (bonusPractices + 1) * 5;
+  const canClaimBonusNow = canEarnBonus && reviewsToday >= reviewsTarget;
+
+  const handleClaimBonusInNotebook = async () => {
+    try {
+      setClaimingBonus(true);
+      const res = await userService.claimPracticeBonus();
+      if (res.success) {
+        soundEffects.playSuccess();
+        toast.success(res.message);
+        await fetchMe();
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Chưa đủ điều kiện đổi lượt nói."
+      );
+    } finally {
+      setClaimingBonus(false);
+    }
+  };
 
   // Flashcard Deck State
   const [cardIndex, setCardIndex] = useState(0);
@@ -58,16 +92,21 @@ export default function VocabularyNotebookPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load initial vocabularies
+  // Load initial vocabularies and due count
   const loadVocabularies = useCallback(async () => {
     setIsLoading(true);
     try {
-      const items = await vocabularyService.getVocabularies({
-        level: selectedLevel,
-        isMastered: selectedStatus,
-        search: searchQuery,
-      });
+      const [items, due] = await Promise.all([
+        vocabularyService.getVocabularies({
+          level: selectedLevel,
+          isMastered: selectedStatus === "due" ? "all" : selectedStatus,
+          isDue: selectedStatus === "due" ? "true" : undefined,
+          search: searchQuery,
+        }),
+        vocabularyService.getDueCount(),
+      ]);
       setVocabularies(items.length > 0 ? items : DEFAULT_STARTER_VOCABULARY);
+      setDueCount(due);
     } catch {
       setVocabularies(DEFAULT_STARTER_VOCABULARY);
     } finally {
@@ -78,6 +117,24 @@ export default function VocabularyNotebookPage() {
   useEffect(() => {
     loadVocabularies();
   }, [loadVocabularies]);
+
+  // SRS Stage Info Helper
+  const getSRSStageInfo = (stage: number = 0) => {
+    switch (stage) {
+      case 1:
+        return { label: "Bắt đầu", color: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300" };
+      case 2:
+        return { label: "Nhận biết", color: "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-300" };
+      case 3:
+        return { label: "Củng cố", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300" };
+      case 4:
+        return { label: "Thành thạo", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300" };
+      case 5:
+        return { label: "Bậc thầy", color: "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300" };
+      default:
+        return { label: "Mới lưu", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-300" };
+    }
+  };
 
   // Speech synthesis for native Japanese audio
   const speakJapanese = (text: string) => {
@@ -111,6 +168,100 @@ export default function VocabularyNotebookPage() {
     } catch (e) {
       console.error("SpeechSynthesis error:", e);
       setIsSpeaking(false);
+    }
+  };
+
+  // Handle Spaced Repetition Review (SM-2)
+  const handleReviewSRS = async (
+    item: VocabularyItem,
+    rating: "again" | "hard" | "good" | "easy",
+    e?: React.MouseEvent
+  ) => {
+    e?.stopPropagation();
+    if (isReviewingSRS) return;
+    setIsReviewingSRS(true);
+
+    // Play micro sound feedback
+    if (rating === "again") soundEffects.playTap();
+    else if (rating === "hard") soundEffects.playEncourage();
+    else if (rating === "good") soundEffects.playGood();
+    else soundEffects.playSuccess();
+
+    try {
+      const res = await vocabularyService.reviewSRS(item._id, rating);
+      const updated = res.item || {
+        ...item,
+        srsStage: res.srsStage,
+        interval: res.interval,
+        nextReviewDate: res.nextReviewDate,
+        isMastered: res.srsStage >= 4,
+      };
+
+      setVocabularies((prev) =>
+        prev.map((v) => (v._id === item._id ? { ...v, ...updated } : v))
+      );
+
+      if (res.totalXp) {
+        useAuthStore.getState().updateUserGamification({
+          totalXp: res.totalXp,
+          level: res.level,
+        });
+      }
+
+      const anyRes = res as any;
+      if (typeof anyRes.vocabReviewsToday === "number") {
+        useAuthStore.getState().updateUserDailyUsage({
+          practiceCount: user?.dailyUsage?.practiceCount || 0,
+          vocabReviewsToday: anyRes.vocabReviewsToday,
+        });
+      }
+
+      if (anyRes.canClaimBonus) {
+        soundEffects.playSuccess();
+        toast.success("🎉 Bạn đã ôn đủ 5 thẻ từ vựng! Hãy bấm nhận +1 lượt nói miễn phí hôm nay ⚡", {
+          duration: 5000,
+        });
+      }
+
+      const ratingNames = {
+        again: "🔴 Quên - Ôn lại sau 1 ngày",
+        hard: "🟡 Khó - Chu kỳ ngắn",
+        good: "🟢 Nhớ tốt - +5 XP!",
+        easy: "⚡ Rất dễ - Chu kỳ dài (+5 XP!)",
+      };
+      toast.success(ratingNames[rating]);
+
+      setDueCount((prev) => Math.max(0, prev - 1));
+
+      // Auto advance to next flashcard
+      setTimeout(() => {
+        handleNextCard();
+      }, 300);
+    } catch {
+      // Local fallback
+      let newStage = item.srsStage || 0;
+      if (rating === "again") newStage = Math.max(0, newStage - 1);
+      else if (rating === "hard") newStage = Math.min(5, Math.max(1, newStage));
+      else newStage = Math.min(5, newStage + 1);
+
+      setVocabularies((prev) =>
+        prev.map((v) =>
+          v._id === item._id
+            ? {
+                ...v,
+                srsStage: newStage,
+                isMastered: newStage >= 4,
+              }
+            : v
+        )
+      );
+
+      toast.success("Đã ghi nhận ôn tập thẻ! +5 XP");
+      setTimeout(() => {
+        handleNextCard();
+      }, 300);
+    } finally {
+      setIsReviewingSRS(false);
     }
   };
 
@@ -204,6 +355,10 @@ export default function VocabularyNotebookPage() {
       if (selectedLevel !== "all" && v.level !== selectedLevel) return false;
       if (selectedStatus === "mastered" && !v.isMastered) return false;
       if (selectedStatus === "learning" && v.isMastered) return false;
+      if (selectedStatus === "due") {
+        const isDue = !v.nextReviewDate || new Date(v.nextReviewDate).getTime() <= Date.now();
+        if (!isDue) return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
         return (
@@ -299,10 +454,23 @@ export default function VocabularyNotebookPage() {
           </div>
 
           {/* Quick Metrics Bar */}
-          <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-white/15">
+          <div className="mt-8 grid grid-cols-2 sm:grid-cols-5 gap-3.5 pt-6 border-t border-white/15">
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4">
               <span className="text-white/70 text-xs font-medium block">Tổng số từ</span>
               <span className="text-2xl font-black mt-1 block">{totalWords}</span>
+            </div>
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-amber-300/30">
+              <div className="flex items-center justify-between">
+                <span className="text-amber-200 text-xs font-bold flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" /> Đến hạn ôn
+                </span>
+                {dueCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                    SRS
+                  </span>
+                )}
+              </div>
+              <span className="text-2xl font-black text-amber-200 mt-1 block">{dueCount}</span>
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4">
               <span className="text-white/70 text-xs font-medium block">Đã ghi nhớ</span>
@@ -310,7 +478,7 @@ export default function VocabularyNotebookPage() {
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4">
               <span className="text-white/70 text-xs font-medium block">Đang ôn tập</span>
-              <span className="text-2xl font-black text-amber-300 mt-1 block">{learningCount}</span>
+              <span className="text-2xl font-black text-sky-200 mt-1 block">{learningCount}</span>
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4">
               <span className="text-white/70 text-xs font-medium block">Tỉ lệ thuộc</span>
@@ -318,6 +486,62 @@ export default function VocabularyNotebookPage() {
             </div>
           </div>
         </div>
+
+        {/* Practice-to-Earn Quota Banner (Duolingo Heart/Energy Mechanism) */}
+        {!isPremium && canEarnBonus && (
+          <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-indigo-500/10 dark:from-amber-950/30 dark:via-rose-950/30 dark:to-slate-900/40 border border-amber-300/80 dark:border-amber-800/60 rounded-3xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-300/40">
+                <Zap size={22} className="fill-current" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                    Luyện Tập Hồi Lượt Nói • Practice to Earn
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-3xs font-extrabold border border-amber-300/60">
+                    Đã nhận {bonusPractices}/2 lượt hôm nay
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                  Ôn tập mỗi 5 thẻ Flashcard để nạp thêm +1 lượt nói miễn phí trong phòng luyện Kaiwa AI!
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 justify-between sm:justify-end">
+              <div className="text-right hidden sm:block">
+                <span className="text-3xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                  Tiến độ hôm nay
+                </span>
+                <p className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                  {reviewsToday}/{reviewsTarget} thẻ
+                </p>
+              </div>
+
+              {canClaimBonusNow ? (
+                <button
+                  onClick={handleClaimBonusInNotebook}
+                  disabled={claimingBonus}
+                  type="button"
+                  className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:brightness-105 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Zap size={15} className="fill-white" />
+                  <span>{claimingBonus ? "Đang nhận..." : `Nhận +1 Lượt Nói Ngay! ⚡`}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setActiveTab("flashcard")}
+                  type="button"
+                  className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-500 hover:brightness-105 active:scale-95 text-white font-extrabold text-xs shadow-md shadow-rose-500/20 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Layers size={15} />
+                  <span>Ôn Thẻ Flashcard ({reviewsToday}/{reviewsTarget})</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Navigation Tabs (Sổ tay vs Flashcard) */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -437,6 +661,17 @@ export default function VocabularyNotebookPage() {
                     }`}
                   >
                     Cần ôn
+                  </button>
+                  <button
+                    onClick={() => setSelectedStatus("due")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                      selectedStatus === "due"
+                        ? "bg-rose-600 text-white shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
+                    }`}
+                  >
+                    <Clock className="w-3 h-3" />
+                    <span>Đến hạn ({dueCount})</span>
                   </button>
                 </div>
               </div>
@@ -575,11 +810,35 @@ export default function VocabularyNotebookPage() {
                       )}
                     </div>
 
-                    <div className="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                      <span>Lượt ôn: {item.reviewCount || 0}</span>
-                      <span className={item.isMastered ? "text-emerald-500 font-bold" : "text-amber-500 font-medium"}>
-                        {item.isMastered ? "✓ Đã ghi nhớ" : "○ Đang luyện tập"}
-                      </span>
+                    <div className="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${
+                            getSRSStageInfo(item.srsStage).color
+                          }`}
+                        >
+                          {getSRSStageInfo(item.srsStage).label}
+                        </span>
+                        <span className="text-slate-400">
+                          {item.interval ? `${item.interval} ngày` : `Ôn ${item.reviewCount || 0} lần`}
+                        </span>
+                      </div>
+
+                      {item.nextReviewDate && new Date(item.nextReviewDate).getTime() <= Date.now() ? (
+                        <span className="text-rose-500 font-extrabold flex items-center gap-1 animate-pulse">
+                          <Clock className="w-3 h-3" /> Đến hạn ôn
+                        </span>
+                      ) : (
+                        <span
+                          className={
+                            item.isMastered
+                              ? "text-emerald-500 font-bold"
+                              : "text-amber-500 font-medium"
+                          }
+                        >
+                          {item.isMastered ? "✓ Đã ghi nhớ" : "○ Đang luyện tập"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -647,21 +906,31 @@ export default function VocabularyNotebookPage() {
 
             {/* 3D PERSPECTIVE FLIP CARD CONTAINER */}
             <div
-              className="relative w-full h-[400px] sm:h-[440px] cursor-pointer select-none [perspective:1200px]"
+              className="relative w-full min-h-[450px] sm:min-h-[490px] cursor-pointer select-none [perspective:1200px]"
               onClick={() => setIsCardFlipped((prev) => !prev)}
             >
               <div
-                className={`relative w-full h-full rounded-3xl transition-transform duration-500 [transform-style:preserve-3d] shadow-2xl ${
+                className={`relative w-full min-h-[450px] sm:min-h-[490px] rounded-3xl transition-transform duration-500 [transform-style:preserve-3d] shadow-2xl ${
                   isCardFlipped ? "[transform:rotateY(180deg)]" : ""
                 }`}
               >
                 {/* MẶT TRƯỚC (FRONT): KANJI & PHÁT ÂM */}
-                <div className="absolute inset-0 w-full h-full rounded-3xl p-8 sm:p-10 flex flex-col justify-between bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 [backface-visibility:hidden] shadow-lg">
+                <div className="absolute inset-0 w-full h-full rounded-3xl p-6 sm:p-9 flex flex-col justify-between bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 [backface-visibility:hidden] shadow-lg">
                   {/* Card Header */}
                   <div className="flex items-center justify-between">
-                    <span className="px-3 py-1 rounded-xl bg-rose-500 text-white font-extrabold text-xs tracking-wider uppercase">
-                      {currentFlashcard.level}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-xl bg-rose-500 text-white font-extrabold text-xs tracking-wider uppercase">
+                        {currentFlashcard.level}
+                      </span>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${
+                          getSRSStageInfo(currentFlashcard.srsStage).color
+                        }`}
+                      >
+                        {getSRSStageInfo(currentFlashcard.srsStage).label}
+                      </span>
+                    </div>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -675,7 +944,7 @@ export default function VocabularyNotebookPage() {
                   </div>
 
                   {/* Card Body: Big Kanji */}
-                  <div className="text-center space-y-3 my-auto">
+                  <div className="text-center space-y-3 my-auto py-4">
                     {showFuriganaOnFront && currentFlashcard.furigana && (
                       <span className="text-lg sm:text-xl font-bold text-rose-500 dark:text-rose-400 tracking-wide block animate-fade-in">
                         {currentFlashcard.furigana}
@@ -694,32 +963,39 @@ export default function VocabularyNotebookPage() {
                   {/* Card Footer: Hint to flip */}
                   <div className="text-center pt-4 border-t border-slate-100 dark:border-slate-800">
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 group-hover:text-rose-500 transition-colors">
-                      <RotateCw className="w-3.5 h-3.5" /> Bấm vào thẻ để lật xem nghĩa
+                      <RotateCw className="w-3.5 h-3.5" /> Bấm vào thẻ để lật xem nghĩa & đánh giá SRS
                     </span>
                   </div>
                 </div>
 
-                {/* MẶT SAU (BACK): NGHĨA TIẾNG VIỆT & VÍ DỤ */}
-                <div className="absolute inset-0 w-full h-full rounded-3xl p-8 sm:p-10 flex flex-col justify-between bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white border-2 border-indigo-600/50 [transform:rotateY(180deg)] [backface-visibility:hidden] shadow-xl">
+                {/* MẶT SAU (BACK): NGHĨA TIẾNG VIỆT & ĐÁNH GIÁ SRS SM-2 */}
+                <div className="absolute inset-0 w-full h-full rounded-3xl p-6 sm:p-8 flex flex-col justify-between bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 text-white border-2 border-indigo-600/50 [transform:rotateY(180deg)] [backface-visibility:hidden] shadow-xl">
                   {/* Card Header Back */}
                   <div className="flex items-center justify-between">
-                    <span className="px-3 py-1 rounded-xl bg-indigo-500/30 text-indigo-300 font-bold text-xs uppercase">
-                      {currentFlashcard.wordType || "Từ vựng"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-xl bg-indigo-500/30 text-indigo-300 font-bold text-xs uppercase">
+                        {currentFlashcard.wordType || "Từ vựng"}
+                      </span>
+                      <span className="text-xs font-semibold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                        <BrainCircuit className="w-3 h-3" />
+                        SRS {getSRSStageInfo(currentFlashcard.srsStage).label}
+                      </span>
+                    </div>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         speakJapanese(currentFlashcard.kanji);
                       }}
-                      className="p-3 rounded-2xl bg-white/10 text-white hover:bg-white/20 transition-all"
+                      className="p-2.5 rounded-2xl bg-white/10 text-white hover:bg-white/20 transition-all"
                     >
                       <Volume2 className="w-5 h-5" />
                     </button>
                   </div>
 
                   {/* Card Body Back */}
-                  <div className="space-y-4 my-auto">
-                    <div className="space-y-1">
+                  <div className="space-y-3 my-auto py-2">
+                    <div className="space-y-0.5">
                       <span className="text-xs font-medium text-indigo-300 block">Nghĩa tiếng Việt</span>
                       <h3 className="text-2xl sm:text-3xl font-extrabold text-amber-300">
                         {currentFlashcard.meaning}
@@ -727,7 +1003,7 @@ export default function VocabularyNotebookPage() {
                     </div>
 
                     {currentFlashcard.exampleSentence && (
-                      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 space-y-1.5 border border-white/10">
+                      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3.5 space-y-1 border border-white/10">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-bold text-white">
                             {currentFlashcard.exampleSentence}
@@ -751,23 +1027,60 @@ export default function VocabularyNotebookPage() {
                     )}
                   </div>
 
-                  {/* Card Footer Back */}
-                  <div className="flex items-center justify-between pt-4 border-t border-white/10 text-xs">
-                    <span className="text-white/60">Bấm để lật lại Kanji</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleMastered(currentFlashcard);
-                      }}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition-all ${
-                        currentFlashcard.isMastered
-                          ? "bg-emerald-500 text-white"
-                          : "bg-white/20 text-white hover:bg-white/30"
-                      }`}
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      {currentFlashcard.isMastered ? "Đã ghi nhớ" : "Đánh dấu đã thuộc"}
-                    </button>
+                  {/* Card Footer Back: 4-Tier Spaced Repetition Bar */}
+                  <div className="pt-3 border-t border-white/10 space-y-2.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between text-2xs font-semibold text-indigo-300 px-0.5">
+                      <span className="flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5 text-amber-300" />
+                        Đánh giá mức độ phản xạ để xếp lịch ôn:
+                      </span>
+                      <span className="text-white/60">
+                        Space: Lật lại
+                      </span>
+                    </div>
+
+                    {/* 4 SuperMemo SM-2 Evaluation Buttons */}
+                    <div className="grid grid-cols-4 gap-2">
+                      <button
+                        onClick={(e) => handleReviewSRS(currentFlashcard, "again", e)}
+                        disabled={isReviewingSRS}
+                        className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-red-500/20 hover:bg-red-500/35 border border-red-500/50 text-red-200 transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                        title="Quên từ này, cần ôn lại ngay"
+                      >
+                        <span className="text-xs font-black">🔴 Quên</span>
+                        <span className="text-[10px] text-white/60 mt-0.5 font-mono">1 ngày</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => handleReviewSRS(currentFlashcard, "hard", e)}
+                        disabled={isReviewingSRS}
+                        className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/50 text-amber-200 transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                        title="Khó nhớ, tốn thời gian suy nghĩ"
+                      >
+                        <span className="text-xs font-black">🟡 Khó</span>
+                        <span className="text-[10px] text-white/60 mt-0.5 font-mono">2-3 ngày</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => handleReviewSRS(currentFlashcard, "good", e)}
+                        disabled={isReviewingSRS}
+                        className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/40 border border-emerald-500/50 text-emerald-200 transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                        title="Nhớ tốt với một chút suy nghĩ (+5 XP)"
+                      >
+                        <span className="text-xs font-black">🟢 Tốt</span>
+                        <span className="text-[10px] text-emerald-300 mt-0.5 font-mono">6 ngày</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => handleReviewSRS(currentFlashcard, "easy", e)}
+                        disabled={isReviewingSRS}
+                        className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-sky-500/25 hover:bg-sky-500/40 border border-sky-500/50 text-sky-200 transition-all hover:scale-105 active:scale-95 shadow-xs cursor-pointer"
+                        title="Rất dễ dàng, phản xạ tức thì (+5 XP)"
+                      >
+                        <span className="text-xs font-black">⚡ Rất dễ</span>
+                        <span className="text-[10px] text-sky-300 mt-0.5 font-mono">10 ngày</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -11,6 +11,15 @@ export interface LeaderboardUser {
   streak: number;
   level: number;
   isPremium?: boolean;
+  league?: "bronze" | "silver" | "gold" | "platinum" | "diamond";
+  zone?: "promotion" | "safe" | "demotion";
+}
+
+export interface LeagueInfo {
+  currentLeague: string;
+  weekEndsAt: string;
+  promotionTop: number;
+  demotionThreshold: number;
 }
 
 export interface LeaderboardResponse {
@@ -18,6 +27,7 @@ export interface LeaderboardResponse {
   currentUser?: LeaderboardUser | null;
   timeframe: "all" | "week" | "month";
   type: "xp" | "streak";
+  leagueInfo?: LeagueInfo;
 }
 
 export interface UpdateProfilePayload {
@@ -46,6 +56,32 @@ export interface ClaimQuestResponse {
   questId?: string;
 }
 
+export interface ClaimPracticeBonusResponse {
+  success: boolean;
+  earnedBonusPractices: number;
+  maxBonus: number;
+  limit: number;
+  vocabReviewsToday: number;
+  message: string;
+}
+
+export interface OnboardingQuizPayload {
+  targetLevel: "N5" | "N4" | "N3" | "N2" | "N1";
+  goal: "daily_conversation" | "interview" | "business" | "travel";
+  dailyTargetMinutes: number;
+  occupation?: "student" | "working" | "other";
+}
+
+export interface OnboardingQuizResponse {
+  success: boolean;
+  isFirstTime: boolean;
+  xpEarned: number;
+  totalXp: number;
+  level: number;
+  message: string;
+  profile: UserProfile;
+}
+
 export const userService = {
   getLeaderboard: async (
     type: "xp" | "streak" = "xp",
@@ -70,6 +106,7 @@ export const userService = {
         currentUser: data?.currentUser || null,
         timeframe: data?.timeframe || timeframe,
         type: data?.type || type,
+        leagueInfo: data?.leagueInfo,
       };
     } catch (err) {
       console.error("Lỗi khi tải bảng xếp hạng:", err);
@@ -97,6 +134,18 @@ export const userService = {
     return res.data;
   },
 
+  claimPracticeBonus: async (): Promise<ClaimPracticeBonusResponse> => {
+    const res = await api.post("/users/claim-practice-bonus");
+    return res.data?.data || res.data;
+  },
+
+  completeOnboardingQuiz: async (
+    payload: OnboardingQuizPayload
+  ): Promise<OnboardingQuizResponse> => {
+    const res = await api.post("/users/onboarding-quiz", payload);
+    return res.data?.data || res.data;
+  },
+
   updateProfile: async (payload: UpdateProfilePayload): Promise<User> => {
     const res = await api.patch("/users/me", payload);
     return res.data?.data || res.data;
@@ -105,6 +154,17 @@ export const userService = {
   changePassword: async (payload: ChangePasswordPayload): Promise<{ success: boolean; message: string }> => {
     const res = await api.patch("/users/change-password", payload);
     return res.data;
+  },
+
+  buyStreakFreeze: async (): Promise<{
+    success: boolean;
+    equipped: number;
+    totalXp: number;
+    level: number;
+    message: string;
+  }> => {
+    const res = await api.post("/users/buy-streak-freeze");
+    return res.data?.data || res.data;
   },
 };
 

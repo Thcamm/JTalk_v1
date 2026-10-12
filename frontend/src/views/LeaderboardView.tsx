@@ -9,10 +9,27 @@ import {
   Sparkles,
   ArrowUpRight,
   Mic,
+  Clock,
+  Rocket,
+  Shield,
+  AlertTriangle,
+  Zap,
 } from "lucide-react";
-import { userService, type LeaderboardUser } from "@/services/user.service";
+import {
+  userService,
+  type LeaderboardUser,
+  type LeagueInfo,
+} from "@/services/user.service";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+
+const LEAGUE_TIERS = [
+  { id: "bronze", name: "Đồng", en: "Bronze", icon: "🥉", xpRange: "< 300 XP", color: "from-amber-700 to-amber-900" },
+  { id: "silver", name: "Bạc", en: "Silver", icon: "🥈", xpRange: "300 - 799 XP", color: "from-slate-400 to-slate-600" },
+  { id: "gold", name: "Vàng", en: "Gold", icon: "🥇", xpRange: "800 - 1,599 XP", color: "from-amber-400 to-amber-600" },
+  { id: "platinum", name: "Bạch Kim", en: "Platinum", icon: "💎", xpRange: "1,600 - 2,999 XP", color: "from-cyan-400 to-blue-600" },
+  { id: "diamond", name: "Kim Cương", en: "Diamond", icon: "👑", xpRange: "≥ 3,000 XP", color: "from-purple-400 to-pink-600" },
+];
 
 export const LeaderboardView = () => {
   const { user } = useAuth();
@@ -20,6 +37,8 @@ export const LeaderboardView = () => {
   const [timeframe, setTimeframe] = useState<"all" | "week" | "month">("all");
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [currentUserRank, setCurrentUserRank] = useState<LeaderboardUser | null>(null);
+  const [leagueInfo, setLeagueInfo] = useState<LeagueInfo | null>(null);
+  const [countdownStr, setCountdownStr] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,6 +51,7 @@ export const LeaderboardView = () => {
         if (isMounted) {
           setLeaderboard(res.leaderboard);
           setCurrentUserRank(res.currentUser || null);
+          setLeagueInfo(res.leagueInfo || null);
         }
       } catch (err) {
         console.error("Lỗi khi tải bảng xếp hạng:", err);
@@ -47,11 +67,58 @@ export const LeaderboardView = () => {
     };
   }, [type, timeframe]);
 
+  // Live countdown to Sunday midnight
+  useEffect(() => {
+    if (!leagueInfo?.weekEndsAt) return;
+
+    const updateCountdown = () => {
+      const diff = new Date(leagueInfo.weekEndsAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setCountdownStr("Giải tuần đã kết thúc!");
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      setCountdownStr(`${days} ngày ${hours} giờ ${minutes} phút`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000);
+    return () => clearInterval(interval);
+  }, [leagueInfo?.weekEndsAt]);
+
   // Extract Top 3 for Podium
   const top1 = leaderboard[0];
   const top2 = leaderboard[1];
   const top3 = leaderboard[2];
   const remainingLearners = leaderboard.slice(3);
+
+  const getLeagueBadge = (league?: string) => {
+    return LEAGUE_TIERS.find((t) => t.id === league) || LEAGUE_TIERS[0];
+  };
+
+  const getZoneBadge = (zone?: "promotion" | "safe" | "demotion", rank?: number) => {
+    if (zone === "promotion" || (rank && rank <= 3)) {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+          <Rocket size={10} /> Thăng hạng
+        </span>
+      );
+    }
+    if (zone === "demotion") {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1">
+          <AlertTriangle size={10} /> Nguy cơ rớt
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-0.5 rounded-full text-3xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center gap-1">
+        <Shield size={10} /> An toàn
+      </span>
+    );
+  };
 
   // Next rank distance calculation
   const nextTargetUser =
@@ -137,7 +204,7 @@ export const LeaderboardView = () => {
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            Tuần này
+            Tuần này (Leagues)
           </button>
           <button
             onClick={() => setTimeframe("month")}
@@ -161,6 +228,92 @@ export const LeaderboardView = () => {
           >
             Tất cả thời gian
           </button>
+        </div>
+      </div>
+
+      {/* 2.5 Weekly Promotion Leagues Banner (Duolingo League System) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-rose-500">
+                Hệ Thống Giải Đấu Tuần
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
+                5 HẠNG ĐẤU
+              </span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-0.5">
+              Weekly Promotion Leagues • 昇格リーグ
+            </h3>
+          </div>
+
+          {countdownStr && (
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              <Clock size={14} className="text-rose-500 animate-pulse" />
+              <span>Kết thúc giải sau: <span className="font-mono text-rose-600 dark:text-rose-400 font-extrabold">{countdownStr}</span></span>
+            </div>
+          )}
+        </div>
+
+        {/* 5 League Tiers Progression Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {LEAGUE_TIERS.map((tier) => {
+            const isUserLeague = (currentUserRank?.league || user?.gamification?.league || "bronze") === tier.id;
+            return (
+              <div
+                key={tier.id}
+                className={`relative rounded-2xl p-4 border transition-all text-center flex flex-col items-center justify-between gap-2 ${
+                  isUserLeague
+                    ? "bg-gradient-to-b from-rose-500/10 to-amber-500/10 dark:from-rose-950/40 dark:to-amber-950/40 border-rose-400 dark:border-rose-500 shadow-md ring-2 ring-rose-500/20"
+                    : "bg-slate-50/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-80 hover:opacity-100"
+                }`}
+              >
+                {isUserLeague && (
+                  <span className="absolute -top-2.5 px-2 py-0.2 rounded-full text-3xs font-black bg-rose-600 text-white shadow-2xs">
+                    Hạng của bạn
+                  </span>
+                )}
+                <span className="text-2xl">{tier.icon}</span>
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white">
+                    {tier.name}
+                  </h4>
+                  <p className="text-3xs text-slate-400 font-semibold">{tier.en}</p>
+                </div>
+                <span className="text-3xs font-bold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                  {tier.xpRange}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Promotion / Demotion Rules Legend */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+          <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300">
+            <Rocket size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div>
+              <span className="font-extrabold block">Top 1 - 3: Khu vực Thăng hạng</span>
+              <span className="text-3xs opacity-80">Được nâng lên hạng đấu cao hơn vào tuần tiếp theo</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+            <Shield size={16} className="shrink-0 text-slate-500" />
+            <div>
+              <span className="font-extrabold block">Vị trí giữa: Khu vực An toàn</span>
+              <span className="text-3xs opacity-80">Trụ hạng thành công và tiếp tục tranh tài</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-300">
+            <AlertTriangle size={16} className="shrink-0 text-rose-600 dark:text-rose-400" />
+            <div>
+              <span className="font-extrabold block">Top 3 cuối: Nguy cơ rớt hạng</span>
+              <span className="text-3xs opacity-80">Rớt xuống hạng đấu phía dưới nếu không tăng tốc</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -350,6 +503,10 @@ export const LeaderboardView = () => {
                         PRO
                       </span>
                     )}
+                    <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-white/20 backdrop-blur-sm border border-white/30 flex items-center gap-1">
+                      <span>{getLeagueBadge(currentUserRank.league).icon}</span>
+                      <span>{getLeagueBadge(currentUserRank.league).name}</span>
+                    </span>
                   </div>
                   <p className="text-xs text-rose-100 font-medium">
                     {pointsToNextRank > 0 ? (
@@ -362,6 +519,23 @@ export const LeaderboardView = () => {
                       "Tiếp tục luyện tập mỗi ngày để bứt phá lên Top 3 bảng vàng."
                     )}
                   </p>
+                  {timeframe === "week" && (
+                    <div className="pt-1">
+                      {currentUserRank.rank <= 3 ? (
+                        <span className="inline-flex items-center gap-1 text-3xs font-extrabold px-2 py-0.5 rounded-md bg-emerald-500/80 text-white shadow-2xs">
+                          <Rocket size={12} /> Bạn đang trong Top 3 Thăng Hạng giải tuần tới 🚀
+                        </span>
+                      ) : currentUserRank.zone === "demotion" ? (
+                        <span className="inline-flex items-center gap-1 text-3xs font-extrabold px-2 py-0.5 rounded-md bg-rose-800/90 text-white shadow-2xs animate-pulse">
+                          <AlertTriangle size={12} /> Cảnh báo: Vùng nguy cơ rớt hạng! Hãy luyện tập thêm ⚠️
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-3xs font-extrabold px-2 py-0.5 rounded-md bg-black/20 text-white shadow-2xs">
+                          <Shield size={12} /> Bạn đang ở khu vực Trụ Hạng an toàn 🛡️
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -432,7 +606,7 @@ export const LeaderboardView = () => {
 
                       {/* Name & Badges */}
                       <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span
                             className={`text-sm font-extrabold truncate ${
                               isCurrentUser
@@ -451,6 +625,14 @@ export const LeaderboardView = () => {
                             <span className="px-1.5 py-0.2 rounded text-3xs font-extrabold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300/80 shrink-0">
                               PRO
                             </span>
+                          )}
+                          <span className="text-xs shrink-0" title={getLeagueBadge(learner.league).name}>
+                            {getLeagueBadge(learner.league).icon}
+                          </span>
+                          {timeframe === "week" && (
+                            <div className="shrink-0 hidden sm:inline-flex">
+                              {getZoneBadge(learner.zone, learner.rank)}
+                            </div>
                           )}
                         </div>
 

@@ -9,6 +9,7 @@ import {
   Volume2,
   Mic,
   Headphones,
+  Sparkles,
 } from "lucide-react";
 
 interface FeedbackCardProps {
@@ -179,6 +180,28 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Celebratory High Score Banner (>= 80) */}
+      {overallScore >= 80 && (
+        <div className="p-3.5 bg-gradient-to-r from-rose-500/10 via-amber-500/15 to-emerald-500/10 border border-rose-300/80 dark:border-rose-800/80 rounded-2xl flex items-center justify-between gap-3 shadow-2xs animate-in fade-in zoom-in-98 duration-200">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Sparkles className="w-4 h-4 animate-spin-slow" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-slate-900 dark:text-white">
+                Xuất sắc! Bạn đã đạt trên 80 điểm phản xạ! 🎉
+              </p>
+              <p className="text-3xs text-rose-700 dark:text-rose-300 font-medium">
+                Ngữ điệu tự nhiên, từ vựng chuẩn xác. Giữ vững phong độ này nhé!
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-block px-2.5 py-1 rounded-full text-3xs font-black uppercase tracking-wider bg-rose-500 text-white shadow-xs">
+            +50 XP Thưởng
+          </span>
+        </div>
+      )}
 
       {/* 4 Criteria Progress Bars */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

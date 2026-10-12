@@ -22,6 +22,12 @@ export interface UserGamification {
   totalXp: number;
   level: number;
   claimedQuests?: ClaimedQuestItem[];
+  streakFreeze?: {
+    equipped: number;
+    lastUsedAt?: string | null;
+  };
+  league?: "bronze" | "silver" | "gold" | "platinum" | "diamond";
+  onboardingCompleted?: boolean;
 }
 
 export interface UserSubscription {
@@ -34,6 +40,8 @@ export interface UserDailyUsage {
   date?: string;
   practiceCount: number;
   minutesSpent: number;
+  earnedBonusPractices?: number;
+  vocabReviewsToday?: number;
 }
 
 export interface UserReferral {
@@ -59,6 +67,11 @@ export interface User {
   quota?: {
     isUnlimited?: boolean;
     limit?: number | string;
+    baseLimit?: number;
+    bonusPractices?: number;
+    maxBonus?: number;
+    canEarnBonus?: boolean;
+    vocabReviewsToday?: number;
     usedToday?: number;
     remaining?: number | string;
   };
@@ -365,6 +378,11 @@ export interface VocabularyItem {
   isMastered: boolean;
   reviewCount: number;
   lastReviewedAt?: string | null;
+  srsStage?: number; // 0: Mới, 1: Bắt đầu, 2: Nhận biết, 3: Củng cố, 4: Thành thạo, 5: Bậc thầy
+  interval?: number; // số ngày cho chu kỳ ôn tập tiếp theo
+  easeFactor?: number; // hệ số dễ theo SM-2 (mặc định 2.5)
+  repetitions?: number; // số lần lặp thành công liên tiếp
+  nextReviewDate?: string | null;
   sourceLessonId?: string | null;
   tags?: string[];
   createdAt?: string;

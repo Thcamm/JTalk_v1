@@ -167,7 +167,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               remaining:
                 user.subscription?.tier === "premium"
                   ? "unlimited"
-                  : Math.max(0, 2 - combinedCount),
+                  : Math.max(0, 5 - combinedCount),
             },
           },
           dailyPracticeCount: combinedCount,
@@ -225,7 +225,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               remaining:
                 user.subscription?.tier === "premium"
                   ? "unlimited"
-                  : Math.max(0, 2 - combinedCount),
+                  : Math.max(0, 5 - combinedCount),
             },
           },
           dailyPracticeCount: combinedCount,
@@ -266,6 +266,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             longestStreak: gamification.longestStreak ?? currentUser.gamification?.longestStreak ?? 0,
             totalXp: gamification.totalXp ?? currentUser.gamification?.totalXp ?? 0,
             level: gamification.level ?? currentUser.gamification?.level ?? 1,
+            streakFreeze: gamification.streakFreeze ?? currentUser.gamification?.streakFreeze,
+            league: gamification.league ?? currentUser.gamification?.league,
+            onboardingCompleted: gamification.onboardingCompleted ?? currentUser.gamification?.onboardingCompleted,
           },
         },
       });
@@ -277,6 +280,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setLocalDailyCount(newCount);
     const currentUser = get().user;
     if (currentUser) {
+      const currentLimit = typeof currentUser.quota?.limit === "number" ? currentUser.quota.limit : 5;
       set({
         dailyPracticeCount: newCount,
         user: {
@@ -287,6 +291,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             date: getTodayStr(),
             practiceCount: newCount,
             minutesSpent: dailyUsage.minutesSpent ?? currentUser.dailyUsage?.minutesSpent ?? 0,
+            earnedBonusPractices: dailyUsage.earnedBonusPractices ?? currentUser.dailyUsage?.earnedBonusPractices ?? 0,
+            vocabReviewsToday: dailyUsage.vocabReviewsToday ?? currentUser.dailyUsage?.vocabReviewsToday ?? 0,
           },
           quota: {
             ...currentUser.quota,
@@ -294,7 +300,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             remaining:
               currentUser.subscription?.tier === "premium"
                 ? "unlimited"
-                : Math.max(0, 2 - newCount),
+                : Math.max(0, currentLimit - newCount),
           },
         },
       });
