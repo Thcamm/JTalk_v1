@@ -285,7 +285,7 @@ export function SignupForm() {
                   <Zap size={16} />
                 </div>
                 <div className="min-w-0 text-left">
-                  <p className="text-xs font-bold text-white">Miễn phí 2 lượt luyện nói / ngày</p>
+                  <p className="text-xs font-bold text-white">Miễn phí 5 lượt luyện nói / ngày</p>
                   <p className="text-3xs text-rose-200/80">Luyện Shadowing và nhận kết quả chấm điểm giọng nói</p>
                 </div>
               </div>

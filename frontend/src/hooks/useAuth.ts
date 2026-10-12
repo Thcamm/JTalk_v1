@@ -49,8 +49,9 @@ export const useAuth = () => {
 
   const remainingFreePractices = useMemo(() => {
     if (isPremium) return 999;
-    return Math.max(0, 2 - practiceCountToday);
-  }, [isPremium, practiceCountToday]);
+    const limit = typeof user?.quota?.limit === "number" ? user.quota.limit : 5;
+    return Math.max(0, limit - practiceCountToday);
+  }, [isPremium, practiceCountToday, user?.quota?.limit]);
 
   return {
     user,

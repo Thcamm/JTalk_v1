@@ -304,7 +304,7 @@ export const DashboardPage = () => {
 
           {/* Pillar 3: Tiến trình & Thống kê */}
           <Link
-            to="/progress"
+            to="/profile?tab=progress"
             className="group bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-500 rounded-3xl p-5 shadow-xs hover:shadow-lg hover:shadow-purple-500/5 transition-all duration-300 flex flex-col justify-between gap-4"
           >
             <div className="space-y-3">
@@ -352,7 +352,7 @@ export const DashboardPage = () => {
                 <p className="text-2xs text-rose-800/80 dark:text-rose-300/80 line-clamp-2 mt-1 font-medium leading-relaxed">
                   {isPremium
                     ? "Tài khoản Premium không giới hạn lượt luyện nói & kho kịch bản"
-                    : `Không giới hạn lượt đối đáp 24/7 (còn ${remainingFreePractices}/2 lượt Free)`}
+                    : `Không giới hạn lượt đối đáp 24/7 (còn ${remainingFreePractices}/5 lượt Free)`}
                 </p>
               </div>
             </div>
@@ -376,7 +376,7 @@ export const DashboardPage = () => {
             </p>
           </div>
           <Link
-            to="/progress"
+            to="/profile?tab=progress"
             className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline inline-flex items-center gap-1"
           >
             <span>Xem chi tiết biểu đồ</span>

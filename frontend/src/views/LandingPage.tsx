@@ -361,7 +361,7 @@ export default function LandingPage() {
 
             <p className="text-3xs text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1">
               <Sparkles size={12} className="text-amber-500 shrink-0" />
-              <span>Tặng ngay 2 lượt luyện phản xạ Free mỗi ngày • Không yêu cầu thẻ tín dụng</span>
+              <span>Tặng ngay 5 lượt luyện phản xạ Free mỗi ngày • Không yêu cầu thẻ tín dụng</span>
             </p>
           </div>
 
@@ -1106,7 +1106,7 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-rose-500" />
-              <span>Miễn phí 2 lượt trải nghiệm mỗi ngày</span>
+              <span>Miễn phí 5 lượt trải nghiệm mỗi ngày</span>
             </div>
           </div>
 

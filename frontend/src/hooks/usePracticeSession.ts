@@ -319,10 +319,13 @@ export const usePracticeSession = () => {
       0;
     const currentUsed = Math.max(userCount, authStore.dailyPracticeCount);
 
-    if (!isPremium && currentUsed >= 2) {
+    const freeLimit =
+      typeof authStore.user?.quota?.limit === "number" ? authStore.user.quota.limit : 5;
+
+    if (!isPremium && currentUsed >= freeLimit) {
       store.setQuotaExceeded(true);
       toast.error(
-        "Bạn đã dùng hết 2 lượt luyện nói miễn phí trong ngày. Vui lòng nâng cấp Premium để tiếp tục!"
+        `Bạn đã dùng hết ${freeLimit} lượt luyện nói miễn phí trong ngày. Vui lòng nâng cấp Premium để tiếp tục!`
       );
       return;
     }
@@ -467,7 +470,9 @@ export const usePracticeSession = () => {
 
         if (isQuota) {
           store.setQuotaExceeded(true);
-          toast.error("Bạn đã dùng hết 2 lượt luyện nói miễn phí trong ngày!");
+          const freeLimit =
+            typeof authStore.user?.quota?.limit === "number" ? authStore.user.quota.limit : 5;
+          toast.error(`Bạn đã dùng hết ${freeLimit} lượt luyện nói miễn phí trong ngày!`);
           return null;
         }
 
@@ -492,13 +497,15 @@ export const usePracticeSession = () => {
         // QUAN TRỌNG: Cập nhật tăng số lượt luyện tập hôm nay ngay lập tức trên UI và LocalStorage
         authStore.incrementDailyPracticeCount();
 
-        // Kiểm tra nếu chạm hạn mức 2 lượt sau lượt nói này
+        // Kiểm tra nếu chạm hạn mức lượt miễn phí sau lượt nói này
         const isPremium = authStore.user?.subscription?.tier === "premium";
         const nowUsed = Math.max(
           authStore.user?.dailyUsage?.practiceCount ?? 0,
           authStore.dailyPracticeCount
         );
-        if (!isPremium && nowUsed >= 2) {
+        const freeLimit =
+          typeof authStore.user?.quota?.limit === "number" ? authStore.user.quota.limit : 5;
+        if (!isPremium && nowUsed >= freeLimit) {
           store.setQuotaExceeded(true);
         }
 

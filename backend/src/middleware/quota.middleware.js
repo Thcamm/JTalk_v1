@@ -8,7 +8,7 @@ import { errorResponse } from "../utils/apiResponse.js";
 /**
  * Middleware: Enforces daily speaking practice quota
  * - Premium User: Unlimited
- * - Free User: Maximum 2 practices per day
+ * - Free User: Maximum 5 practices per day
  */
 export const checkPracticeQuota = async (req, res, next) => {
   try {
@@ -46,7 +46,7 @@ export const checkPracticeQuota = async (req, res, next) => {
 
     // 2. Với User FREE: Kiểm tra số lượt luyện tập hôm nay
     const todayStr = getTodayDateString();
-    const freeLimit = config.quota.freeDailyPracticeLimit; // Mặc định 2 lượt/ngày
+    const freeLimit = config.quota.freeDailyPracticeLimit; // Mặc định 5 lượt/ngày
 
     // Kiểm tra số lượt đã thực hành hôm nay từ StudyLog
     const todayLog = await StudyLog.findOne({
