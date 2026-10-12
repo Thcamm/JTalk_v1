@@ -11,8 +11,13 @@ import {
   Mic,
   Lightbulb,
   Volume2,
+  VolumeX,
+  BookOpen,
+  Zap,
 } from "lucide-react";
 import { curriculumService } from "@/services/curriculum.service";
+import { userService } from "@/services/user.service";
+import { toast } from "sonner";
 import { usePracticeSession } from "@/hooks/usePracticeSession";
 import { useAuth } from "@/hooks/useAuth";
 import { Waveform } from "@/components/practice/Waveform";
@@ -21,6 +26,9 @@ import { FeedbackCard } from "@/components/practice/FeedbackCard";
 import { WordHighlight } from "@/components/practice/WordHighlight";
 import { AudioPlayer } from "@/components/practice/AudioPlayer";
 import { FreeRoleplayChat } from "@/components/practice/FreeRoleplayChat";
+import { SmartHintCard } from "@/components/practice/SmartHintCard";
+import { Confetti } from "@/components/common/Confetti";
+import { soundEffects } from "@/utils/soundEffects";
 import { PremiumModal } from "@/components/common/PremiumModal";
 import { Badge } from "@/components/common/Badge";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -542,7 +550,16 @@ export const PracticeRoomPage = () => {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
 
-  const { isPremium, remainingFreePractices, streak } = useAuth();
+  const {
+    user,
+    isPremium,
+    remainingFreePractices,
+    streak,
+    bonusPractices,
+    maxFreePractices,
+    canEarnBonus,
+    fetchMe,
+  } = useAuth();
   const session = usePracticeSession();
 
   const [loadingLesson, setLoadingLesson] = useState(true);
@@ -552,6 +569,48 @@ export const PracticeRoomPage = () => {
   const [showRomaji, setShowRomaji] = useState(true);
   const [showTranslation, setShowTranslation] = useState(true);
   const [showHint, setShowHint] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => soundEffects.isEnabled());
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [claimingBonus, setClaimingBonus] = useState(false);
+
+  const reviewsToday = user?.dailyUsage?.vocabReviewsToday ?? user?.quota?.vocabReviewsToday ?? 0;
+  const reviewsTarget = (bonusPractices + 1) * 5;
+  const canClaimBonusNow = canEarnBonus && reviewsToday >= reviewsTarget;
+
+  const handleClaimBonus = async () => {
+    try {
+      setClaimingBonus(true);
+      const res = await userService.claimPracticeBonus();
+      if (res.success) {
+        soundEffects.playSuccess();
+        setShowConfetti(true);
+        toast.success(res.message);
+        await fetchMe();
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Chưa đủ điều kiện đổi lượt nói miễn phí."
+      );
+    } finally {
+      setClaimingBonus(false);
+    }
+  };
+
+  // Kích hoạt pháo hoa Confetti khi đạt điểm phản xạ cao (>= 80)
+  useEffect(() => {
+    if (session.currentEvaluation && session.currentEvaluation.overallScore >= 80) {
+      setShowConfetti(true);
+    } else {
+      setShowConfetti(false);
+    }
+  }, [session.currentEvaluation]);
+
+  const handleToggleSound = () => {
+    const next = soundEffects.toggle();
+    setSoundEnabled(next);
+  };
 
   // Load Lesson from backend or fallback scenario
   useEffect(() => {
@@ -689,6 +748,9 @@ export const PracticeRoomPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/60 dark:bg-[#0b0f17] text-slate-800 dark:text-slate-100 flex flex-col font-sans relative overflow-hidden transition-colors duration-200">
+      {/* Zero-Dependency HTML5 Canvas Confetti Khen thưởng điểm cao */}
+      <Confetti active={showConfetti} onComplete={() => setShowConfetti(false)} />
+
       {/* Ambient Lighting Orbs */}
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-b from-rose-500/10 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-to-tr from-amber-500/5 via-rose-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -725,6 +787,30 @@ export const PracticeRoomPage = () => {
 
         {/* Right stats & Quota badge */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Sound FX Toggle */}
+          <button
+            onClick={handleToggleSound}
+            type="button"
+            className={`p-1.5 sm:px-2.5 sm:py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border ${
+              soundEnabled
+                ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+                : "bg-slate-100/50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-dashed border-slate-300 dark:border-slate-700 hover:text-slate-600"
+            }`}
+            title={soundEnabled ? "Âm thanh phản hồi: Đang bật (Bấm để tắt)" : "Âm thanh phản hồi: Đang tắt (Bấm để bật)"}
+          >
+            {soundEnabled ? (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden sm:inline">Âm thanh</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Tắt âm</span>
+              </>
+            )}
+          </button>
+
           {/* Streak indicator */}
           <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 rounded-full text-xs font-bold">
             <Flame className="w-3.5 h-3.5 fill-rose-500 text-rose-500 animate-bounce" />
@@ -748,13 +834,13 @@ export const PracticeRoomPage = () => {
             >
               <span>
                 {remainingFreePractices > 0
-                  ? `Còn ${remainingFreePractices}/5 lượt`
-                  : "Hết lượt hôm nay (0/5)"}
+                  ? `Còn ${remainingFreePractices}/${maxFreePractices} lượt`
+                  : `Hết lượt hôm nay (0/${maxFreePractices})`}
               </span>
               <span
                 className="text-rose-600 dark:text-rose-400 font-bold underline ml-0.5"
               >
-                Nâng cấp
+                {canEarnBonus ? "Hồi lượt" : "Nâng cấp"}
               </span>
             </button>
           )}
@@ -962,7 +1048,10 @@ export const PracticeRoomPage = () => {
                 </button>
 
                 <button
-                  onClick={() => setShowHint(!showHint)}
+                  onClick={() => {
+                    if (!showHint) soundEffects.playHintPop();
+                    setShowHint(!showHint);
+                  }}
                   type="button"
                   className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-bold flex items-center gap-1.5 ${
                     showHint
@@ -976,72 +1065,18 @@ export const PracticeRoomPage = () => {
                 </button>
               </div>
 
-              {/* Expandable Hint Assistant Panel */}
-              {showHint && (
-                <div className="p-4 sm:p-5 bg-gradient-to-br from-amber-50 via-orange-50/60 to-amber-50 dark:from-amber-950/40 dark:via-slate-900 dark:to-amber-950/30 border border-amber-300/80 dark:border-amber-800 rounded-2xl space-y-3 animate-in fade-in zoom-in-98 duration-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
-                      <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
-                        Trợ Thủ Gợi Ý Mẫu Câu Phản Xạ
-                      </h4>
-                    </div>
-                    <span className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold bg-amber-100/80 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
-                      Mẹo giao tiếp tự nhiên
-                    </span>
-                  </div>
-
-                  {/* Primary Recommended Phrase */}
-                  <div className="bg-white/95 dark:bg-slate-900/95 p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-3 shadow-2xs">
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
-                        Câu mẫu nên phản xạ:
-                      </span>
-                      <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-sans">
-                        {currentDialogue?.expectedAnswer || currentDialogue?.japanese}
-                      </p>
-                      {currentDialogue?.translation && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-                          {currentDialogue.translation}
-                        </p>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={session.isLoadingAudio}
-                      onClick={() => {
-                        if (session.isPlayingAudio || session.isLoadingAudio) {
-                          session.stopAudio();
-                        } else {
-                          session.playNativeAudio(
-                            currentDialogue?.expectedAnswer || currentDialogue?.japanese
-                          );
-                        }
-                      }}
-                      className="p-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all shrink-0 hover:scale-105 active:scale-95 disabled:opacity-50"
-                      title="Nghe phát âm thử câu mẫu"
-                    >
-                      <Volume2 className={`w-4 h-4 ${session.isPlayingAudio ? "animate-pulse" : ""}`} />
-                    </button>
-                  </div>
-
-                  {/* Context Advice & Expression Variations */}
-                  <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1 pt-1">
-                    <p className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                      <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Cách nói linh hoạt theo ngữ cảnh:</span>
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 pl-1 text-[11px] text-slate-600 dark:text-slate-400">
-                      <li>
-                        <strong className="text-slate-800 dark:text-slate-200">Giao tiếp thường ngày:</strong> Bạn có thể dùng thể ngắn (thân mật) nếu trò chuyện với bạn bè cùng tuổi.
-                      </li>
-                      <li>
-                        <strong className="text-slate-800 dark:text-slate-200">Công sở / Phỏng vấn:</strong> Hãy luôn kết thúc bằng đuôi です / ます hoặc kính ngữ để thể hiện sự tôn trọng.
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+              {/* 3-Tier Progressive AI Smart Hints Assistant */}
+              {showHint && currentDialogue && (
+                <SmartHintCard
+                  japanese={currentDialogue.japanese}
+                  expectedAnswer={currentDialogue.expectedAnswer}
+                  furigana={currentDialogue.furigana}
+                  romaji={currentDialogue.romaji}
+                  translation={currentDialogue.translation}
+                  onPlayAudio={(text) => session.playNativeAudio(text)}
+                  isPlayingAudio={session.isPlayingAudio}
+                  onClose={() => setShowHint(false)}
+                />
               )}
             </div>
 
@@ -1151,25 +1186,86 @@ export const PracticeRoomPage = () => {
                     </span>
                   </div>
                 ) : !isPremium && remainingFreePractices <= 0 ? (
-                  <div className="flex flex-col items-center gap-2.5 p-5 bg-gradient-to-br from-rose-50 to-orange-50 dark:from-rose-950/40 dark:to-orange-950/30 border border-rose-200 dark:border-rose-800 rounded-3xl text-center max-w-md shadow-xs animate-in fade-in duration-200">
-                    <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black text-sm">
-                      0/5
+                  <div className="flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-rose-50 via-white to-amber-50 dark:from-rose-950/40 dark:via-slate-900/60 dark:to-amber-950/30 border border-rose-200 dark:border-rose-800 rounded-3xl text-center max-w-lg shadow-lg animate-in fade-in duration-200">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center font-black text-base shadow-md shadow-rose-500/20">
+                      0/{maxFreePractices}
                     </div>
-                    <div>
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                        Bạn đã hoàn thành hết 5 lượt luyện nói miễn phí hôm nay
+
+                    <div className="space-y-1">
+                      <h4 className="text-base font-black text-slate-900 dark:text-white">
+                        Bạn đã sử dụng hết lượt luyện nói hôm nay
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                        Nâng cấp tài khoản JTalk Premium (chỉ 99k/tháng) để luyện phản xạ AI không giới hạn, mở khóa toàn bộ kịch bản chuyên sâu!
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-md">
+                        {canEarnBonus ? (
+                          <>
+                            Đừng dừng lại! Cơ chế <span className="font-bold text-rose-600 dark:text-rose-400">Luyện tập hồi lượt</span> cho phép bạn ôn tập 5 thẻ từ vựng Flashcard để hồi ngay <span className="font-bold text-amber-600 dark:text-amber-400">+1 lượt nói</span> (tối đa 2 lượt/ngày).
+                          </>
+                        ) : (
+                          "Bạn đã dùng hết cả lượt miễn phí và 2 lượt hồi hôm nay. Nâng cấp Premium để luyện không giới hạn!"
+                        )}
                       </p>
                     </div>
+
+                    {/* Practice-to-Earn Action Area */}
+                    {canEarnBonus && (
+                      <div className="w-full bg-white dark:bg-slate-800/90 border border-amber-200 dark:border-amber-800/80 rounded-2xl p-4 space-y-3 shadow-xs">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                            <Zap size={14} className="fill-amber-500 text-amber-500" />
+                            Tiến độ ôn thẻ Flashcard hôm nay:
+                          </span>
+                          <span className="text-slate-700 dark:text-slate-200 font-mono">
+                            {reviewsToday}/{reviewsTarget} thẻ
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-300 rounded-full"
+                            style={{
+                              width: `${Math.min(100, Math.round((reviewsToday / reviewsTarget) * 100))}%`,
+                            }}
+                          />
+                        </div>
+
+                        {canClaimBonusNow ? (
+                          <button
+                            onClick={handleClaimBonus}
+                            disabled={claimingBonus}
+                            type="button"
+                            className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-500 hover:brightness-105 active:scale-98 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Zap size={14} className="fill-white" />
+                            <span>
+                              {claimingBonus
+                                ? "Đang nạp lượt nói..."
+                                : `Nhận ngay +1 Lượt Nói (${bonusPractices + 1}/2 lượt hôm nay) ⚡`}
+                            </span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => navigate("/notebook")}
+                            type="button"
+                            className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:brightness-105 active:scale-98 text-white rounded-xl text-xs font-black shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <BookOpen size={14} />
+                            <span>
+                              Ôn thêm {Math.max(1, reviewsTarget - reviewsToday)} thẻ Flashcard để hồi lượt ➔
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Upgrade Premium Fallback */}
                     <button
                       onClick={() => setShowPremiumModal(true)}
                       type="button"
-                      className="mt-1 inline-flex items-center gap-1.5 px-6 py-2.5 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg hover:shadow-rose-500/20 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-xs font-bold transition-all cursor-pointer"
                     >
-                      <Sparkles size={14} className="fill-amber-300 text-amber-300 animate-spin-slow" />
-                      <span>Nâng cấp Premium ngay</span>
+                      <Sparkles size={14} className="text-amber-500" />
+                      <span>Hoặc Nâng cấp Premium 99k/tháng (Vô hạn)</span>
                     </button>
                   </div>
                 ) : (

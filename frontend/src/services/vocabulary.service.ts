@@ -89,17 +89,29 @@ export const DEFAULT_STARTER_VOCABULARY: VocabularyItem[] = [
   },
 ];
 
+export interface SRSReviewResult {
+  item: VocabularyItem;
+  srsStage: number;
+  interval: number;
+  nextReviewDate: string;
+  xpEarned: number;
+  totalXp: number;
+  level: number;
+}
+
 export const vocabularyService = {
   getVocabularies: async (params?: {
     level?: string;
     isMastered?: string;
     search?: string;
+    isDue?: string;
   }): Promise<VocabularyItem[]> => {
     try {
       const searchParams = new URLSearchParams();
       if (params?.level && params.level !== "all") searchParams.append("level", params.level);
       if (params?.isMastered && params.isMastered !== "all") searchParams.append("isMastered", params.isMastered);
       if (params?.search?.trim()) searchParams.append("search", params.search.trim());
+      if (params?.isDue) searchParams.append("isDue", params.isDue);
 
       const url = `/vocabularies${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
       const res = await api.get(url);
@@ -131,6 +143,24 @@ export const vocabularyService = {
       }
       return list;
     }
+  },
+
+  getDueCount: async (): Promise<number> => {
+    try {
+      const res = await api.get("/vocabularies/due-count");
+      const data = res.data?.data || res.data;
+      return typeof data?.dueCount === "number" ? data.dueCount : 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  reviewSRS: async (
+    id: string,
+    rating: "again" | "hard" | "good" | "easy"
+  ): Promise<SRSReviewResult> => {
+    const res = await api.post(`/vocabularies/${id}/srs-review`, { rating });
+    return res.data?.data || res.data;
   },
 
   createVocabulary: async (payload: CreateVocabularyPayload): Promise<VocabularyItem> => {

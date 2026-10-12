@@ -12,11 +12,15 @@ import {
   Trophy,
   X,
   Calendar,
+  Snowflake,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { studylogService, type DailyStudyLog } from "@/services/studylog.service";
+import { userService } from "@/services/user.service";
+import { soundEffects } from "@/utils/soundEffects";
 
 interface HankoStampCardProps {
   className?: string;
@@ -113,11 +117,49 @@ export const HankoStampCard: React.FC<HankoStampCardProps> = ({
   hideHeader = false,
   onStampSuccess,
 }) => {
-  const { streak, practiceCountToday } = useAuth();
+  const { streak, practiceCountToday, xp, streakFreeze } = useAuth();
   const [weeklyLogs, setWeeklyLogs] = useState<DailyStudyLog[]>([]);
   const [selectedDay, setSelectedDay] = useState<DayStampInfo | null>(null);
   const [justStamped, setJustStamped] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBuyingFreeze, setIsBuyingFreeze] = useState(false);
+
+  // Handle purchasing Streak Freeze with 100 XP
+  const handleBuyStreakFreeze = async () => {
+    if (isBuyingFreeze) return;
+    const equipped = streakFreeze?.equipped || 0;
+    if (equipped >= 2) {
+      toast.info("Bạn đã trang bị tối đa 2 Bùa bảo vệ chuỗi (Streak Freeze) rồi!");
+      return;
+    }
+    if (xp < 100) {
+      toast.error(
+        `Bạn cần 100 XP để trang bị Bùa bảo vệ chuỗi (Hiện có ${xp} XP). Hãy tích cực luyện nói để nhận thêm XP nhé!`
+      );
+      return;
+    }
+
+    setIsBuyingFreeze(true);
+    try {
+      const res = await userService.buyStreakFreeze();
+      if (res.success) {
+        soundEffects.playSuccess();
+        useAuthStore.getState().updateUserGamification({
+          totalXp: res.totalXp,
+          level: res.level,
+          streakFreeze: {
+            equipped: res.equipped,
+            lastUsedAt: streakFreeze?.lastUsedAt || null,
+          },
+        });
+        toast.success(res.message || "Đã trang bị Bùa bảo vệ chuỗi thành công! ❄️");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Không thể trang bị bùa lúc này, vui lòng thử lại!");
+    } finally {
+      setIsBuyingFreeze(false);
+    }
+  };
 
   // Fetch weekly study records
   useEffect(() => {
@@ -514,6 +556,63 @@ export const HankoStampCard: React.FC<HankoStampCardProps> = ({
             </Link>
           )}
         </div>
+      </div>
+
+      {/* Duolingo-style Streak Freeze Protection Widget */}
+      <div className="mt-4 pt-3.5 border-t border-rose-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gradient-to-r from-sky-50/80 via-white to-blue-50/60 dark:from-slate-900/90 dark:via-sky-950/20 dark:to-slate-900/80 p-3.5 sm:p-4 rounded-2xl border border-sky-200/80 dark:border-sky-900/50 relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-sky-500/15 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-300/60 dark:border-sky-800/60 flex items-center justify-center shrink-0 shadow-2xs">
+            <Snowflake className="w-5 h-5 animate-spin-slow" />
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                Bùa Bảo Vệ Chuỗi (Streak Freeze)
+              </h4>
+              <span
+                className={`px-2 py-0.5 rounded-full text-3xs font-black uppercase tracking-wider ${
+                  (streakFreeze?.equipped || 0) > 0
+                    ? "bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                {(streakFreeze?.equipped || 0)}/2 Bùa trang bị
+              </span>
+            </div>
+            <p className="text-2xs sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              Tự động kích hoạt giữ nguyên chuỗi Streak nếu bạn bất khả kháng bỏ lỡ 1 ngày học.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleBuyStreakFreeze}
+          disabled={isBuyingFreeze || (streakFreeze?.equipped || 0) >= 2 || xp < 100}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 active:scale-95 shadow-xs ${
+            (streakFreeze?.equipped || 0) >= 2
+              ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700"
+              : xp >= 100
+              ? "bg-sky-500 hover:bg-sky-600 text-white shadow-sky-500/25 hover:shadow-md cursor-pointer"
+              : "bg-slate-200/80 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+          }`}
+          title={
+            (streakFreeze?.equipped || 0) >= 2
+              ? "Đã trang bị tối đa 2 bùa"
+              : xp < 100
+              ? `Cần 100 XP (Hiện có ${xp} XP)`
+              : "Trang bị bùa bảo vệ chuỗi bằng 100 XP"
+          }
+        >
+          <ShieldCheck className="w-4 h-4" />
+          <span>
+            {(streakFreeze?.equipped || 0) >= 2
+              ? "Đã trang bị tối đa"
+              : isBuyingFreeze
+              ? "Đang trang bị..."
+              : "Trang bị bùa (100 XP)"}
+          </span>
+        </button>
       </div>
 
       {/* Modal/Tooltip when clicking on a day */}

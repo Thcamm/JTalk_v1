@@ -103,6 +103,31 @@ const userSchema = new mongoose.Schema(
           xpEarned: { type: Number, default: 0 },
         },
       ],
+      streakFreeze: {
+        equipped: {
+          type: Number,
+          default: 0,
+          min: 0,
+          max: 2,
+        },
+        lastUsedAt: {
+          type: Date,
+          default: null,
+        },
+      },
+      league: {
+        type: String,
+        enum: ["bronze", "silver", "gold", "platinum", "diamond"],
+        default: "bronze",
+      },
+      leaguePoints: {
+        type: Number,
+        default: 0,
+      },
+      onboardingCompleted: {
+        type: Boolean,
+        default: false,
+      },
     },
 
     // 3. Freemium Quota & Subscription Snapshot
@@ -131,6 +156,16 @@ const userSchema = new mongoose.Schema(
         default: 0,
       },
       minutesSpent: {
+        type: Number,
+        default: 0,
+      },
+      earnedBonusPractices: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 2,
+      },
+      vocabReviewsToday: {
         type: Number,
         default: 0,
       },

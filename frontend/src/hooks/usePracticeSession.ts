@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { practiceService } from "@/services/practice.service";
 import { useAudioRecorder } from "./useAudioRecorder";
 import { formatJapaneseForSpeech } from "@/utils/japanesePhrasing";
+import { soundEffects } from "@/utils/soundEffects";
 import type { ProcessVoiceResponse, SavePracticeResponse } from "@/types";
 
 // Type definitions for Web Speech API
@@ -493,6 +494,17 @@ export const usePracticeSession = () => {
         };
 
         store.setCurrentEvaluation(finalEvalResult);
+
+        // Khen thưởng âm thanh tức thì (Web Audio API) mô phỏng Duolingo/ELSA
+        try {
+          if (finalEvalResult.overallScore >= 80) {
+            soundEffects.playSuccess();
+          } else if (finalEvalResult.overallScore >= 60) {
+            soundEffects.playGood();
+          } else {
+            soundEffects.playEncourage();
+          }
+        } catch (_) {}
 
         // QUAN TRỌNG: Cập nhật tăng số lượt luyện tập hôm nay ngay lập tức trên UI và LocalStorage
         authStore.incrementDailyPracticeCount();

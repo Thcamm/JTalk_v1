@@ -18,6 +18,7 @@ import {
   Video,
   ShieldCheck,
   ArrowRight,
+  Target,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,7 @@ import { practiceService } from "@/services/practice.service";
 import { PremiumModal } from "@/components/common/PremiumModal";
 import { HankoStampCard } from "@/components/gamification/HankoStampCard";
 import { DailyQuestsWidget } from "@/components/gamification/DailyQuestsWidget";
+import { OnboardingQuizModal } from "@/components/gamification/OnboardingQuizModal";
 import type { Practice } from "@/types";
 
 export const DashboardPage = () => {
@@ -33,6 +35,7 @@ export const DashboardPage = () => {
   const [practices, setPractices] = useState<Practice[]>([]);
   const [loadingPractices, setLoadingPractices] = useState(true);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showOnboardingQuiz, setShowOnboardingQuiz] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -123,6 +126,14 @@ export const DashboardPage = () => {
           >
             <span>Thư viện Video</span>
           </Link>
+          <button
+            type="button"
+            onClick={() => setShowOnboardingQuiz(true)}
+            className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all border border-amber-200 dark:border-amber-800/80 cursor-pointer"
+          >
+            <Sparkles size={14} className="text-amber-500 fill-amber-500" />
+            <span>Khảo sát trình độ (+50 XP)</span>
+          </button>
         </div>
 
         <Link
@@ -162,6 +173,43 @@ export const DashboardPage = () => {
             <span>Vào Cổng Quản trị Admin</span>
             <ArrowRight size={14} />
           </Link>
+        </div>
+      )}
+
+      {/* Onboarding Placement Quiz Prompt Banner (Duolingo / Speak Style) */}
+      {!user?.gamification?.onboardingCompleted && (
+        <div className="relative overflow-hidden bg-gradient-to-r from-rose-600 via-amber-500 to-rose-500 rounded-3xl p-5 sm:p-6 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-scale-up">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 shadow-xs">
+              <Target size={24} className="animate-spin-slow" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-200">
+                  Thiết lập lộ trình cá nhân hóa
+                </span>
+                <span className="px-2 py-0.2 rounded-full bg-white/20 text-white text-3xs font-black border border-white/20">
+                  +50 XP
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-white">
+                Khảo sát 30 giây để Sensei AI chọn bài học vừa sức nhất cho bạn!
+              </h3>
+              <p className="text-xs text-rose-100 font-medium">
+                Tùy chỉnh mục tiêu N5-N1, thời lượng học mỗi ngày và nhận ngay 50 Điểm Kinh Nghiệm chào mừng.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowOnboardingQuiz(true)}
+            type="button"
+            className="px-5 py-3 rounded-2xl bg-white text-rose-600 hover:bg-rose-50 text-xs font-black shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shrink-0 cursor-pointer whitespace-nowrap"
+          >
+            <Sparkles size={14} className="text-amber-500 fill-amber-500" />
+            <span>Bắt đầu khảo sát (+50 XP)</span>
+            <ArrowRight size={14} />
+          </button>
         </div>
       )}
 
@@ -529,6 +577,11 @@ export const DashboardPage = () => {
         isOpen={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}
         reason="quota_exceeded"
+      />
+
+      <OnboardingQuizModal
+        isOpen={showOnboardingQuiz}
+        onClose={() => setShowOnboardingQuiz(false)}
       />
     </div>
   );

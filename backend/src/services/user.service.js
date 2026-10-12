@@ -38,12 +38,19 @@ export class UserService {
 
     const isPremium = !!activeSub;
 
-    // Calculate today's quota usage
+    // Calculate today's quota usage and Practice-to-Earn bonus
     const todayStr = getTodayDateString();
     const todayLog = await StudyLog.findOne({ userId, date: todayStr });
     const usedToday = todayLog ? todayLog.practiceCount : 0;
-    const limit = config.quota.freeDailyPracticeLimit;
-    const remaining = isPremium ? Infinity : Math.max(0, limit - usedToday);
+    const baseLimit = config.quota.freeDailyPracticeLimit;
+    const bonusPractices = (user.dailyUsage && user.dailyUsage.date === todayStr)
+      ? (user.dailyUsage.earnedBonusPractices || 0)
+      : 0;
+    const vocabReviewsToday = (user.dailyUsage && user.dailyUsage.date === todayStr)
+      ? (user.dailyUsage.vocabReviewsToday || 0)
+      : 0;
+    const effectiveLimit = baseLimit + bonusPractices;
+    const remaining = isPremium ? Infinity : Math.max(0, effectiveLimit - usedToday);
 
     const subscriptionInfo = {
       isPremium,
@@ -55,10 +62,15 @@ export class UserService {
       expires_at: activeSub ? activeSub.endDate : null,
     };
 
-    // Verify if streak is still active or expired (missed yesterday)
+    // Verify if streak is still active or expired (missed yesterday, or protected by freeze)
     let currentStreak = user.gamification?.streak || 0;
     const lastActiveDate = user.gamification?.lastActiveDate;
-    const activeStreak = getActiveStreak(lastActiveDate, currentStreak);
+    const activeStreak = getActiveStreak(
+      lastActiveDate,
+      currentStreak,
+      null,
+      user.gamification?.streakFreeze
+    );
 
     if (currentStreak > 0 && activeStreak === 0) {
       user.gamification.streak = 0;
@@ -76,17 +88,26 @@ export class UserService {
         date: todayStr,
         practiceCount: usedToday,
         minutesSpent: todayLog ? todayLog.minutesSpent : (user.dailyUsage?.minutesSpent || 0),
+        earnedBonusPractices: bonusPractices,
+        vocabReviewsToday,
       },
       streak_count: currentStreak,
       streak: currentStreak,
       gamification: {
         ...userObj.gamification,
         streak: currentStreak,
+        league: userObj.gamification?.league || "bronze",
+        onboardingCompleted: userObj.gamification?.onboardingCompleted || false,
       },
       subscription: subscriptionInfo,
       quota: {
         isUnlimited: isPremium,
-        limit: isPremium ? "unlimited" : limit,
+        limit: isPremium ? "unlimited" : effectiveLimit,
+        baseLimit,
+        bonusPractices,
+        maxBonus: 2,
+        canEarnBonus: !isPremium && bonusPractices < 2,
+        vocabReviewsToday,
         usedToday,
         remaining: isPremium ? "unlimited" : remaining,
       },
@@ -311,11 +332,32 @@ export class UserService {
       return (b.totalXp || 0) - (a.totalXp || 0);
     });
 
-    // Assign 1-indexed ranks
-    const rankedUsers = processedUsers.map((u, index) => ({
-      ...u,
-      rank: index + 1,
-    }));
+    // Assign 1-indexed ranks, League calculation and Promotion/Demotion zones
+    const getLeagueByXp = (xp) => {
+      if (xp >= 3000) return "diamond";
+      if (xp >= 1600) return "platinum";
+      if (xp >= 800) return "gold";
+      if (xp >= 300) return "silver";
+      return "bronze";
+    };
+
+    const totalCount = processedUsers.length;
+    const rankedUsers = processedUsers.map((u, index) => {
+      const rank = index + 1;
+      const league = u.league || getLeagueByXp(u.totalXp || 0);
+      let zone = "safe";
+      if (rank <= 3) {
+        zone = "promotion"; // Thăng hạng
+      } else if (rank >= Math.max(4, totalCount - 2)) {
+        zone = "demotion"; // Nguy cơ rớt hạng
+      }
+      return {
+        ...u,
+        rank,
+        league,
+        zone,
+      };
+    });
 
     const topUsers = rankedUsers.slice(0, Math.min(limit, 50));
 
@@ -335,6 +377,7 @@ export class UserService {
           const userVal = type === "streak" ? (userDoc.gamification?.streak || 0) : (userDoc.gamification?.totalXp || 0);
           const countAhead = await User.countDocuments({ [sortField]: { $gt: userVal } });
           const realRank = countAhead + 1;
+          const userLeague = userDoc.gamification?.league || getLeagueByXp(userDoc.gamification?.totalXp || 0);
 
           currentUserItem = {
             _id: stringUserId,
@@ -345,17 +388,33 @@ export class UserService {
             streak: userDoc.gamification?.streak || 0,
             level: userDoc.gamification?.level || 1,
             isPremium: userDoc.subscription?.tier === "premium",
+            league: userLeague,
+            zone: realRank <= 3 ? "promotion" : "safe",
             rank: realRank,
           };
         }
       }
     }
 
+    // Weekly countdown calculation (ends on Sunday 23:59:59.999)
+    const now = new Date();
+    const currentDay = now.getDay();
+    const daysUntilSunday = (7 - currentDay) % 7;
+    const weekEndsAt = new Date(now);
+    weekEndsAt.setDate(now.getDate() + daysUntilSunday);
+    weekEndsAt.setHours(23, 59, 59, 999);
+
     return {
       leaderboard: topUsers,
       currentUser: currentUserItem,
       timeframe,
       type,
+      leagueInfo: {
+        currentLeague: currentUserItem?.league || "bronze",
+        weekEndsAt: weekEndsAt.toISOString(),
+        promotionTop: 3,
+        demotionThreshold: Math.max(4, totalCount - 2),
+      },
     };
   }
 
@@ -437,6 +496,164 @@ export class UserService {
       level: newLevel,
       xpEarned: Number(xpReward),
       questId,
+    };
+  }
+
+  /**
+   * Purchases or equips a Streak Freeze using 100 XP (max 2 equipped)
+   */
+  static async buyStreakFreeze(userId) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("Không tìm thấy thông tin người dùng.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    user.gamification = user.gamification || {};
+    user.gamification.streakFreeze = user.gamification.streakFreeze || {
+      equipped: 0,
+      lastUsedAt: null,
+    };
+
+    const equipped = user.gamification.streakFreeze.equipped || 0;
+    if (equipped >= 2) {
+      const error = new Error("Bạn đã trang bị tối đa 2 Bùa bảo vệ chuỗi (Streak Freeze) rồi!");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const COST_XP = 100;
+    const currentXp = user.gamification.totalXp || 0;
+    if (currentXp < COST_XP) {
+      const error = new Error(
+        `Bạn cần tối thiểu ${COST_XP} XP để trang bị Bùa bảo vệ chuỗi (Hiện bạn có ${currentXp} XP).`
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const newTotalXp = currentXp - COST_XP;
+    const newLevel = Math.max(1, Math.floor(newTotalXp / 100) + 1);
+
+    user.gamification.totalXp = newTotalXp;
+    user.gamification.level = newLevel;
+    user.gamification.streakFreeze.equipped = equipped + 1;
+
+    await user.save();
+
+    return {
+      success: true,
+      equipped: user.gamification.streakFreeze.equipped,
+      totalXp: newTotalXp,
+      level: newLevel,
+      message: "Đã trang bị Bùa bảo vệ chuỗi (Streak Freeze) thành công! ❄️",
+    };
+  }
+
+  /**
+   * Practice-to-Earn Quota: Claims +1 bonus speaking practice after reviewing 5 flashcards
+   */
+  static async claimPracticeBonus(userId) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("Không tìm thấy thông tin người dùng.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const todayStr = getTodayDateString();
+    user.dailyUsage = user.dailyUsage || {};
+    if (user.dailyUsage.date !== todayStr) {
+      user.dailyUsage.date = todayStr;
+      user.dailyUsage.practiceCount = 0;
+      user.dailyUsage.earnedBonusPractices = 0;
+      user.dailyUsage.vocabReviewsToday = 0;
+    }
+
+    const currentBonus = user.dailyUsage.earnedBonusPractices || 0;
+    if (currentBonus >= 2) {
+      const error = new Error("Bạn đã nhận tối đa 2 lượt hồi nói trong ngày hôm nay rồi!");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const vocabReviews = user.dailyUsage.vocabReviewsToday || 0;
+    const reviewsRequired = (currentBonus + 1) * 5;
+    if (vocabReviews < reviewsRequired) {
+      const remainingNeeded = reviewsRequired - vocabReviews;
+      const error = new Error(
+        `Bạn cần ôn tập thêm ${remainingNeeded} thẻ từ vựng Flashcard nữa để đổi +1 lượt nói miễn phí.`
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    user.dailyUsage.earnedBonusPractices = currentBonus + 1;
+    await user.save();
+
+    const baseLimit = config.quota.freeDailyPracticeLimit;
+    const newLimit = baseLimit + user.dailyUsage.earnedBonusPractices;
+
+    return {
+      success: true,
+      earnedBonusPractices: user.dailyUsage.earnedBonusPractices,
+      maxBonus: 2,
+      limit: newLimit,
+      vocabReviewsToday: user.dailyUsage.vocabReviewsToday,
+      message: `Chúc mừng! Bạn đã đổi thành công +1 lượt nói miễn phí (${user.dailyUsage.earnedBonusPractices}/2 lượt hôm nay) 🎉`,
+    };
+  }
+
+  /**
+   * Completes Onboarding Placement Quiz, saving goal, target level, daily target minutes and rewarding +50 XP
+   */
+  static async completeOnboardingQuiz(userId, quizData) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("Không tìm thấy thông tin người dùng.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    user.profile = user.profile || {};
+    if (quizData.targetLevel) user.profile.targetLevel = quizData.targetLevel;
+    if (quizData.goal) user.profile.goal = quizData.goal;
+    if (quizData.dailyTargetMinutes) user.profile.dailyTargetMinutes = Number(quizData.dailyTargetMinutes);
+    if (quizData.occupation) user.profile.occupation = quizData.occupation;
+
+    user.gamification = user.gamification || {};
+    const isFirstTime = !user.gamification.onboardingCompleted;
+    user.gamification.onboardingCompleted = true;
+
+    let bonusXp = 0;
+    if (isFirstTime) {
+      bonusXp = 50;
+      const currentXp = user.gamification.totalXp || 0;
+      const newTotalXp = currentXp + bonusXp;
+      user.gamification.totalXp = newTotalXp;
+      user.gamification.level = Math.max(1, Math.floor(newTotalXp / 100) + 1);
+
+      const todayStr = getTodayDateString();
+      await StudyLog.findOneAndUpdate(
+        { userId, date: todayStr },
+        { $inc: { xpEarned: bonusXp } },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    }
+
+    await user.save();
+
+    return {
+      success: true,
+      isFirstTime,
+      xpEarned: bonusXp,
+      totalXp: user.gamification.totalXp,
+      level: user.gamification.level,
+      profile: user.profile,
+      message: isFirstTime
+        ? "Hoàn thành khảo sát thành công! Bạn nhận được +50 XP chào mừng 🎉"
+        : "Cập nhật lộ trình học thành công!",
     };
   }
 }

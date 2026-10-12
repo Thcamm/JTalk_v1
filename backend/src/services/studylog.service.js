@@ -82,7 +82,8 @@ export class StudyLogService {
       lastActive,
       currentStreak,
       currentLongest,
-      clientDate
+      clientDate,
+      user.gamification?.streakFreeze
     );
 
     const CHECKIN_XP_BONUS = 20;
@@ -99,6 +100,12 @@ export class StudyLogService {
       lastActiveDate: new Date(),
       totalXp: newTotalXp,
       level: newLevel,
+      streakFreeze: streakResult.freezeUsed
+        ? {
+            equipped: streakResult.remainingFreeze,
+            lastUsedAt: new Date(),
+          }
+        : user.gamification?.streakFreeze,
     };
 
     const currentDailyPractices =
@@ -128,16 +135,22 @@ export class StudyLogService {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
+    const freezeNotice = streakResult.freezeUsed
+      ? " ❄️ Bùa bảo vệ chuỗi đã tự động cứu streak của bạn hôm qua!"
+      : "";
+
     return {
       success: true,
       alreadyCheckedIn: false,
-      message: `Điểm danh thành công! Bạn nhận được +${CHECKIN_XP_BONUS} XP và chuỗi streak đạt ${streakResult.newStreak} ngày 🎉`,
+      message: `Điểm danh thành công! Bạn nhận được +${CHECKIN_XP_BONUS} XP và chuỗi streak đạt ${streakResult.newStreak} ngày 🎉${freezeNotice}`,
       streak: streakResult.newStreak,
       longestStreak: streakResult.newLongestStreak,
       totalXp: newTotalXp,
       level: newLevel,
       xpEarned: CHECKIN_XP_BONUS,
       todayLog: updatedLog,
+      freezeUsed: streakResult.freezeUsed,
+      streakFreeze: user.gamification.streakFreeze,
     };
   }
 

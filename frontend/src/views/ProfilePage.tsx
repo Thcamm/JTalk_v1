@@ -53,6 +53,7 @@ import { Badge } from "@/components/common/Badge";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { ChangePasswordModal } from "@/components/profile/ChangePasswordModal";
+import { OnboardingQuizModal } from "@/components/gamification/OnboardingQuizModal";
 import { JapaneseMascot } from "@/components/common/JapaneseMascot";
 import { toast } from "sonner";
 import type { Practice, Course } from "@/types";
@@ -83,6 +84,7 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showOnboardingQuiz, setShowOnboardingQuiz] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -380,6 +382,15 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                   >
                     <KeyRound size={13} className="text-amber-500" />
                     <span>Đổi mật khẩu</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowOnboardingQuiz(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98 border border-amber-200 dark:border-amber-800/80"
+                  >
+                    <Sparkles size={13} className="text-amber-500 fill-amber-500" />
+                    <span>Khảo sát lộ trình Kaiwa</span>
                   </button>
                 </div>
               </div>
@@ -1261,6 +1272,12 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
       <ChangePasswordModal
         isOpen={showChangePasswordModal}
         onClose={() => setShowChangePasswordModal(false)}
+      />
+
+      <OnboardingQuizModal
+        isOpen={showOnboardingQuiz}
+        onClose={() => setShowOnboardingQuiz(false)}
+        onCompleted={() => fetchMe()}
       />
     </div>
   );

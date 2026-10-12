@@ -74,9 +74,15 @@ export const getWeekIdentifier = (baseDateStr = null) => {
  * Streak is active if:
  * 1. User already practiced today (lastActiveStr === todayStr)
  * 2. User practiced yesterday, so today's practice is pending before midnight (lastActiveStr === yesterdayStr)
+ * 3. User missed yesterday, but has an active Streak Freeze equipped (diffDays === 2)
  * Otherwise, streak is broken and returns 0.
  */
-export const getActiveStreak = (lastActiveDate, currentStreak = 0, clientDate = null) => {
+export const getActiveStreak = (
+  lastActiveDate,
+  currentStreak = 0,
+  clientDate = null,
+  streakFreeze = null
+) => {
   if (!lastActiveDate || currentStreak <= 0) return 0;
   const todayStr = getTodayDateString(clientDate);
   const yesterdayStr = getYesterdayDateString(todayStr);
@@ -85,17 +91,28 @@ export const getActiveStreak = (lastActiveDate, currentStreak = 0, clientDate = 
   if (lastActiveStr === todayStr || lastActiveStr === yesterdayStr) {
     return currentStreak;
   }
+
+  // Check if Streak Freeze protects the gap
+  const todayDate = new Date(todayStr + "T00:00:00Z");
+  const lastDate = new Date(lastActiveStr + "T00:00:00Z");
+  const diffDays = Math.round((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 2 && streakFreeze && streakFreeze.equipped > 0) {
+    return currentStreak;
+  }
+
   return 0;
 };
 
 /**
- * Calculates new streak status based on user's lastActiveDate
+ * Calculates new streak status based on user's lastActiveDate and optional Streak Freeze
  */
 export const calculateNewStreak = (
   lastActiveDate,
   currentStreak = 0,
   currentLongestStreak = 0,
-  clientDate = null
+  clientDate = null,
+  streakFreeze = null
 ) => {
   const todayStr = getTodayDateString(clientDate);
   const yesterdayStr = getYesterdayDateString(todayStr);
@@ -106,6 +123,8 @@ export const calculateNewStreak = (
       newLongestStreak: Math.max(1, currentLongestStreak),
       isStreakIncremented: true,
       alreadyActiveToday: false,
+      freezeUsed: false,
+      remainingFreeze: streakFreeze?.equipped || 0,
     };
   }
 
@@ -118,6 +137,8 @@ export const calculateNewStreak = (
       newLongestStreak: Math.max(currentStreak, currentLongestStreak),
       isStreakIncremented: false,
       alreadyActiveToday: true,
+      freezeUsed: false,
+      remainingFreeze: streakFreeze?.equipped || 0,
     };
   } else if (lastActiveStr === yesterdayStr) {
     // Practiced yesterday, consecutive streak!
@@ -127,14 +148,36 @@ export const calculateNewStreak = (
       newLongestStreak: Math.max(newStreak, currentLongestStreak),
       isStreakIncremented: true,
       alreadyActiveToday: false,
+      freezeUsed: false,
+      remainingFreeze: streakFreeze?.equipped || 0,
     };
   } else {
+    // Check if Streak Freeze can save the streak (missed exactly 1 day)
+    const todayDate = new Date(todayStr + "T00:00:00Z");
+    const lastDate = new Date(lastActiveStr + "T00:00:00Z");
+    const diffDays = Math.round((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 2 && streakFreeze && streakFreeze.equipped > 0 && currentStreak > 0) {
+      // Streak Freeze automatically deployed!
+      const newStreak = currentStreak + 1;
+      return {
+        newStreak,
+        newLongestStreak: Math.max(newStreak, currentLongestStreak),
+        isStreakIncremented: true,
+        alreadyActiveToday: false,
+        freezeUsed: true,
+        remainingFreeze: Math.max(0, streakFreeze.equipped - 1),
+      };
+    }
+
     // Streak broken, reset to 1
     return {
       newStreak: 1,
       newLongestStreak: Math.max(1, currentLongestStreak),
       isStreakIncremented: true,
       alreadyActiveToday: false,
+      freezeUsed: false,
+      remainingFreeze: streakFreeze?.equipped || 0,
     };
   }
 };
