@@ -93,15 +93,28 @@ export const handleVietQRWebhook = async (req, res, next) => {
 export const confirmVietQRPayment = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const { orderCode } = req.body;
+    const { orderCode, forceApprove } = req.body;
 
     if (!orderCode) {
       return errorResponse(res, "Vui lòng cung cấp mã đơn hàng", 400);
     }
 
-    const result = await PaymentService.confirmVietQRPayment(orderCode, userId);
+    const result = await PaymentService.confirmVietQRPayment(orderCode, userId, {
+      isAdmin: req.user?.role === "admin",
+      forceApprove: Boolean(forceApprove),
+    });
 
-    return successResponse(res, result, "Xác nhận thanh toán thành công!");
+    if (!result.success) {
+      return res.status(200).json({
+        success: false,
+        status: result.status || "pending",
+        message: result.message,
+        data: result,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    return successResponse(res, result, result.message || "Xác nhận thanh toán thành công!");
   } catch (error) {
     next(error);
   }

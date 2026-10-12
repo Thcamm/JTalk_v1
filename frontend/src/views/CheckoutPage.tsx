@@ -168,12 +168,15 @@ export const CheckoutPage = () => {
     try {
       setVerifying(true);
       const res = await paymentService.confirmVietQRPayment(activeOrder.orderCode);
-      if (res.success) {
+      if (res.success && res.status === "completed") {
         setPaymentSuccess(true);
         toast.success("Xác nhận thanh toán thành công! Gói Premium đã được kích hoạt.");
         await fetchMe();
       } else {
-        toast.error(res.message || "Chưa ghi nhận giao dịch thành công. Vui lòng thử lại!");
+        toast.info(
+          res.message ||
+            "Hệ thống đang chờ xác nhận từ ngân hàng. Nếu bạn vừa chuyển khoản, vui lòng đợi 30 giây - 2 phút để hệ thống tự động kiểm tra."
+        );
       }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
@@ -396,12 +399,12 @@ export const CheckoutPage = () => {
                     {verifying ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Đang kiểm tra giao dịch...</span>
+                        <span>Đang kiểm tra biến động số dư...</span>
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>Tôi đã chuyển khoản - Kích hoạt ngay</span>
+                        <span>Tôi đã chuyển khoản - Kiểm tra trạng thái</span>
                       </>
                     )}
                   </button>
