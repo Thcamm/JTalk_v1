@@ -30,8 +30,10 @@ export interface CreateVietQRPaymentResponse {
 
 export interface ConfirmVietQRPaymentResponse {
   success: boolean;
+  status?: string;
   message?: string;
   orderCode?: string;
+  paidAt?: string;
 }
 
 export interface OrderStatusResponse {
@@ -76,14 +78,18 @@ export const paymentService = {
   },
 
   /**
-   * Confirm VietQR payment manually or verify transfer
+   * Confirm VietQR payment status or verify transfer
    */
   confirmVietQRPayment: async (orderCode: string): Promise<ConfirmVietQRPaymentResponse> => {
     const res = await api.post("/payments/vietqr/confirm", { orderCode });
     const payload = res.data?.data || res.data;
+    const resolvedStatus = (payload?.status || res.data?.status || "pending").toLowerCase();
+    const isCompleted = resolvedStatus === "completed" || resolvedStatus === "success";
+
     return {
       ...payload,
-      success: res.data?.success !== false,
+      success: Boolean(res.data?.success && isCompleted),
+      status: resolvedStatus,
       message: res.data?.message || payload?.message,
     };
   },

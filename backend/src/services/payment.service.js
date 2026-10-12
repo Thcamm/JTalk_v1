@@ -303,6 +303,20 @@ export class PaymentService {
       return { success: false, message: `Không tìm thấy đơn hàng: ${orderCode}` };
     }
 
+    // Kiểm tra số tiền chuyển khoản nếu webhook có dữ liệu amount
+    const incomingAmount = Number(
+      payload.amount ||
+      payload.transferAmount ||
+      payload.data?.amount ||
+      0
+    );
+    if (incomingAmount > 0 && incomingAmount < (order.amount || PREMIUM_PRICE_VND)) {
+      return {
+        success: false,
+        message: `Số tiền chuyển khoản (${incomingAmount}đ) không đủ so với giá trị đơn hàng (${order.amount || PREMIUM_PRICE_VND}đ).`,
+      };
+    }
+
     const transId = payload.id || payload.referenceCode || payload.data?.paymentLinkId || `VQR_${Date.now()}`;
     const result = await PaymentService.activateSubscriptionForOrder(order, transId, payload);
 
@@ -314,9 +328,13 @@ export class PaymentService {
   }
 
   /**
-   * 5. Xác nhận thanh toán VietQR thủ công / test demo
+   * 5. Kiểm tra trạng thái thanh toán VietQR
+   * BẢO MẬT: Tuyệt đối KHÔNG tự ý kích hoạt gói Premium chỉ dựa trên click từ phía client.
+   * Chỉ kích hoạt khi:
+   *  - Đã có Webhook ngân hàng (SePay, PayOS hoặc SMS forwarder) xác nhận biến động số dư thực tế.
+   *  - Hoặc Quản trị viên (Admin) chủ động xác nhận thủ công (forceApprove = true).
    */
-  static async confirmVietQRPayment(orderCode, userId) {
+  static async confirmVietQRPayment(orderCode, userId, options = {}) {
     const order = await Order.findOne({ orderCode, userId });
     if (!order) {
       const error = new Error("Không tìm thấy đơn hàng.");
@@ -324,18 +342,43 @@ export class PaymentService {
       throw error;
     }
 
+    // 1. Đơn hàng đã hoàn tất trước đó qua Webhook ngân hàng
     if (order.status === "completed" || order.status === "SUCCESS") {
       return {
-        message: "Đơn hàng đã được xác nhận thành công trước đó.",
+        success: true,
+        status: "completed",
+        message: "Đơn hàng đã được xác nhận thanh toán thành công!",
         orderCode: order.orderCode,
+        paidAt: order.paidAt,
       };
     }
 
-    const transId = `CONFIRM_${Date.now()}`;
-    return await PaymentService.activateSubscriptionForOrder(order, transId, {
-      confirmedBy: userId,
-      confirmedAt: new Date(),
-    });
+    // 2. Quản trị viên (Admin) chủ động duyệt thủ công
+    if (options.isAdmin && options.forceApprove) {
+      const transId = `ADMIN_FORCE_${Date.now()}`;
+      const activation = await PaymentService.activateSubscriptionForOrder(order, transId, {
+        approvedBy: userId,
+        approvedAt: new Date(),
+        reason: "Admin manual verification",
+      });
+
+      return {
+        success: true,
+        status: "completed",
+        message: "Quản trị viên đã xác nhận đơn hàng thành công!",
+        orderCode: order.orderCode,
+        ...activation,
+      };
+    }
+
+    // 3. Chưa nhận được giao dịch từ ngân hàng -> KHÔNG cấp quyền Premium
+    return {
+      success: false,
+      status: "pending",
+      message:
+        "Hệ thống chưa ghi nhận biến động số dư cho đơn hàng này. Nếu bạn đã hoàn tất chuyển khoản từ app ngân hàng, vui lòng chờ trong giây lát (khoảng 30 giây - 2 phút) để cổng Napas 24/7 tự động đối soát.",
+      orderCode: order.orderCode,
+    };
   }
 
   /**
