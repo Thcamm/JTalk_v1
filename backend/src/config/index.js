@@ -71,6 +71,13 @@ export const config = {
   },
 
   momo: {
+    // MoMo nhận tiền (VietQR MoMo Napas & STK đa năng)
+    bankId: (process.env.MOMO_BANK_ID || "971005").trim(), // 971005 là mã BIN chuẩn Napas của Ví MoMo
+    accountNo: (process.env.MOMO_ACCOUNT_NO || "PSP2606717600000005").trim(),
+    accountName: (process.env.MOMO_ACCOUNT_NAME || "NGUYEN DUC THIEN CAM").trim(),
+    template: (process.env.MOMO_TEMPLATE || "compact2").trim(),
+    phone: (process.env.MOMO_PHONE || "0975383173").trim(),
+
     // MoMo Sandbox Test Credentials (Chuẩn dùng cho App MoMo Test & Sandbox Gateway)
     partnerCode:
       process.env.MOMO_PARTNER_CODE && process.env.MOMO_PARTNER_CODE !== "MOMO_TEST_PARTNER"
@@ -91,11 +98,11 @@ export const config = {
 
   vietqr: {
     // Ngân hàng nhận tiền: MB, VCB, TCB, ACB, ICB (VietinBank), BIDV, TPB, VPB...
-    bankId: process.env.VIETQR_BANK_ID || "MB",
-    accountNo: process.env.VIETQR_ACCOUNT_NO || "0868888888",
-    accountName: process.env.VIETQR_ACCOUNT_NAME || "JTALK VIETNAM",
-    template: process.env.VIETQR_TEMPLATE || "compact2",
-    webhookApiKey: process.env.VIETQR_WEBHOOK_API_KEY || "",
+    bankId: (process.env.VIETQR_BANK_ID || "MB").trim(),
+    accountNo: (process.env.VIETQR_ACCOUNT_NO || "0975383173").trim(),
+    accountName: (process.env.VIETQR_ACCOUNT_NAME || "JTALK").trim(),
+    template: (process.env.VIETQR_TEMPLATE || "compact2").trim(),
+    webhookApiKey: (process.env.VIETQR_WEBHOOK_API_KEY || "").trim(),
   },
 };
 

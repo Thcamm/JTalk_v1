@@ -35,6 +35,7 @@ interface ActiveOrderState {
   bankId?: string;
   accountNo?: string;
   accountName?: string;
+  phone?: string;
   transferContent?: string;
 }
 
@@ -149,8 +150,8 @@ export const CheckoutPage = () => {
             payUrl: res.payUrl || res.qrCodeUrl,
             qrCodeUrl: res.qrCodeUrl,
             bankId: res.bankId || "MB",
-            accountNo: res.accountNo || "0868888888",
-            accountName: res.accountName || "JTALK VIETNAM",
+            accountNo: res.accountNo || "0975383173",
+            accountName: res.accountName || "JTALK",
             transferContent: res.transferContent || res.orderCode,
           });
           setCountdown(900);
@@ -160,26 +161,26 @@ export const CheckoutPage = () => {
         }
       } else {
         const res = await paymentService.createMoMoPayment("monthly_99k");
-        const orderCode = res.order?.orderCode || (res as any).orderCode;
-        const payUrl = res.payUrl || (res as any).payUrl || "";
-        const qrCodeUrl =
-          res.qrCodeUrl ||
-          (res as any).qrCodeUrl ||
-          `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-            payUrl || "https://test-payment.momo.vn"
-          )}`;
+        const orderCode = res.orderCode || res.order?.orderCode;
+        const payUrl = res.payUrl || "/momo-qr.png";
+        const qrCodeUrl = res.qrCodeUrl || "/momo-qr.png";
 
-        if (orderCode && payUrl) {
+        if (orderCode && (payUrl || qrCodeUrl)) {
           setActiveOrder({
             method: "momo",
             orderCode,
-            amount: 99000,
+            amount: res.amount || 99000,
             payUrl,
             qrCodeUrl,
             deeplink: res.deeplink,
+            bankId: res.bankId || "971005",
+            accountNo: res.accountNo || "PSP2606717600000005",
+            phone: res.phone || "0975383173",
+            accountName: res.accountName || "NGUYEN DUC THIEN CAM",
+            transferContent: res.transferContent || orderCode,
           });
           setCountdown(900);
-          toast.success("Mã QR MoMo Sandbox đã sẵn sàng! Mời bạn quét mã thanh toán.");
+          toast.success("Mã QR Ví MoMo đã sẵn sàng! Mời bạn quét mã thanh toán.");
         } else {
           toast.error("Không nhận được mã thanh toán từ MoMo.");
         }
@@ -197,11 +198,14 @@ export const CheckoutPage = () => {
     }
   };
 
-  const handleConfirmVietQR = async () => {
+  const handleConfirmPayment = async () => {
     if (!activeOrder?.orderCode) return;
     try {
       setVerifying(true);
-      const res = await paymentService.confirmVietQRPayment(activeOrder.orderCode);
+      const res =
+        activeOrder.method === "momo"
+          ? await paymentService.confirmMoMoPayment(activeOrder.orderCode)
+          : await paymentService.confirmVietQRPayment(activeOrder.orderCode);
       if (res.success && res.status === "completed") {
         setPaymentSuccess(true);
         toast.success("Xác nhận thanh toán thành công! Gói Premium đã được kích hoạt.");
@@ -209,7 +213,7 @@ export const CheckoutPage = () => {
       } else {
         toast.info(
           res.message ||
-            "Hệ thống đang chờ xác nhận từ ngân hàng. Nếu bạn vừa chuyển khoản, vui lòng đợi 30 giây - 2 phút để hệ thống tự động kiểm tra."
+            "Hệ thống đang chờ xác nhận từ ngân hàng hoặc ví MoMo. Nếu bạn vừa chuyển khoản, vui lòng đợi trong giây lát để hệ thống tự động kiểm tra."
         );
       }
     } catch (err: unknown) {
@@ -223,6 +227,9 @@ export const CheckoutPage = () => {
       setVerifying(false);
     }
   };
+
+  // Backward compatibility alias
+  const handleConfirmVietQR = handleConfirmPayment;
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -460,20 +467,20 @@ export const CheckoutPage = () => {
             </div>
           </div>
         ) : activeOrder?.method === "momo" ? (
-          /* Active MoMo QR Payment View (Prepared for Defense Day Demo) */
+          /* Active MoMo QR Payment View (Personal MoMo P2P Scanner) */
           <div className="bg-white dark:bg-slate-900 border-2 border-pink-500/30 rounded-3xl overflow-hidden shadow-xl animate-fade-in">
             {/* MoMo Header */}
             <div className="bg-gradient-to-r from-[#A50064] via-[#D82D8B] to-[#A50064] p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 text-white text-xs font-black uppercase tracking-wider backdrop-blur-md">
                   <Smartphone className="w-3.5 h-3.5" />
-                  <span>MoMo Sandbox Test Gateway</span>
+                  <span>Ví điện tử MoMo 24/7</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black">
-                  Quét mã QR để thanh toán 99.000đ
+                  Quét mã MoMo để thanh toán 99.000đ
                 </h2>
                 <p className="text-pink-100 text-xs">
-                  Sử dụng ứng dụng MoMo Test trên điện thoại để quét mã QR bên dưới
+                  Mở ứng dụng MoMo trên điện thoại để quét mã QR hoặc chuyển tiền trực tiếp
                 </p>
               </div>
 
@@ -486,76 +493,142 @@ export const CheckoutPage = () => {
             </div>
 
             <div className="p-6 sm:p-8 space-y-6">
-              {/* Defense Demo Hint Box */}
-              <div className="bg-pink-50/80 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-900/60 rounded-2xl p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#A50064] text-white flex items-center justify-center shrink-0 text-xs font-black">
-                  DEMO
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                {/* QR Code Canvas Frame */}
+                <div className="flex flex-col items-center justify-center p-4 bg-pink-50/40 dark:bg-pink-950/20 rounded-2xl border border-pink-200/80 dark:border-pink-900/60 space-y-3">
+                  <div className="relative p-2.5 bg-white rounded-2xl border-2 border-pink-300 dark:border-pink-800 shadow-md">
+                    <img
+                      src={activeOrder.qrCodeUrl || "/momo-qr.png"}
+                      alt="MoMo Transfer QR Code"
+                      className="w-56 h-auto sm:w-60 max-h-80 object-contain rounded-xl select-none"
+                    />
+                  </div>
+                  <div className="text-center space-y-0.5">
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Mở app MoMo để quét mã QR
+                    </p>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400">
+                      Tự động điền sẵn 99.000đ & nhận diện NGUYEN DUC THIEN CAM
+                    </p>
+                  </div>
                 </div>
-                <div className="text-xs text-slate-700 dark:text-slate-300 space-y-1">
-                  <p className="font-bold text-[#A50064] dark:text-pink-300">
-                    Hướng dẫn Demo Ngày Bảo Vệ Khóa Luận / Đồ Án:
-                  </p>
-                  <p className="text-2xs leading-relaxed">
-                    Mở ứng dụng <strong>MoMo Test</strong> trên điện thoại đã chuẩn bị, chọn tính năng <strong>Quét Mã (QR)</strong> và hướng camera vào mã QR bên dưới. Hệ thống sẽ tự động cập nhật trạng thái ngay khi bạn xác nhận!
-                  </p>
-                </div>
-              </div>
 
-              {/* QR Code Canvas Frame */}
-              <div className="flex flex-col items-center justify-center py-4 space-y-4">
-                <div className="relative p-4 bg-white rounded-3xl border-2 border-slate-200 dark:border-slate-700 shadow-xl group">
-                  <img
-                    src={
-                      activeOrder.qrCodeUrl ||
-                      `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(
-                        activeOrder.payUrl
-                      )}`
-                    }
-                    alt="MoMo Payment QR Code"
-                    className="w-56 h-56 sm:w-64 sm:h-64 object-contain rounded-xl select-none"
-                  />
+                {/* Transfer Info Details with 1-click Copy */}
+                <div className="space-y-3">
+                  <div className="p-3.5 bg-pink-50/60 dark:bg-pink-950/40 border border-pink-100 dark:border-pink-900/60 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400">Ngân hàng / Cổng nhận:</span>
+                      <span className="font-bold text-[#A50064] dark:text-pink-300 flex items-center gap-1">
+                        <Smartphone className="w-3.5 h-3.5" /> Ví MoMo (Napas)
+                      </span>
+                    </div>
 
-                  {/* MoMo Center Badge Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-12 h-12 rounded-xl bg-[#A50064] text-white font-black text-xs flex items-center justify-center shadow-md border-2 border-white">
-                      MoMo
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400">Chủ tài khoản:</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {activeOrder.accountName || "NGUYEN DUC THIEN CAM"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-pink-100 dark:border-pink-900/40">
+                      <span className="text-slate-500 dark:text-slate-400">Số tài khoản (STK):</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-black text-[#A50064] dark:text-pink-300 text-sm">
+                          {activeOrder.accountNo || activeOrder.phone || "PSP2606717600000005"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(activeOrder.accountNo || activeOrder.phone || "PSP2606717600000005", "Số tài khoản MoMo")}
+                          className="p-1 hover:text-[#A50064] transition-colors"
+                          title="Sao chép số tài khoản MoMo"
+                        >
+                          <Copy className="w-3.5 h-3.5 text-slate-500 hover:text-[#A50064]" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 dark:text-slate-400">Số tiền:</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-rose-600 dark:text-rose-400 text-sm">
+                          {activeOrder.amount.toLocaleString("vi-VN")}đ
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(String(activeOrder.amount), "Số tiền")}
+                          className="p-1 hover:text-rose-600 transition-colors"
+                          title="Sao chép số tiền"
+                        >
+                          <Copy className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="text-center space-y-1">
-                  <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
-                    <span>Mã đơn:</span>
-                    <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-rose-600 dark:text-rose-400">
-                      {activeOrder.orderCode}
-                    </span>
-                    <button
-                      onClick={() => copyToClipboard(activeOrder.orderCode, "Mã đơn hàng")}
-                      className="p-1 hover:text-rose-600 transition-colors"
-                      title="Sao chép mã đơn"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
+                  {/* Crucial: Transfer Content Note */}
+                  <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1">
+                        <Info className="w-3.5 h-3.5" />
+                        <span>Lời nhắn / Lời chuyển tiền (bắt buộc):</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(activeOrder.transferContent || activeOrder.orderCode, "Lời nhắn MoMo")}
+                        className="inline-flex items-center gap-1 text-2xs font-bold text-amber-800 dark:text-amber-200 bg-amber-200/60 dark:bg-amber-900/40 px-2 py-0.5 rounded-md hover:bg-amber-200 transition-colors"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>Sao chép</span>
+                      </button>
+                    </div>
+                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg border border-amber-300/80 dark:border-amber-700 text-center font-mono font-black text-sm text-amber-800 dark:text-amber-200 tracking-wider">
+                      {activeOrder.transferContent || activeOrder.orderCode}
+                    </div>
+                    <p className="text-3xs text-amber-700 dark:text-amber-400 leading-tight">
+                      * Vui lòng điền chính xác lời nhắn để hệ thống tự động nhận diện và kích hoạt Premium cho bạn!
+                    </p>
                   </div>
-                  <p className="text-2xs text-slate-400 flex items-center justify-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                    <span>Hệ thống đang tự động lắng nghe giao dịch qua MoMo IPN...</span>
-                  </p>
+
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-1">
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      <span>Hệ thống đang tự động lắng nghe giao dịch chuyển khoản qua MoMo...</span>
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Actions & Fallbacks */}
+              {/* Actions & Instant Confirmation */}
               <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
                 <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <a
-                    href={activeOrder.payUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full sm:flex-1 py-3 px-4 bg-[#A50064] hover:bg-[#8B0054] text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-[#A50064]/20"
+                  <button
+                    onClick={handleConfirmPayment}
+                    disabled={verifying}
+                    type="button"
+                    className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-[#A50064] to-[#D82D8B] hover:brightness-105 active:scale-[0.99] text-white font-extrabold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-pink-600/20 cursor-pointer disabled:opacity-70"
                   >
-                    <span>Mở cổng thanh toán MoMo Web</span>
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
+                    {verifying ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang kiểm tra biến động số dư...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Tôi đã chuyển tiền MoMo - Kiểm tra trạng thái</span>
+                      </>
+                    )}
+                  </button>
+
+                  {activeOrder.deeplink && (
+                    <a
+                      href={activeOrder.deeplink}
+                      className="w-full sm:w-auto py-3 px-4 bg-pink-100 dark:bg-pink-950/60 hover:bg-pink-200 text-[#A50064] dark:text-pink-300 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Smartphone className="w-4 h-4" />
+                      <span>Mở App MoMo</span>
+                    </a>
+                  )}
 
                   <button
                     onClick={() => setActiveOrder(null)}
@@ -568,7 +641,7 @@ export const CheckoutPage = () => {
 
                 <div className="flex items-center justify-center gap-2 text-2xs text-slate-400">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Cổng MoMo Sandbox đã cấu hình xác thực HMAC-SHA256 chuẩn bảo mật</span>
+                  <span>Xử lý tự động 24/7 qua Ví điện tử MoMo chính chủ NGUYEN DUC THIEN CAM</span>
                 </div>
               </div>
             </div>
