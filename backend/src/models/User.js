@@ -60,7 +60,16 @@ const userSchema = new mongoose.Schema(
       },
       goal: {
         type: String,
-        enum: ["daily_conversation", "interview", "business", "travel"],
+        enum: [
+          "daily_conversation",
+          "interview",
+          "business",
+          "travel",
+          "daily",
+          "work",
+          "hobby",
+          "exam",
+        ],
         default: "daily_conversation",
       },
       occupation: {

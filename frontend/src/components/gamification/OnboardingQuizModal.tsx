@@ -32,32 +32,32 @@ interface OnboardingQuizModalProps {
 
 const GOAL_OPTIONS = [
   {
-    id: "work",
+    id: "daily_conversation",
+    icon: <Compass className="w-5 h-5 text-emerald-500" />,
+    title: "Hội thoại & Đời sống",
+    desc: "Mua sắm, ăn uống, hỏi đường, giao tiếp hàng ngày tự tin khi sang Nhật",
+    badge: "Phổ biến",
+  },
+  {
+    id: "interview",
     icon: <Briefcase className="w-5 h-5 text-indigo-500" />,
     title: "Công việc & Phỏng vấn",
     desc: "Đi làm công ty Nhật, IT, thông dịch, thương mại và phỏng vấn xin việc",
     badge: "Thực tế",
   },
   {
-    id: "daily",
-    icon: <Compass className="w-5 h-5 text-emerald-500" />,
-    title: "Du lịch & Đời sống",
-    desc: "Mua sắm, ăn uống, hỏi đường, giao tiếp hàng ngày tự tin khi sang Nhật",
-    badge: "Phổ biến",
-  },
-  {
-    id: "hobby",
-    icon: <Tv className="w-5 h-5 text-pink-500" />,
-    title: "Anime, Manga & Văn hóa",
-    desc: "Xem anime không cần phụ đề, hiểu tiếng lóng và văn hóa giới trẻ Nhật",
-    badge: "Yêu thích",
-  },
-  {
-    id: "exam",
+    id: "business",
     icon: <GraduationCap className="w-5 h-5 text-amber-500" />,
-    title: "Du học & Kỳ thi JLPT",
-    desc: "Bổ trợ phản xạ thực chiến cho các kỳ thi năng lực tiếng Nhật N5 - N1",
-    badge: "Học thuật",
+    title: "Tiếng Nhật công sở",
+    desc: "Giao tiếp đồng nghiệp, đối tác và tác phong làm việc chuẩn phong cách Nhật",
+    badge: "Chuyên sâu",
+  },
+  {
+    id: "travel",
+    icon: <Tv className="w-5 h-5 text-pink-500" />,
+    title: "Du lịch & Giao lưu văn hóa",
+    desc: "Xem anime, du lịch khám phá Nhật Bản và kết bạn giao tiếp tự nhiên",
+    badge: "Yêu thích",
   },
 ];
 
@@ -126,8 +126,8 @@ export const OnboardingQuizModal: React.FC<OnboardingQuizModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [step, setStep] = useState<number>(1);
-  const [goal, setGoal] = useState<string>("daily");
-  const [targetLevel, setTargetLevel] = useState<string>("N5");
+  const [goal, setGoal] = useState<"daily_conversation" | "interview" | "business" | "travel">("daily_conversation");
+  const [targetLevel, setTargetLevel] = useState<"N5" | "N4" | "N3" | "N2" | "N1">("N5");
   const [dailyTargetMinutes, setDailyTargetMinutes] = useState<number>(10);
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -163,9 +163,10 @@ export const OnboardingQuizModal: React.FC<OnboardingQuizModalProps> = ({
 
       // Update local zustand store
       const currentXp = user?.gamification?.totalXp || 0;
+      const earnedXp = (res as any).xpAwarded || res.xpEarned || 50;
       useAuthStore.getState().updateUserGamification({
         onboardingCompleted: true,
-        totalXp: currentXp + (res.xpAwarded || 50),
+        totalXp: currentXp + earnedXp,
       });
 
       if (user?.profile) {
@@ -253,7 +254,7 @@ export const OnboardingQuizModal: React.FC<OnboardingQuizModalProps> = ({
                         key={opt.id}
                         type="button"
                         onClick={() => {
-                          setGoal(opt.id);
+                          setGoal(opt.id as any);
                           soundEffects.playTap();
                         }}
                         className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${
@@ -316,7 +317,7 @@ export const OnboardingQuizModal: React.FC<OnboardingQuizModalProps> = ({
                         key={opt.id}
                         type="button"
                         onClick={() => {
-                          setTargetLevel(opt.id);
+                          setTargetLevel(opt.id as any);
                           soundEffects.playTap();
                         }}
                         className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between gap-3 transition-all cursor-pointer ${
