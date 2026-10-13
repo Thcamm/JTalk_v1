@@ -64,10 +64,30 @@ try {
     fs.writeFileSync(backendMoMoPath, processedPng);
 
     // Dọn dẹp các tệp log tạm nếu có
-    ["momo_debug.json", "momo_diff.json", "momo_rows.json", "momo_card_bottom.json", "momo_card_x.json", "momo_error.txt", "momo_default_keys.json", "momo_default.json", "momo_keys.json"].forEach((f) => {
+    [
+      "momo_debug.json",
+      "momo_diff.json",
+      "momo_rows.json",
+      "momo_card_bottom.json",
+      "momo_card_x.json",
+      "momo_error.txt",
+      "momo_default_keys.json",
+      "momo_default.json",
+      "momo_keys.json",
+      "sepay_probe.json",
+      "sepay_probe_slash.json",
+      "dns_probe.json",
+      "home_probe.json",
+      "www_probe.json",
+      "subdomains.json",
+      "api_probe.json",
+      "render_probe.json",
+    ].forEach((f) => {
       const p = path.join(process.cwd(), "uploads", f);
       if (fs.existsSync(p)) {
-        try { fs.unlinkSync(p); } catch {}
+        try {
+          fs.unlinkSync(p);
+        } catch {}
       }
     });
 
