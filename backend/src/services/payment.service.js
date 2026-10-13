@@ -22,8 +22,8 @@ export class PaymentService {
       throw error;
     }
 
-    // Generate unique order code
-    const orderCode = `JTALK_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    // Generate unique order code (không dùng dấu gạch dưới để tránh bị ngân hàng/MoMo lọc bỏ khi chuyển khoản)
+    const orderCode = `JTALK${Date.now()}${Math.floor(100 + Math.random() * 900)}`;
     const accountNo = config.momo.accountNo || "PSP2606717600000005";
     const accountName = config.momo.accountName || "NGUYEN DUC THIEN CAM";
     const bankId = config.momo.bankId || "971005";
@@ -137,7 +137,8 @@ export class PaymentService {
       throw error;
     }
 
-    const orderCode = `JTALK_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    // Generate unique order code (không dùng dấu gạch dưới để tránh bị ngân hàng/MoMo lọc bỏ khi chuyển khoản)
+    const orderCode = `JTALK${Date.now()}${Math.floor(100 + Math.random() * 900)}`;
     const bankId = config.vietqr.bankId;
     const accountNo = config.vietqr.accountNo;
     const accountName = config.vietqr.accountName;
@@ -299,18 +300,77 @@ export class PaymentService {
       payload.data?.orderCode ||
       "";
 
-    // Trích xuất mã đơn hàng dạng JTALK_...
-    const match = String(content).match(/JTALK_\d+(_\d+)?/i);
-    const orderCode = match ? match[0].toUpperCase() : String(content).trim();
+    console.info("🔍 [VietQR Webhook] Phân tích nội dung chuyển khoản:", content);
 
-    if (!orderCode) {
-      return { success: false, message: "Không tìm thấy mã đơn hàng trong nội dung chuyển khoản." };
+    // 1. Trích xuất mã đơn hàng có tiền tố JTALK (hỗ trợ có hoặc không có dấu gạch dưới / khoảng trắng)
+    const match = String(content).match(/JTALK[_\s-]?\d+([_\s-]?\d+)?/i);
+    const rawMatchedCode = match ? match[0].toUpperCase() : "";
+
+    let order = null;
+
+    // A. Thử tìm chính xác theo mã trích xuất trực tiếp
+    if (rawMatchedCode) {
+      order = await Order.findOne({ orderCode: rawMatchedCode });
     }
 
-    const order = await Order.findOne({ orderCode });
+    // B. Đối soát thông minh: Khi ngân hàng / MoMo tự động lọc bỏ dấu gạch dưới (VD: JTALK_179190... -> JTALK179190...)
     if (!order) {
-      return { success: false, message: `Không tìm thấy đơn hàng: ${orderCode}` };
+      const numberMatch = String(content).match(/JTALK[_\s-]*([0-9\s_-]+)/i);
+      if (numberMatch) {
+        const cleanContentDigits = numberMatch[1].replace(/[^0-9]/g, "");
+        if (cleanContentDigits) {
+          // Tìm trong các đơn hàng pending gần nhất (trong 48 giờ qua)
+          const candidateOrders = await Order.find({
+            status: "pending",
+            createdAt: { $gte: new Date(Date.now() - 48 * 60 * 60 * 1000) },
+          }).sort({ createdAt: -1 });
+
+          order = candidateOrders.find((o) => {
+            const dbDigits = String(o.orderCode || "").replace(/[^0-9]/g, "");
+            return (
+              dbDigits &&
+              (dbDigits === cleanContentDigits ||
+                cleanContentDigits.includes(dbDigits) ||
+                dbDigits.includes(cleanContentDigits))
+            );
+          });
+
+          // Nếu vẫn chưa thấy, mở rộng tìm kiếm tất cả các đơn JTALK gần đây
+          if (!order) {
+            const allCandidateOrders = await Order.find({
+              orderCode: /^JTALK/i,
+            })
+              .sort({ createdAt: -1 })
+              .limit(100);
+
+            order = allCandidateOrders.find((o) => {
+              const dbDigits = String(o.orderCode || "").replace(/[^0-9]/g, "");
+              return (
+                dbDigits &&
+                (dbDigits === cleanContentDigits ||
+                  cleanContentDigits.includes(dbDigits) ||
+                  dbDigits.includes(cleanContentDigits))
+              );
+            });
+          }
+        }
+      }
     }
+
+    // C. Thử tìm chính xác theo toàn bộ nội dung nếu không có tiền tố JTALK
+    if (!order && content) {
+      order = await Order.findOne({ orderCode: String(content).trim() });
+    }
+
+    if (!order) {
+      console.warn("⚠️ [VietQR Webhook] Không tìm thấy đơn hàng cho nội dung:", content);
+      return {
+        success: false,
+        message: `Không tìm thấy đơn hàng tương ứng với nội dung chuyển khoản: "${content}"`,
+      };
+    }
+
+    console.info(`✅ [VietQR Webhook] Đã khớp thành công đơn hàng: ${order.orderCode} (ID: ${order._id})`);
 
     // Kiểm tra số tiền chuyển khoản nếu webhook có dữ liệu amount
     const incomingAmount = Number(
