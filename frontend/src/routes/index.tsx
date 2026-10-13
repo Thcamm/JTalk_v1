@@ -17,7 +17,6 @@ import CourseVideoStudyPage from "@/views/CourseVideoStudyPage";
 import ProfilePage from "@/views/ProfilePage";
 import ProgressPage from "@/views/ProgressPage";
 import CheckoutPage from "@/views/CheckoutPage";
-import MoMoCallbackPage from "@/views/MoMoCallbackPage";
 import VocabularyNotebookPage from "../views/VocabularyNotebookPage";
 import LeaderboardView from "../views/LeaderboardView";
 
@@ -53,7 +52,7 @@ export default function AppRoutes() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/payment/momo/callback" element={<MoMoCallbackPage />} />
+          <Route path="/payment/momo/callback" element={<Navigate to="/checkout" replace />} />
         </Route>
 
         {/* Video Learning & Shadowing Study Room (Matching Image 8 Sambon Juku & YouTube Courses) */}

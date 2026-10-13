@@ -1023,7 +1023,13 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                       {isPremium ? (
                         <>
                           <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
-                          <span>Gói Premium Đang Hoạt Động</span>
+                          <span>
+                            {user?.role === "admin"
+                              ? "Quản trị viên · VIP Trọn đời"
+                              : user?.subscription?.expiresAt
+                              ? `Hạn dùng: ${new Date(user.subscription.expiresAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })} (còn ${Math.max(0, Math.ceil((new Date(user.subscription.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} ngày)`
+                              : "Gói Premium Đang Hoạt Động"}
+                          </span>
                         </>
                       ) : (
                         <>
@@ -1050,7 +1056,7 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                         to="/checkout"
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-rose-700 dark:text-rose-300 font-extrabold text-xs rounded-2xl border border-rose-300 dark:border-rose-700 shadow-2xs transition-all"
                       >
-                        <span>Gia hạn thêm gói tháng</span>
+                        <span>Chi tiết gói & Quản lý</span>
                         <ChevronRight className="w-4 h-4" />
                       </Link>
                     ) : (
@@ -1108,7 +1114,7 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                     className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:scale-95 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg transition-all"
                   >
                     <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>Nâng cấp 99.000đ qua VietQR / MoMo</span>
+                    <span>Nâng cấp 99.000đ qua VietQR 24/7</span>
                   </Link>
                 </div>
               ) : (
@@ -1182,18 +1188,14 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
 
                             {/* Payment Method */}
                             <td className="py-4 px-3">
-                              {order.paymentMethod === "vietqr" ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-900/50 text-2xs font-bold whitespace-nowrap">
-                                  <Landmark className="w-3 h-3" />
-                                  <span>VietQR 24/7</span>
-                                </span>
-                              ) : order.paymentMethod === "vnpay" ? (
+                              {order.paymentMethod === "vnpay" ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-900/50 text-2xs font-bold whitespace-nowrap">
                                   VNPay
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-pink-50 dark:bg-pink-950/40 text-[#A50064] dark:text-pink-300 border border-pink-200/80 dark:border-pink-900/50 text-2xs font-bold whitespace-nowrap">
-                                  Ví MoMo
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-900/50 text-2xs font-bold whitespace-nowrap">
+                                  <Landmark className="w-3 h-3" />
+                                  <span>VietQR 24/7</span>
                                 </span>
                               )}
                             </td>

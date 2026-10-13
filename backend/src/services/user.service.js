@@ -36,7 +36,13 @@ export class UserService {
       endDate: { $gt: now },
     }).sort({ endDate: -1 });
 
-    const isPremium = !!activeSub;
+    const isPremium = user.role === "admin" || !!activeSub;
+
+    // Tự động đồng bộ snapshot user.subscription trong DB nếu gói đã hết hạn
+    if (!isPremium && user.subscription?.tier === "premium") {
+      user.subscription.tier = "free";
+      await user.save();
+    }
 
     // Calculate today's quota usage and Practice-to-Earn bonus
     const todayStr = getTodayDateString();
@@ -55,11 +61,13 @@ export class UserService {
     const subscriptionInfo = {
       isPremium,
       tier: isPremium ? "premium" : "free",
-      status: activeSub ? activeSub.status : "free",
-      planType: activeSub ? activeSub.planType : null,
-      startDate: activeSub ? activeSub.startDate : null,
-      endDate: activeSub ? activeSub.endDate : null,
-      expires_at: activeSub ? activeSub.endDate : null,
+      status: activeSub ? activeSub.status : (user.role === "admin" ? "active" : "free"),
+      planType: activeSub ? activeSub.planType : (user.role === "admin" ? "admin_vip" : null),
+      startDate: activeSub ? activeSub.startDate : (user.subscription?.startDate || null),
+      endDate: activeSub ? activeSub.endDate : (user.subscription?.expiresAt || null),
+      expiresAt: activeSub ? activeSub.endDate : (user.subscription?.expiresAt || null),
+      expires_at: activeSub ? activeSub.endDate : (user.subscription?.expiresAt || null),
+      subscriptionId: activeSub ? activeSub._id : (user.subscription?.subscriptionId || null),
     };
 
     // Verify if streak is still active or expired (missed yesterday, or protected by freeze)

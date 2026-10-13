@@ -11,38 +11,33 @@ import {
   Loader2,
   ArrowRight,
   QrCode,
-  ExternalLink,
   Clock,
   CheckCircle2,
   Copy,
-  Smartphone,
   Landmark,
   Info,
   Crown,
   Mic,
+  AlertCircle,
 } from "lucide-react";
 import { paymentService } from "@/services/payment.service";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 interface ActiveOrderState {
-  method: "vietqr" | "momo";
   orderCode: string;
   amount: number;
   payUrl: string;
   qrCodeUrl: string;
-  deeplink?: string;
   bankId?: string;
   accountNo?: string;
   accountName?: string;
-  phone?: string;
   transferContent?: string;
 }
 
 export const CheckoutPage = () => {
   const navigate = useNavigate();
   const { user, isPremium, fetchMe } = useAuth();
-  const [selectedMethod, setSelectedMethod] = useState<"vietqr" | "momo">("vietqr");
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [activeOrder, setActiveOrder] = useState<ActiveOrderState | null>(null);
@@ -82,6 +77,7 @@ export const CheckoutPage = () => {
 
   const expiryFormatted = formatExpiryDate(user?.subscription?.expiresAt);
   const daysRemaining = getDaysRemaining(user?.subscription?.expiresAt);
+  const canRenew = daysRemaining === null || daysRemaining <= 3;
 
   // Timer countdown for active order
   useEffect(() => {
@@ -137,53 +133,32 @@ export const CheckoutPage = () => {
   }, [activeOrder, paymentSuccess, fetchMe]);
 
   const handleCreatePayment = async () => {
+    // Chặn người dùng nếu gói còn hạn dài hơn 3 ngày
+    if (isPremium && user?.role !== "admin" && !canRenew) {
+      toast.warning(
+        `Gói Premium của bạn còn ${daysRemaining} ngày sử dụng (đến ngày ${expiryFormatted}). Bạn chỉ có thể gia hạn khi gói còn dưới 3 ngày.`
+      );
+      return;
+    }
+
     try {
       setLoading(true);
-
-      if (selectedMethod === "vietqr") {
-        const res = await paymentService.createVietQRPayment("monthly_99k");
-        if (res.orderCode && res.qrCodeUrl) {
-          setActiveOrder({
-            method: "vietqr",
-            orderCode: res.orderCode,
-            amount: res.amount || 99000,
-            payUrl: res.payUrl || res.qrCodeUrl,
-            qrCodeUrl: res.qrCodeUrl,
-            bankId: res.bankId || "MB",
-            accountNo: res.accountNo || "0975383173",
-            accountName: res.accountName || "JTALK",
-            transferContent: res.transferContent || res.orderCode,
-          });
-          setCountdown(900);
-          toast.success("Mã VietQR đã sẵn sàng! Mời bạn quét mã qua app Ngân hàng.");
-        } else {
-          toast.error("Không thể tạo mã VietQR. Vui lòng thử lại!");
-        }
+      const res = await paymentService.createVietQRPayment("monthly_99k");
+      if (res.orderCode && res.qrCodeUrl) {
+        setActiveOrder({
+          orderCode: res.orderCode,
+          amount: res.amount || 99000,
+          payUrl: res.payUrl || res.qrCodeUrl,
+          qrCodeUrl: res.qrCodeUrl,
+          bankId: res.bankId || "MB",
+          accountNo: res.accountNo || "0975383173",
+          accountName: res.accountName || "JTALK",
+          transferContent: res.transferContent || res.orderCode,
+        });
+        setCountdown(900);
+        toast.success("Mã VietQR đã sẵn sàng! Mời bạn quét mã qua app Ngân hàng.");
       } else {
-        const res = await paymentService.createMoMoPayment("monthly_99k");
-        const orderCode = res.orderCode || res.order?.orderCode;
-        const payUrl = res.payUrl || "/momo-qr.png";
-        const qrCodeUrl = res.qrCodeUrl || "/momo-qr.png";
-
-        if (orderCode && (payUrl || qrCodeUrl)) {
-          setActiveOrder({
-            method: "momo",
-            orderCode,
-            amount: res.amount || 99000,
-            payUrl,
-            qrCodeUrl,
-            deeplink: res.deeplink,
-            bankId: res.bankId || "971005",
-            accountNo: res.accountNo || "PSP2606717600000005",
-            phone: res.phone || "0975383173",
-            accountName: res.accountName || "NGUYEN DUC THIEN CAM",
-            transferContent: res.transferContent || orderCode,
-          });
-          setCountdown(900);
-          toast.success("Mã QR Ví MoMo đã sẵn sàng! Mời bạn quét mã thanh toán.");
-        } else {
-          toast.error("Không nhận được mã thanh toán từ MoMo.");
-        }
+        toast.error("Không thể tạo mã VietQR. Vui lòng thử lại!");
       }
     } catch (err: unknown) {
       console.error("Payment creation error:", err);
@@ -202,10 +177,7 @@ export const CheckoutPage = () => {
     if (!activeOrder?.orderCode) return;
     try {
       setVerifying(true);
-      const res =
-        activeOrder.method === "momo"
-          ? await paymentService.confirmMoMoPayment(activeOrder.orderCode)
-          : await paymentService.confirmVietQRPayment(activeOrder.orderCode);
+      const res = await paymentService.confirmVietQRPayment(activeOrder.orderCode);
       if (res.success && res.status === "completed") {
         setPaymentSuccess(true);
         toast.success("Xác nhận thanh toán thành công! Gói Premium đã được kích hoạt.");
@@ -213,7 +185,7 @@ export const CheckoutPage = () => {
       } else {
         toast.info(
           res.message ||
-            "Hệ thống đang chờ xác nhận từ ngân hàng hoặc ví MoMo. Nếu bạn vừa chuyển khoản, vui lòng đợi trong giây lát để hệ thống tự động kiểm tra."
+            "Hệ thống đang chờ đối soát biến động số dư từ SePay / MB Bank. Nếu bạn vừa chuyển khoản, vui lòng đợi trong giây lát (khoảng 30 giây - 2 phút) để hệ thống tự động kiểm tra."
         );
       }
     } catch (err: unknown) {
@@ -227,9 +199,6 @@ export const CheckoutPage = () => {
       setVerifying(false);
     }
   };
-
-  // Backward compatibility alias
-  const handleConfirmVietQR = handleConfirmPayment;
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -295,7 +264,7 @@ export const CheckoutPage = () => {
               </button>
             </div>
           </div>
-        ) : activeOrder?.method === "vietqr" ? (
+        ) : activeOrder ? (
           /* Active VietQR Payment View (Napas 247 Instant Transfer) */
           <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500/30 rounded-3xl overflow-hidden shadow-xl animate-fade-in">
             {/* VietQR Header */}
@@ -309,7 +278,7 @@ export const CheckoutPage = () => {
                   Quét mã VietQR để thanh toán 99.000đ
                 </h2>
                 <p className="text-indigo-100 text-xs">
-                  Mở ứng dụng Mobile Banking của bất kỳ ngân hàng nào để quét mã QR
+                  Mở ứng dụng Mobile Banking của bất kỳ ngân hàng nào để quét mã QR Napas 24/7
                 </p>
               </div>
 
@@ -337,7 +306,7 @@ export const CheckoutPage = () => {
                       Quét mã bằng app ngân hàng bất kỳ
                     </p>
                     <p className="text-2xs text-slate-500 dark:text-slate-400">
-                      MB, Vietcombank, Techcombank, VPBank, ACB, BIDV...
+                      MB Bank, Vietcombank, Techcombank, VPBank, ACB, BIDV...
                     </p>
                   </div>
                 </div>
@@ -414,7 +383,7 @@ export const CheckoutPage = () => {
                       {activeOrder.transferContent || activeOrder.orderCode}
                     </div>
                     <p className="text-3xs text-amber-700 dark:text-amber-400 leading-tight">
-                      Vui lòng giữ nguyên nội dung chuyển khoản để hệ thống tự động nhận diện và kích hoạt.
+                      Vui lòng giữ nguyên nội dung chuyển khoản để hệ thống SePay tự động nhận diện và kích hoạt.
                     </p>
                   </div>
 
@@ -432,7 +401,7 @@ export const CheckoutPage = () => {
               <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
                 <div className="flex flex-col sm:flex-row items-center gap-3">
                   <button
-                    onClick={handleConfirmVietQR}
+                    onClick={handleConfirmPayment}
                     disabled={verifying}
                     type="button"
                     className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105 active:scale-[0.99] text-white font-extrabold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-70"
@@ -461,187 +430,7 @@ export const CheckoutPage = () => {
 
                 <div className="flex items-center justify-center gap-2 text-2xs text-slate-400">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Xử lý tự động 24/7 qua cổng liên ngân hàng VietQR Napas chuẩn quốc gia</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : activeOrder?.method === "momo" ? (
-          /* Active MoMo QR Payment View (Personal MoMo P2P Scanner) */
-          <div className="bg-white dark:bg-slate-900 border-2 border-pink-500/30 rounded-3xl overflow-hidden shadow-xl animate-fade-in">
-            {/* MoMo Header */}
-            <div className="bg-gradient-to-r from-[#A50064] via-[#D82D8B] to-[#A50064] p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 text-white text-xs font-black uppercase tracking-wider backdrop-blur-md">
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span>Ví điện tử MoMo 24/7</span>
-                </div>
-                <h2 className="text-xl sm:text-2xl font-black">
-                  Quét mã MoMo để thanh toán 99.000đ
-                </h2>
-                <p className="text-pink-100 text-xs">
-                  Mở ứng dụng MoMo trên điện thoại để quét mã QR hoặc chuyển tiền trực tiếp
-                </p>
-              </div>
-
-              <div className="bg-white/15 px-4 py-2 rounded-2xl backdrop-blur-md text-right shrink-0">
-                <div className="text-3xs uppercase tracking-wider font-extrabold text-pink-200 flex items-center justify-end gap-1">
-                  <Clock className="w-3 h-3" /> Hết hạn trong
-                </div>
-                <div className="text-xl font-black font-mono tracking-wider">{formatTime(countdown)}</div>
-              </div>
-            </div>
-
-            <div className="p-6 sm:p-8 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                {/* QR Code Canvas Frame */}
-                <div className="flex flex-col items-center justify-center p-4 bg-pink-50/40 dark:bg-pink-950/20 rounded-2xl border border-pink-200/80 dark:border-pink-900/60 space-y-3">
-                  <div className="relative p-2.5 bg-white rounded-2xl border-2 border-pink-300 dark:border-pink-800 shadow-md">
-                    <img
-                      src={activeOrder.qrCodeUrl || "/momo-qr.png"}
-                      alt="MoMo Transfer QR Code"
-                      className="w-56 h-auto sm:w-60 max-h-80 object-contain rounded-xl select-none"
-                    />
-                  </div>
-                  <div className="text-center space-y-0.5">
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Mở app MoMo để quét mã QR
-                    </p>
-                    <p className="text-2xs text-slate-500 dark:text-slate-400">
-                      Tự động điền sẵn 99.000đ & nhận diện NGUYEN DUC THIEN CAM
-                    </p>
-                  </div>
-                </div>
-
-                {/* Transfer Info Details with 1-click Copy */}
-                <div className="space-y-3">
-                  <div className="p-3.5 bg-pink-50/60 dark:bg-pink-950/40 border border-pink-100 dark:border-pink-900/60 rounded-xl space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">Ngân hàng / Cổng nhận:</span>
-                      <span className="font-bold text-[#A50064] dark:text-pink-300 flex items-center gap-1">
-                        <Smartphone className="w-3.5 h-3.5" /> Ví MoMo (Napas)
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">Chủ tài khoản:</span>
-                      <span className="font-bold text-slate-900 dark:text-white">
-                        {activeOrder.accountName || "NGUYEN DUC THIEN CAM"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-pink-100 dark:border-pink-900/40">
-                      <span className="text-slate-500 dark:text-slate-400">Số tài khoản (STK):</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-black text-[#A50064] dark:text-pink-300 text-sm">
-                          {activeOrder.accountNo || activeOrder.phone || "PSP2606717600000005"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(activeOrder.accountNo || activeOrder.phone || "PSP2606717600000005", "Số tài khoản MoMo")}
-                          className="p-1 hover:text-[#A50064] transition-colors"
-                          title="Sao chép số tài khoản MoMo"
-                        >
-                          <Copy className="w-3.5 h-3.5 text-slate-500 hover:text-[#A50064]" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">Số tiền:</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-black text-rose-600 dark:text-rose-400 text-sm">
-                          {activeOrder.amount.toLocaleString("vi-VN")}đ
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(String(activeOrder.amount), "Số tiền")}
-                          className="p-1 hover:text-rose-600 transition-colors"
-                          title="Sao chép số tiền"
-                        >
-                          <Copy className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Crucial: Transfer Content Note */}
-                  <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1">
-                        <Info className="w-3.5 h-3.5" />
-                        <span>Lời nhắn / Lời chuyển tiền (bắt buộc):</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(activeOrder.transferContent || activeOrder.orderCode, "Lời nhắn MoMo")}
-                        className="inline-flex items-center gap-1 text-2xs font-bold text-amber-800 dark:text-amber-200 bg-amber-200/60 dark:bg-amber-900/40 px-2 py-0.5 rounded-md hover:bg-amber-200 transition-colors"
-                      >
-                        <Copy className="w-3 h-3" />
-                        <span>Sao chép</span>
-                      </button>
-                    </div>
-                    <div className="p-2 bg-white dark:bg-slate-900 rounded-lg border border-amber-300/80 dark:border-amber-700 text-center font-mono font-black text-sm text-amber-800 dark:text-amber-200 tracking-wider">
-                      {activeOrder.transferContent || activeOrder.orderCode}
-                    </div>
-                    <p className="text-3xs text-amber-700 dark:text-amber-400 leading-tight">
-                      * Vui lòng điền chính xác lời nhắn để hệ thống tự động nhận diện và kích hoạt Premium cho bạn!
-                    </p>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-1">
-                    <p className="text-2xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5 font-medium">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                      <span>Hệ thống đang tự động lắng nghe giao dịch chuyển khoản qua MoMo...</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions & Instant Confirmation */}
-              <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3">
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <button
-                    onClick={handleConfirmPayment}
-                    disabled={verifying}
-                    type="button"
-                    className="w-full sm:flex-1 py-3 px-4 bg-gradient-to-r from-[#A50064] to-[#D82D8B] hover:brightness-105 active:scale-[0.99] text-white font-extrabold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-pink-600/20 cursor-pointer disabled:opacity-70"
-                  >
-                    {verifying ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Đang kiểm tra biến động số dư...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Tôi đã chuyển tiền MoMo - Kiểm tra trạng thái</span>
-                      </>
-                    )}
-                  </button>
-
-                  {activeOrder.deeplink && (
-                    <a
-                      href={activeOrder.deeplink}
-                      className="w-full sm:w-auto py-3 px-4 bg-pink-100 dark:bg-pink-950/60 hover:bg-pink-200 text-[#A50064] dark:text-pink-300 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <Smartphone className="w-4 h-4" />
-                      <span>Mở App MoMo</span>
-                    </a>
-                  )}
-
-                  <button
-                    onClick={() => setActiveOrder(null)}
-                    type="button"
-                    className="w-full sm:w-auto py-3 px-5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer"
-                  >
-                    Hủy & Chọn lại
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 text-2xs text-slate-400">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Xử lý tự động 24/7 qua Ví điện tử MoMo chính chủ NGUYEN DUC THIEN CAM</span>
+                  <span>Xử lý tự động 24/7 qua cổng liên ngân hàng VietQR Napas chuẩn quốc gia đối soát bởi SePay</span>
                 </div>
               </div>
             </div>
@@ -763,6 +552,50 @@ export const CheckoutPage = () => {
                 </div>
               </div>
 
+              {/* Quy định gia hạn / Chặn tạo đơn khi còn hạn dài */}
+              {user?.role !== "admin" && (
+                <div className="pt-2">
+                  {!canRenew ? (
+                    <div className="flex items-start gap-3 p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-2xl">
+                      <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shrink-0">
+                        <Info className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-xs sm:text-sm font-bold text-blue-900 dark:text-blue-200">
+                          Gói Premium đang có hiệu lực dài hạn
+                        </h4>
+                        <p className="text-xs text-blue-800/90 dark:text-blue-300/90 leading-relaxed">
+                          Tài khoản của bạn còn <span className="font-bold underline">{daysRemaining} ngày sử dụng</span> (hết hạn vào ngày {expiryFormatted}). Để tránh việc bạn chuyển khoản trùng lặp hoặc lãng phí, cổng đăng ký / gia hạn sẽ tự động mở lại khi gói của bạn còn 3 ngày cuối hoặc đã hết hạn.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl text-center sm:text-left">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 shrink-0">
+                          <AlertCircle className="w-5 h-5" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Gói của bạn sắp hết hạn ({daysRemaining !== null ? `còn ${daysRemaining} ngày` : "hết hạn"})
+                          </p>
+                          <p className="text-2xs text-slate-500 dark:text-slate-400">
+                            Gia hạn ngay để duy trì chuỗi luyện tập và không bị gián đoạn quyền lợi VIP.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowRenewForm(true)}
+                        className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:brightness-105 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-md"
+                      >
+                        Gia hạn thêm gói (99.000đ)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Nút hành động chính */}
               <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -792,34 +625,11 @@ export const CheckoutPage = () => {
                     <span>Bảng Điều Khiển</span>
                   </button>
                 </div>
-
-                {/* Banner tùy chọn gia hạn nếu cần */}
-                {user?.role !== "admin" && (
-                  <div className="pt-2">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl text-center sm:text-left">
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                          Bạn muốn gia hạn thêm thời gian sử dụng?
-                        </p>
-                        <p className="text-2xs text-slate-500 dark:text-slate-400">
-                          30 ngày mới sẽ được tự động cộng dồn nối tiếp vào hạn dùng hiện tại của bạn.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowRenewForm(true)}
-                        className="px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-2xs hover:border-slate-400"
-                      >
-                        Gia hạn thêm gói (99.000đ)
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
         ) : (
-          /* Initial Plan Selection & Pricing Card */
+          /* Initial Plan Selection & Pricing Card (VietQR 24/7) */
           <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs space-y-0">
             {/* Top banner if in renew mode */}
             {isPremium && (
@@ -904,87 +714,39 @@ export const CheckoutPage = () => {
                 </div>
               </div>
 
-              {/* Payment Method Selector */}
+              {/* Payment Method Selector - 100% VietQR Napas 24/7 */}
               <div className="border-t border-slate-100 dark:border-slate-800 pt-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-slate-900 dark:text-white">
-                    Chọn phương thức thanh toán:
+                    Phương thức thanh toán:
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    Bảo mật chuẩn SSL
+                    Bảo mật chuẩn SSL · Đối soát tự động SePay
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* VietQR Option - Recommended */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMethod("vietqr")}
-                    className={`relative p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      selectedMethod === "vietqr"
-                        ? "border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 shadow-md shadow-indigo-600/10"
-                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800/40"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
-                        <Landmark className="w-5 h-5" />
+                {/* VietQR Option */}
+                <div className="relative p-5 rounded-2xl border-2 border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 shadow-md shadow-indigo-600/10 flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                    <Landmark className="w-6 h-6" />
+                  </div>
+
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Chuyển khoản VietQR (Napas 24/7)</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-3xs font-extrabold uppercase bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                          Tự động 24/7
+                        </span>
                       </div>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-3xs font-extrabold uppercase bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                        Khuyên dùng
-                      </span>
+                      <div className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                      </div>
                     </div>
-
-                    <div className="mt-3 space-y-1">
-                      <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                        <span>Chuyển khoản VietQR</span>
-                      </div>
-                      <p className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
-                        Napas 24/7 · Hỗ trợ app MB, VCB, TCB, VPB, BIDV...
-                      </p>
-                    </div>
-
-                    {selectedMethod === "vietqr" && (
-                      <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </div>
-                    )}
-                  </button>
-
-                  {/* MoMo Option - Sandbox */}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMethod("momo")}
-                    className={`relative p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                      selectedMethod === "momo"
-                        ? "border-[#A50064] bg-pink-50/50 dark:bg-pink-950/30 shadow-md shadow-pink-500/10"
-                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800/40"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-[#A50064] text-white flex items-center justify-center font-black text-xs">
-                        MoMo
-                      </div>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-3xs font-extrabold uppercase bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300">
-                        Sandbox Demo
-                      </span>
-                    </div>
-
-                    <div className="mt-3 space-y-1">
-                      <div className="font-bold text-sm text-slate-900 dark:text-white">
-                        Ví Điện Tử MoMo
-                      </div>
-                      <p className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
-                        Thử nghiệm qua App MoMo Test (Ngày bảo vệ)
-                      </p>
-                    </div>
-
-                    {selectedMethod === "momo" && (
-                      <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-[#A50064] text-white flex items-center justify-center">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </div>
-                    )}
-                  </button>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Quét mã QR từ app ngân hàng bất kỳ (MB Bank, Vietcombank, Techcombank, VPBank, ACB, BIDV...). Hệ thống tự động kích hoạt tài khoản trong vòng 30 giây.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Submit button */}
@@ -992,22 +754,18 @@ export const CheckoutPage = () => {
                   onClick={handleCreatePayment}
                   disabled={loading}
                   type="button"
-                  className={`w-full py-4 px-6 text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-[0.99] disabled:opacity-70 cursor-pointer text-base ${
-                    selectedMethod === "vietqr"
-                      ? "bg-gradient-to-r from-blue-700 via-indigo-600 to-indigo-700 hover:brightness-105 shadow-indigo-600/20"
-                      : "bg-gradient-to-r from-pink-600 via-[#A50064] to-rose-600 hover:brightness-105 shadow-pink-600/20"
-                  }`}
+                  className="w-full py-4 px-6 text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-[0.99] disabled:opacity-70 cursor-pointer text-base bg-gradient-to-r from-blue-700 via-indigo-600 to-indigo-700 hover:brightness-105 shadow-indigo-600/20"
                 >
                   {loading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Đang tạo mã thanh toán {selectedMethod === "vietqr" ? "VietQR" : "MoMo"}...</span>
+                      <span>Đang tạo mã thanh toán VietQR...</span>
                     </>
                   ) : (
                     <>
                       <QrCode className="w-5 h-5" />
                       <span>
-                        Tạo mã QR {selectedMethod === "vietqr" ? "VietQR (99.000đ)" : "MoMo Sandbox (99.000đ)"}
+                        Tạo mã QR VietQR thanh toán 99.000đ
                       </span>
                       <ArrowRight className="w-5 h-5 ml-auto" />
                     </>
@@ -1016,7 +774,7 @@ export const CheckoutPage = () => {
 
                 <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span>Kích hoạt tự động sau khi quét mã · Hỗ trợ bảo vệ đồ án và triển khai thực tế</span>
+                  <span>Xử lý tự động 24/7 qua cổng liên ngân hàng VietQR Napas chuẩn quốc gia đối soát bởi SePay</span>
                 </div>
               </div>
             </div>

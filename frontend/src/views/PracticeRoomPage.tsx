@@ -1283,7 +1283,7 @@ export const PracticeRoomPage = () => {
         )}
       </main>
 
-      {/* MoMo Premium Upgrade Modal */}
+      {/* Premium Upgrade Modal */}
       <PremiumModal
         isOpen={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}

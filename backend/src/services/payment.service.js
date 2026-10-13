@@ -2,132 +2,13 @@ import Order from "../models/Order.js";
 import Subscription from "../models/Subscription.js";
 import User from "../models/User.js";
 import config from "../config/index.js";
-import {
-  createMoMoPaymentSignature,
-  verifyMoMoIpnSignature,
-} from "../utils/momoSignature.js";
 
 const PREMIUM_PRICE_VND = 99000;
 const SUBSCRIPTION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export class PaymentService {
   /**
-   * 1. Create MoMo payment link for 30-day Premium Plan (99.000 VNĐ)
-   */
-  static async createMoMoPayment({ userId, planType = "monthly_99k", amount = PREMIUM_PRICE_VND }) {
-    const user = await User.findById(userId);
-    if (!user) {
-      const error = new Error("Người dùng không tồn tại.");
-      error.statusCode = 404;
-      throw error;
-    }
-
-    // Generate unique order code (không dùng dấu gạch dưới để tránh bị ngân hàng/MoMo lọc bỏ khi chuyển khoản)
-    const orderCode = `JTALK${Date.now()}${Math.floor(100 + Math.random() * 900)}`;
-    const accountNo = config.momo.accountNo || "PSP2606717600000005";
-    const accountName = config.momo.accountName || "NGUYEN DUC THIEN CAM";
-    const bankId = config.momo.bankId || "971005";
-    const template = config.momo.template || "compact2";
-    const phone = config.momo.phone || "0975383173";
-
-    // MoMo Official QR Image (chính chủ NGUYEN DUC THIEN CAM - quét thành công 100% trên app MoMo)
-    let qrCodeUrl = "/momo-qr.png";
-    let payUrl = qrCodeUrl;
-    let deeplink = `momo://?action=p2p&phone=${phone}&amount=${amount}&message=${encodeURIComponent(
-      orderCode
-    )}`;
-
-    // Kiểm tra nếu có cấu hình MoMo Doanh Nghiệp (Official Merchant Gateway)
-    const useMerchantGateway =
-      process.env.MOMO_PARTNER_CODE &&
-      process.env.MOMO_PARTNER_CODE !== "MOMO" &&
-      process.env.MOMO_PARTNER_CODE !== "MOMO_TEST_PARTNER";
-
-    if (useMerchantGateway) {
-      const orderInfo = `Thanh toán gói JTalk Premium 30 ngày cho tài khoản ${user.username}`;
-      const requestId = orderCode;
-      const extraData = Buffer.from(JSON.stringify({ userId: user._id.toString(), planType })).toString("base64");
-      const requestType = "captureWallet";
-
-      const signature = createMoMoPaymentSignature({
-        accessKey: config.momo.accessKey,
-        amount,
-        extraData,
-        ipnUrl: config.momo.ipnUrl,
-        orderId: orderCode,
-        orderInfo,
-        partnerCode: config.momo.partnerCode,
-        redirectUrl: config.momo.redirectUrl,
-        requestId,
-        requestType,
-        secretKey: config.momo.secretKey,
-      });
-
-      const requestBody = {
-        partnerCode: config.momo.partnerCode,
-        partnerName: "JTalk AI Japanese",
-        storeId: "JTalkOfficial",
-        requestId,
-        amount,
-        orderId: orderCode,
-        orderInfo,
-        redirectUrl: config.momo.redirectUrl,
-        ipnUrl: config.momo.ipnUrl,
-        lang: "vi",
-        extraData,
-        requestType,
-        signature,
-      };
-
-      try {
-        const momoRes = await fetch(config.momo.endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody),
-        });
-        const momoData = await momoRes.json();
-        if (momoData.resultCode === 0 && momoData.payUrl) {
-          payUrl = momoData.payUrl;
-          deeplink = momoData.deeplink || deeplink;
-          qrCodeUrl = momoData.qrCodeUrl || qrCodeUrl;
-        }
-      } catch (apiErr) {
-        console.warn("Lỗi gọi MoMo Merchant Gateway, chuyển sang VietQR MoMo:", apiErr.message);
-      }
-    }
-
-    // 1. Create PENDING Order in orders collection
-    const order = await Order.create({
-      orderCode,
-      userId: user._id,
-      amount,
-      paymentMethod: "momo",
-      status: "pending",
-      payUrl: qrCodeUrl,
-      callbackData: { planType, accountNo, accountName, bankId },
-    });
-
-    console.info(
-      `📱 [MoMo] Tạo đơn hàng ${orderCode}: [${bankId}] STK: ${accountNo} (${accountName}) | ${amount}đ`
-    );
-
-    return {
-      orderCode,
-      amount,
-      bankId,
-      accountNo,
-      accountName,
-      phone,
-      payUrl,
-      deeplink,
-      qrCodeUrl,
-      transferContent: orderCode,
-      status: order.status,
-    };
-  }
-
-  /**
-   * 2. Create VietQR Payment Order (Ngân hàng 24/7 Napas standard)
+   * 1. Create VietQR Payment Order (Ngân hàng 24/7 Napas standard qua SePay)
    */
   static async createVietQRPayment({ userId, planType = "monthly_99k", amount = PREMIUM_PRICE_VND }) {
     const user = await User.findById(userId);
@@ -135,6 +16,30 @@ export class PaymentService {
       const error = new Error("Người dùng không tồn tại.");
       error.statusCode = 404;
       throw error;
+    }
+
+    if (user.role === "admin") {
+      const error = new Error("Tài khoản Quản trị viên (Admin) đã sở hữu toàn bộ đặc quyền VIP vĩnh viễn.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Kiểm tra thời hạn gói: Chỉ cho phép đăng ký / gia hạn khi gói đã hết hạn hoặc còn <= 3 ngày
+    if (user.subscription?.tier === "premium" && user.subscription?.expiresAt) {
+      const diffMs = new Date(user.subscription.expiresAt).getTime() - Date.now();
+      const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      if (daysRemaining > 3) {
+        const expiryFormatted = new Date(user.subscription.expiresAt).toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+        const error = new Error(
+          `Gói Premium của bạn đang có hiệu lực đến ngày ${expiryFormatted} (còn ${daysRemaining} ngày sử dụng). Bạn có thể gia hạn khi gói còn dưới 3 ngày.`
+        );
+        error.statusCode = 400;
+        throw error;
+      }
     }
 
     // Generate unique order code (không dùng dấu gạch dưới để tránh bị ngân hàng/MoMo lọc bỏ khi chuyển khoản)
@@ -239,56 +144,7 @@ export class PaymentService {
   }
 
   /**
-   * 3. Process IPN Webhook from MoMo
-   */
-  static async processMoMoWebhook(payload) {
-    const { orderId, resultCode, transId } = payload;
-
-    if (!orderId) {
-      const error = new Error("Thiếu orderId trong IPN payload.");
-      error.statusCode = 400;
-      throw error;
-    }
-
-    // 1. Verify Checksum signature if in production
-    if (config.env === "production") {
-      const isValid = verifyMoMoIpnSignature(payload, config.momo.secretKey);
-      if (!isValid) {
-        const error = new Error("Chữ ký Checksum MoMo IPN không hợp lệ.");
-        error.statusCode = 400;
-        throw error;
-      }
-    }
-
-    // 2. Find order in orders collection
-    const order = await Order.findOne({ orderCode: orderId });
-    if (!order) {
-      const error = new Error(`Không tìm thấy đơn hàng với mã: ${orderId}`);
-      error.statusCode = 404;
-      throw error;
-    }
-
-    // 3. Process payment status
-    if (Number(resultCode) === 0) {
-      return await PaymentService.activateSubscriptionForOrder(
-        order,
-        transId || `MOMO_${Date.now()}`,
-        payload
-      );
-    } else {
-      order.status = "failed";
-      order.callbackData = payload;
-      await order.save();
-
-      return {
-        message: "Thanh toán không thành công.",
-        resultCode: Number(resultCode),
-      };
-    }
-  }
-
-  /**
-   * 4. Process VietQR Webhook (Hỗ trợ SePay, PayOS hoặc Webhook SMS ngân hàng)
+   * 2. Process VietQR Webhook (Hỗ trợ SePay, PayOS hoặc Webhook SMS ngân hàng)
    */
   static async processVietQRWebhook(payload) {
     const content =
@@ -397,7 +253,7 @@ export class PaymentService {
   }
 
   /**
-   * 5. Kiểm tra trạng thái thanh toán VietQR
+   * 3. Kiểm tra trạng thái thanh toán VietQR
    * BẢO MẬT: Tuyệt đối KHÔNG tự ý kích hoạt gói Premium chỉ dựa trên click từ phía client.
    * Chỉ kích hoạt khi:
    *  - Đã có Webhook ngân hàng (SePay, PayOS hoặc SMS forwarder) xác nhận biến động số dư thực tế.
@@ -445,7 +301,7 @@ export class PaymentService {
       success: false,
       status: "pending",
       message:
-        "Hệ thống chưa ghi nhận biến động số dư cho đơn hàng này. Nếu bạn đã hoàn tất chuyển khoản từ app ngân hàng hoặc ví MoMo, vui lòng chờ trong giây lát (khoảng 30 giây - 2 phút) để hệ thống tự động đối soát.",
+        "Hệ thống chưa ghi nhận biến động số dư cho đơn hàng này. Nếu bạn đã hoàn tất chuyển khoản từ app ngân hàng hoặc ví điện tử, vui lòng chờ trong giây lát (khoảng 30 giây - 2 phút) để hệ thống tự động đối soát.",
       orderCode: order.orderCode,
     };
   }
@@ -475,7 +331,7 @@ export class PaymentService {
       _id: o._id,
       orderCode: o.orderCode,
       amount: o.amount || 99000,
-      paymentMethod: o.paymentMethod || "momo",
+      paymentMethod: o.paymentMethod || "vietqr",
       status: o.status || "pending",
       transactionId: o.transactionId || "",
       paidAt: o.paidAt || null,

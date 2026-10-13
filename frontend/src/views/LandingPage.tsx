@@ -1102,7 +1102,7 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-rose-500" />
-              <span>Hỗ trợ thanh toán MoMo tiện lợi</span>
+              <span>Hỗ trợ thanh toán VietQR 24/7 tự động</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-rose-500" />

@@ -272,7 +272,7 @@ export interface Order {
   orderCode: string;
   userId: string;
   amount: number;
-  paymentMethod: "momo" | "vnpay";
+  paymentMethod: "vietqr" | "vnpay" | string;
   status: "pending" | "completed" | "failed" | "cancelled";
   transactionId?: string;
   payUrl?: string;

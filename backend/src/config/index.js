@@ -70,32 +70,6 @@ export const config = {
     },
   },
 
-  momo: {
-    // MoMo nhận tiền (VietQR MoMo Napas & STK đa năng)
-    bankId: (process.env.MOMO_BANK_ID || "971005").trim(), // 971005 là mã BIN chuẩn Napas của Ví MoMo
-    accountNo: (process.env.MOMO_ACCOUNT_NO || "PSP2606717600000005").trim(),
-    accountName: (process.env.MOMO_ACCOUNT_NAME || "NGUYEN DUC THIEN CAM").trim(),
-    template: (process.env.MOMO_TEMPLATE || "compact2").trim(),
-    phone: (process.env.MOMO_PHONE || "0975383173").trim(),
-
-    // MoMo Sandbox Test Credentials (Chuẩn dùng cho App MoMo Test & Sandbox Gateway)
-    partnerCode:
-      process.env.MOMO_PARTNER_CODE && process.env.MOMO_PARTNER_CODE !== "MOMO_TEST_PARTNER"
-        ? process.env.MOMO_PARTNER_CODE
-        : "MOMO",
-    accessKey:
-      process.env.MOMO_ACCESS_KEY && process.env.MOMO_ACCESS_KEY !== "MOMO_TEST_ACCESS_KEY"
-        ? process.env.MOMO_ACCESS_KEY
-        : "F8BBA842ECF85",
-    secretKey:
-      process.env.MOMO_SECRET_KEY && process.env.MOMO_SECRET_KEY !== "MOMO_TEST_SECRET_KEY"
-        ? process.env.MOMO_SECRET_KEY
-        : "K951B6PE1waDMi640xX0qPDp5JmZEoq9",
-    endpoint: process.env.MOMO_ENDPOINT || "https://test-payment.momo.vn/v2/gateway/api/create",
-    redirectUrl: process.env.MOMO_REDIRECT_URL || "http://localhost:5173/payment/momo/callback",
-    ipnUrl: process.env.MOMO_IPN_URL || "http://localhost:5001/api/v1/payments/momo/webhook",
-  },
-
   vietqr: {
     // Ngân hàng nhận tiền: MB, VCB, TCB, ACB, ICB (VietinBank), BIDV, TPB, VPB...
     bankId: (process.env.VIETQR_BANK_ID || "MB").trim(),

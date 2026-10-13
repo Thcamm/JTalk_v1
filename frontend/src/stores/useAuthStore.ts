@@ -56,7 +56,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             remaining:
               currentUser.subscription?.tier === "premium"
                 ? "unlimited"
-                : Math.max(0, 2 - nextCount),
+                : Math.max(
+                    0,
+                    (typeof currentUser.quota?.limit === "number"
+                      ? currentUser.quota.limit
+                      : 5) - nextCount
+                  ),
           },
         },
       });
