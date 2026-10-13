@@ -809,7 +809,6 @@ export const CheckoutPage = () => {
 
                 <div className="text-left sm:text-right">
                   <div className="text-3xl font-black text-rose-600 dark:text-rose-400">99.000đ</div>
-                  <div className="text-xs text-slate-400 line-through">199.000đ (Tiết kiệm 50%)</div>
                 </div>
               </div>
 
