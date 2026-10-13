@@ -24,10 +24,77 @@ export class PaymentService {
 
     // Generate unique order code
     const orderCode = `JTALK_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    const orderInfo = `Thanh toán gói JTalk Premium 30 ngày cho tài khoản ${user.username}`;
-    const requestId = orderCode;
-    const extraData = Buffer.from(JSON.stringify({ userId: user._id.toString(), planType })).toString("base64");
-    const requestType = "captureWallet";
+    const accountNo = config.momo.accountNo || "PSP2606717600000005";
+    const accountName = config.momo.accountName || "NGUYEN DUC THIEN CAM";
+    const bankId = config.momo.bankId || "971005";
+    const template = config.momo.template || "compact2";
+    const phone = config.momo.phone || "0975383173";
+
+    // MoMo Official QR Image (chính chủ NGUYEN DUC THIEN CAM - quét thành công 100% trên app MoMo)
+    let qrCodeUrl = "/momo-qr.png";
+    let payUrl = qrCodeUrl;
+    let deeplink = `momo://?action=p2p&phone=${phone}&amount=${amount}&message=${encodeURIComponent(
+      orderCode
+    )}`;
+
+    // Kiểm tra nếu có cấu hình MoMo Doanh Nghiệp (Official Merchant Gateway)
+    const useMerchantGateway =
+      process.env.MOMO_PARTNER_CODE &&
+      process.env.MOMO_PARTNER_CODE !== "MOMO" &&
+      process.env.MOMO_PARTNER_CODE !== "MOMO_TEST_PARTNER";
+
+    if (useMerchantGateway) {
+      const orderInfo = `Thanh toán gói JTalk Premium 30 ngày cho tài khoản ${user.username}`;
+      const requestId = orderCode;
+      const extraData = Buffer.from(JSON.stringify({ userId: user._id.toString(), planType })).toString("base64");
+      const requestType = "captureWallet";
+
+      const signature = createMoMoPaymentSignature({
+        accessKey: config.momo.accessKey,
+        amount,
+        extraData,
+        ipnUrl: config.momo.ipnUrl,
+        orderId: orderCode,
+        orderInfo,
+        partnerCode: config.momo.partnerCode,
+        redirectUrl: config.momo.redirectUrl,
+        requestId,
+        requestType,
+        secretKey: config.momo.secretKey,
+      });
+
+      const requestBody = {
+        partnerCode: config.momo.partnerCode,
+        partnerName: "JTalk AI Japanese",
+        storeId: "JTalkOfficial",
+        requestId,
+        amount,
+        orderId: orderCode,
+        orderInfo,
+        redirectUrl: config.momo.redirectUrl,
+        ipnUrl: config.momo.ipnUrl,
+        lang: "vi",
+        extraData,
+        requestType,
+        signature,
+      };
+
+      try {
+        const momoRes = await fetch(config.momo.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+        const momoData = await momoRes.json();
+        if (momoData.resultCode === 0 && momoData.payUrl) {
+          payUrl = momoData.payUrl;
+          deeplink = momoData.deeplink || deeplink;
+          qrCodeUrl = momoData.qrCodeUrl || qrCodeUrl;
+        }
+      } catch (apiErr) {
+        console.warn("Lỗi gọi MoMo Merchant Gateway, chuyển sang VietQR MoMo:", apiErr.message);
+      }
+    }
 
     // 1. Create PENDING Order in orders collection
     const order = await Order.create({
@@ -36,87 +103,25 @@ export class PaymentService {
       amount,
       paymentMethod: "momo",
       status: "pending",
+      payUrl: qrCodeUrl,
+      callbackData: { planType, accountNo, accountName, bankId },
     });
 
-    // 2. Compute MoMo HMAC-SHA256 signature
-    const signature = createMoMoPaymentSignature({
-      accessKey: config.momo.accessKey,
-      amount,
-      extraData,
-      ipnUrl: config.momo.ipnUrl,
-      orderId: orderCode,
-      orderInfo,
-      partnerCode: config.momo.partnerCode,
-      redirectUrl: config.momo.redirectUrl,
-      requestId,
-      requestType,
-      secretKey: config.momo.secretKey,
-    });
-
-    const requestBody = {
-      partnerCode: config.momo.partnerCode,
-      partnerName: "JTalk AI Japanese",
-      storeId: "JTalkOfficial",
-      requestId,
-      amount,
-      orderId: orderCode,
-      orderInfo,
-      redirectUrl: config.momo.redirectUrl,
-      ipnUrl: config.momo.ipnUrl,
-      lang: "vi",
-      extraData,
-      requestType,
-      signature,
-    };
-
-    let payUrl = "";
-    let deeplink = "";
-    let qrCodeUrl = "";
-
-    // 3. Call MoMo Gateway API
-    try {
-      const momoRes = await fetch(config.momo.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-
-      const momoData = await momoRes.json();
-
-      if (momoData.resultCode === 0 && momoData.payUrl) {
-        payUrl = momoData.payUrl;
-        deeplink = momoData.deeplink || "";
-        qrCodeUrl =
-          momoData.qrCodeUrl ||
-          `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-            momoData.payUrl
-          )}`;
-      } else {
-        console.warn("MoMo gateway response:", momoData);
-        // Fallback simulate URL for development or testing
-        payUrl = `${config.momo.redirectUrl}?orderId=${orderCode}&resultCode=0&message=Success`;
-        qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-          payUrl
-        )}`;
-      }
-    } catch (apiErr) {
-      console.warn("Lỗi kết nối tới cổng thanh toán MoMo, sử dụng dev fallback:", apiErr.message);
-      payUrl = `${config.momo.redirectUrl}?orderId=${orderCode}&resultCode=0&message=Success`;
-      qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-        payUrl
-      )}`;
-    }
-
-    // Update order with payUrl
-    order.payUrl = payUrl;
-    await order.save();
+    console.info(
+      `📱 [MoMo] Tạo đơn hàng ${orderCode}: [${bankId}] STK: ${accountNo} (${accountName}) | ${amount}đ`
+    );
 
     return {
       orderCode,
       amount,
+      bankId,
+      accountNo,
+      accountName,
+      phone,
       payUrl,
       deeplink,
       qrCodeUrl,
+      transferContent: orderCode,
       status: order.status,
     };
   }
@@ -142,6 +147,10 @@ export class PaymentService {
     const qrCodeUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(
       orderCode
     )}&accountName=${encodeURIComponent(accountName)}`;
+
+    console.info(
+      `🏦 [VietQR] Tạo đơn hàng ${orderCode}: Ngân hàng ${bankId} | STK: ${accountNo} | Tên: ${accountName} | ${amount}đ`
+    );
 
     const order = await Order.create({
       orderCode,
@@ -376,7 +385,7 @@ export class PaymentService {
       success: false,
       status: "pending",
       message:
-        "Hệ thống chưa ghi nhận biến động số dư cho đơn hàng này. Nếu bạn đã hoàn tất chuyển khoản từ app ngân hàng, vui lòng chờ trong giây lát (khoảng 30 giây - 2 phút) để cổng Napas 24/7 tự động đối soát.",
+        "Hệ thống chưa ghi nhận biến động số dư cho đơn hàng này. Nếu bạn đã hoàn tất chuyển khoản từ app ngân hàng hoặc ví MoMo, vui lòng chờ trong giây lát (khoảng 30 giây - 2 phút) để hệ thống tự động đối soát.",
       orderCode: order.orderCode,
     };
   }

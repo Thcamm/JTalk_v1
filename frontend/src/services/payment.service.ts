@@ -3,15 +3,23 @@ import api from "@/services/api";
 export interface CreateMoMoPaymentResponse {
   success: boolean;
   message?: string;
+  orderCode?: string;
   order?: {
     _id: string;
     orderCode: string;
     amount: number;
     status: string;
   };
+  amount?: number;
+  bankId?: string;
+  accountNo?: string;
+  phone?: string;
+  accountName?: string;
   payUrl?: string;
   qrCodeUrl?: string;
   deeplink?: string;
+  transferContent?: string;
+  status?: string;
 }
 
 export interface CreateVietQRPaymentResponse {
@@ -103,6 +111,23 @@ export const paymentService = {
     return {
       ...payload,
       success: res.data?.success !== false,
+      message: res.data?.message || payload?.message,
+    };
+  },
+
+  /**
+   * Confirm MoMo payment status or verify transfer
+   */
+  confirmMoMoPayment: async (orderCode: string): Promise<ConfirmVietQRPaymentResponse> => {
+    const res = await api.post("/payments/momo/confirm", { orderCode });
+    const payload = res.data?.data || res.data;
+    const resolvedStatus = (payload?.status || res.data?.status || "pending").toLowerCase();
+    const isCompleted = resolvedStatus === "completed" || resolvedStatus === "success";
+
+    return {
+      ...payload,
+      success: Boolean(res.data?.success && isCompleted),
+      status: resolvedStatus,
       message: res.data?.message || payload?.message,
     };
   },
