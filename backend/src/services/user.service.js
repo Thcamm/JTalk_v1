@@ -616,10 +616,25 @@ export class UserService {
       throw error;
     }
 
+    const GOAL_MAP = {
+      daily: "daily_conversation",
+      daily_conversation: "daily_conversation",
+      work: "interview",
+      interview: "interview",
+      business: "business",
+      travel: "travel",
+      hobby: "daily_conversation",
+      exam: "interview",
+    };
+
     user.profile = user.profile || {};
     if (quizData.targetLevel) user.profile.targetLevel = quizData.targetLevel;
-    if (quizData.goal) user.profile.goal = quizData.goal;
-    if (quizData.dailyTargetMinutes) user.profile.dailyTargetMinutes = Number(quizData.dailyTargetMinutes);
+    if (quizData.goal) {
+      user.profile.goal = GOAL_MAP[quizData.goal] || quizData.goal || "daily_conversation";
+    }
+    if (quizData.dailyTargetMinutes) {
+      user.profile.dailyTargetMinutes = Math.max(5, Number(quizData.dailyTargetMinutes) || 15);
+    }
     if (quizData.occupation) user.profile.occupation = quizData.occupation;
 
     user.gamification = user.gamification || {};
