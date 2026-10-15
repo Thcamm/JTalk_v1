@@ -284,11 +284,11 @@ export class EdgeTtsService {
         }
       };
 
-      // Responsive 1200ms timeout for instant fallback if Edge connection stalls
+      // Responsive 2500ms timeout for instant fallback if Edge connection stalls
       timer = setTimeout(() => {
         cleanup(null);
-        reject(new Error(`Timeout khi kết nối Edge TTS ${host} (1.2s).`));
-      }, 1200);
+        reject(new Error(`Timeout khi kết nối Edge TTS ${host} (2.5s).`));
+      }, 2500);
 
       req.on("error", (err) => {
         cleanup(null);

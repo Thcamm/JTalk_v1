@@ -179,6 +179,7 @@ export const practiceService = {
     level?: string;
     conversationHistory: RoleplayMessage[];
     userMessage: string;
+    userName?: string;
   }): Promise<RoleplayChatResponse> => {
     const res = await api.post("/practices/roleplay-chat", payload);
     return res.data?.data || res.data;
@@ -193,6 +194,7 @@ export const practiceService = {
     level?: string;
     aiMessage?: string;
     conversationHistory?: RoleplayMessage[];
+    userName?: string;
   }): Promise<{
     suggestedAnswers: Array<{
       japanese: string;

@@ -126,8 +126,15 @@ export class UserService {
    * Updates user profile fields
    */
   static async updateProfile(userId, updateData) {
+    if (updateData.username !== undefined) {
+      // Tên đăng nhập là trường định danh duy nhất, không cho phép thay đổi
+      console.warn(`[USER] Từ chối yêu cầu đổi username cho userId: ${userId}`);
+    }
+
     const allowedFields = [
       "displayName",
+      "firstName",
+      "lastName",
       "avatarUrl",
       "bio",
       "phone",
@@ -137,7 +144,18 @@ export class UserService {
     const updates = {};
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
-        updates[field] = updateData[field];
+        updates[field] = typeof updateData[field] === "string" ? updateData[field].trim() : updateData[field];
+      }
+    }
+
+    // Tự động đồng bộ displayName nếu cập nhật firstName / lastName
+    if (updates.firstName !== undefined || updates.lastName !== undefined) {
+      const currentUser = await User.findById(userId).select("firstName lastName displayName").lean();
+      const finalFirstName = updates.firstName !== undefined ? updates.firstName : (currentUser?.firstName || "");
+      const finalLastName = updates.lastName !== undefined ? updates.lastName : (currentUser?.lastName || "");
+      const combined = `${finalLastName} ${finalFirstName}`.trim();
+      if (!updates.displayName && combined) {
+        updates.displayName = combined;
       }
     }
 

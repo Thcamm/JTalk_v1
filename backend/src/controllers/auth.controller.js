@@ -1,4 +1,6 @@
 import AuthService from "../services/auth.service.js";
+import mailService from "../services/mail.service.js";
+import { setupStreakDemoAccount } from "../scripts/seedStreakDemo.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
 import config from "../config/index.js";
 
@@ -165,8 +167,50 @@ export const resetPassword = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/v1/auth/test-mail
+ * Kiểm tra kết nối gửi email và xem trước giao diện OTP
+ */
+export const testMail = async (req, res, next) => {
+  try {
+    const { toEmail } = req.body;
+    const targetEmail = toEmail || config.mail?.user;
+    if (!targetEmail) {
+      return errorResponse(res, "Vui lòng cung cấp toEmail để kiểm tra gửi mail.", 400);
+    }
+    const result = await mailService.sendResetPasswordOtp({
+      toEmail: targetEmail,
+      displayName: "Người dùng Thử nghiệm",
+      otpCode: "888999",
+    });
+    return successResponse(res, result, "Gửi email kiểm tra hoàn tất!", 200);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Aliases for backward compatibility with frontend
 export const signUp = register;
 export const signIn = login;
 export const signOut = logout;
 export const refreshToken = refresh;
+
+/**
+ * POST /api/v1/auth/setup-demo-streak
+ * Cấu hình tài khoản có chuỗi 6 ngày, chưa điểm danh ngày thứ 7 để demo hội đồng
+ */
+export const setupDemoStreak = async (req, res, next) => {
+  try {
+    const { username } = req.body || {};
+    const result = await setupStreakDemoAccount(username);
+    return successResponse(
+      res,
+      result,
+      "Cấu hình tài khoản Demo chuỗi 6 ngày (sẵn sàng cho ngày 7) thành công!",
+      200
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -6,6 +6,8 @@ import {
   logout,
   forgotPassword,
   resetPassword,
+  testMail,
+  setupDemoStreak,
   signUp,
   signIn,
   signOut,
@@ -21,6 +23,8 @@ router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.post("/test-mail", testMail);
+router.post("/setup-demo-streak", setupDemoStreak);
 
 // Backward-compatible aliases for existing client
 router.post("/signup", signUp);

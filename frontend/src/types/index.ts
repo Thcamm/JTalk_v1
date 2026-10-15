@@ -56,6 +56,8 @@ export interface User {
   username: string;
   email: string;
   displayName: string;
+  firstName?: string;
+  lastName?: string;
   avatarUrl?: string;
   bio?: string;
   phone?: string;
@@ -339,6 +341,7 @@ export interface RoleplayMessage {
   romaji?: string;
   translation?: string;
   timestamp?: string;
+  isFinished?: boolean;
   evaluation?: {
     naturalnessScore?: number;
     grammarAdvice?: string;
@@ -355,6 +358,7 @@ export interface RoleplayChatResponse {
     romaji?: string;
     translation?: string;
   };
+  isFinished?: boolean;
   userEvaluation?: {
     naturalnessScore?: number;
     grammarAdvice?: string;

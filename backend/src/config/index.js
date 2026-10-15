@@ -35,7 +35,7 @@ export const config = {
       return [...new Set(list)].filter((k) => k && !k.startsWith("your_"));
     })(),
     geminiApiKey: (process.env.GEMINI_API_KEY || "").trim(),
-    geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash",
     openaiApiKey: process.env.OPENAI_API_KEY || "",
     openaiModel: process.env.OPENAI_MODEL || "gpt-4o",
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
@@ -77,6 +77,15 @@ export const config = {
     accountName: (process.env.VIETQR_ACCOUNT_NAME || "JTALK").trim(),
     template: (process.env.VIETQR_TEMPLATE || "compact2").trim(),
     webhookApiKey: (process.env.VIETQR_WEBHOOK_API_KEY || "").trim(),
+  },
+
+  mail: {
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.SMTP_PORT || "465", 10),
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : true,
+    user: (process.env.SMTP_USER || "").trim(),
+    pass: (process.env.SMTP_PASS || "").trim(),
+    from: process.env.EMAIL_FROM || '"JTalk Support" <support@jtalk.com>',
   },
 };
 

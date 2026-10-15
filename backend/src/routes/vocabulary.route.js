@@ -1,6 +1,8 @@
 import express from "express";
 import {
   getVocabularies,
+  getSystemVocabularies,
+  saveSystemVocabToNotebook,
   createVocabulary,
   toggleMastered,
   deleteVocabulary,
@@ -13,6 +15,11 @@ const router = express.Router();
 
 router.use(protectedRoute);
 
+// System Master Bank endpoints for learners
+router.get("/system", getSystemVocabularies);
+router.post("/save-from-system", saveSystemVocabToNotebook);
+
+// Personal Notebook endpoints
 router.get("/", getVocabularies);
 router.get("/due-count", getDueReviewCount);
 router.post("/", createVocabulary);

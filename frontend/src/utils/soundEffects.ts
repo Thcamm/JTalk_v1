@@ -189,6 +189,37 @@ class SoundEffectsManager {
       console.debug("SFX playTap error:", err);
     }
   }
+
+  /**
+   * 6. Streak Milestone & Fire Upgrade Fanfare
+   * Plays a triumphant, uplifting arpeggio with warm resonance and sparkling harmonics
+   */
+  public playStreakCelebration(): void {
+    if (!this.enabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      // Warm bass/mid presence
+      this.playTone(261.63, now + 0.0, 0.4, 0.15, "triangle");
+
+      // Majestic ascending fanfare: C5, E5, G5, B5, C6, E6
+      this.playTone(523.25, now + 0.0, 0.18, 0.22, "sine");
+      this.playTone(659.25, now + 0.09, 0.18, 0.24, "sine");
+      this.playTone(783.99, now + 0.18, 0.2, 0.26, "triangle");
+      this.playTone(987.77, now + 0.27, 0.22, 0.28, "sine");
+      this.playTone(1046.5, now + 0.36, 0.5, 0.32, "triangle");
+      this.playTone(1318.5, now + 0.45, 0.65, 0.35, "sine");
+
+      // Shimmering high harmonics (twinkling star/fire particles)
+      this.playTone(2093.0, now + 0.5, 0.45, 0.14, "sine");
+      this.playTone(2637.0, now + 0.58, 0.55, 0.12, "sine");
+      this.playTone(3135.96, now + 0.66, 0.6, 0.08, "sine");
+    } catch (err) {
+      console.debug("SFX playStreakCelebration error:", err);
+    }
+  }
 }
 
 export const soundEffects = new SoundEffectsManager();

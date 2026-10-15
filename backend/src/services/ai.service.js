@@ -1,4 +1,5 @@
 import config from "../config/index.js";
+import { getLearnerJapaneseIdentity } from "../utils/vietnameseToKatakana.js";
 
 /**
  * Gemini Key Pool Manager
@@ -469,13 +470,12 @@ export class AiService {
       throw new Error("Không có GEMINI_API_KEY nào khả dụng trong cấu hình.");
     }
 
-    // Danh sách model ưu tiên xử lý tiếng Nhật nhanh và tối ưu tốc độ (< 1s)
+    // Danh sách model Google Gemini chính thức ưu tiên xử lý tiếng Nhật nhanh và tối ưu tốc độ (< 1s)
+    const rawModel = config.ai.geminiModel || "gemini-2.0-flash";
     const candidateModels = [
-      config.ai.geminiModel,
-      "gemini-2.5-flash",
+      rawModel.includes("3.") || rawModel.includes("2.5") ? "gemini-2.0-flash" : rawModel,
       "gemini-2.0-flash",
       "gemini-1.5-flash",
-      "gemini-3.1-flash-lite",
     ].filter(Boolean);
 
     const models = [...new Set(candidateModels)];
@@ -503,7 +503,7 @@ export class AiService {
           };
 
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6500); // 6.5s responsive timeout
+          const timeoutId = setTimeout(() => controller.abort(), 8500); // 8.5s responsive timeout cho mạng quốc tế
 
           const response = await fetch(url, {
             method: "POST",
@@ -547,7 +547,11 @@ export class AiService {
           }
         } catch (err) {
           lastError = err;
-          console.warn(`[GeminiKeyPool] Model ${model} với key [${maskedKey}] chưa thành công:`, err.message);
+          const errMsg =
+            err.name === "AbortError" || err.message?.includes("aborted")
+              ? "Quá thời gian phản hồi (Timeout > 8.5s)"
+              : err.message;
+          console.warn(`[GeminiKeyPool] Model ${model} với key [${maskedKey}] chưa thành công:`, errMsg);
         }
       }
     }
@@ -788,11 +792,12 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
     level = "N5",
     conversationHistory = [],
     userMessage = "",
+    userName = "Học viên",
   }) {
     // 1. Try Google Gemini Key Pool (Multi-key round-robin & auto-failover)
     if (this.hasGeminiKeys()) {
       try {
-        return await this.roleplayWithGemini({ scenarioTitle, level, conversationHistory, userMessage });
+        return await this.roleplayWithGemini({ scenarioTitle, level, conversationHistory, userMessage, userName });
       } catch (err) {
         console.warn("Lỗi gọi Gemini Key Pool cho Roleplay, thử Claude/OpenAI/Fallback:", err.message);
       }
@@ -801,7 +806,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
     // 2. Try Claude (Anthropic)
     if (config.ai.anthropicApiKey) {
       try {
-        return await this.roleplayWithClaude({ scenarioTitle, level, conversationHistory, userMessage });
+        return await this.roleplayWithClaude({ scenarioTitle, level, conversationHistory, userMessage, userName });
       } catch (err) {
         console.warn("Lỗi gọi Claude API cho Roleplay, thử OpenAI/Fallback:", err.message);
       }
@@ -810,30 +815,30 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
     // 3. Try OpenAI
     if (config.ai.openaiApiKey) {
       try {
-        return await this.roleplayWithOpenAI({ scenarioTitle, level, conversationHistory, userMessage });
+        return await this.roleplayWithOpenAI({ scenarioTitle, level, conversationHistory, userMessage, userName });
       } catch (err) {
         console.warn("Lỗi gọi OpenAI API cho Roleplay, dùng Heuristic Fallback:", err.message);
       }
     }
 
     // 4. Fallback Heuristic Conversational Engine
-    return this.roleplayHeuristically({ scenarioTitle, level, conversationHistory, userMessage });
+    return this.roleplayHeuristically({ scenarioTitle, level, conversationHistory, userMessage, userName });
   }
 
   /**
    * Roleplay turn with Google Gemini API
    */
-  static async roleplayWithGemini({ scenarioTitle, level, conversationHistory, userMessage }) {
-    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage });
+  static async roleplayWithGemini({ scenarioTitle, level, conversationHistory, userMessage, userName }) {
+    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage, userName });
     const rawContent = await this.callGemini({ prompt, temperature: 0.7, isJson: true });
-    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage);
+    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage, userName);
   }
 
   /**
    * Roleplay turn with Claude API
    */
-  static async roleplayWithClaude({ scenarioTitle, level, conversationHistory, userMessage }) {
-    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage });
+  static async roleplayWithClaude({ scenarioTitle, level, conversationHistory, userMessage, userName }) {
+    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage, userName });
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -856,14 +861,14 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
 
     const data = await response.json();
     const rawContent = data.content?.[0]?.text || "";
-    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage);
+    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage, userName);
   }
 
   /**
    * Roleplay turn with OpenAI API
    */
-  static async roleplayWithOpenAI({ scenarioTitle, level, conversationHistory, userMessage }) {
-    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage });
+  static async roleplayWithOpenAI({ scenarioTitle, level, conversationHistory, userMessage, userName }) {
+    const prompt = this.buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage, userName });
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -893,28 +898,316 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không chứa markdown wrapper ngoài
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content || "";
-    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage);
+    return this.parseRoleplayJson(rawContent, scenarioTitle, level, conversationHistory, userMessage, userName);
+  }
+
+  /**
+   * Định hướng bối cảnh chuyên biệt (Scenario Domain Guidance)
+   * Giúp AI luôn đi sâu 100% vào trọng điểm của tình huống đàm thoại, không lan man lạc đề.
+   */
+  static getScenarioDomainGuidance(scenarioTitle = "") {
+    const title = (scenarioTitle || "").toLowerCase();
+
+    // 1. LỚP HỌC / TRƯỜNG HỌC / BẠN CÙNG LỚP (クラス / 学校 / 友達 / 自己紹介)
+    if (
+      title.includes("lớp học") ||
+      title.includes("trường học") ||
+      title.includes("bạn cùng lớp") ||
+      title.includes("tiết học") ||
+      title.includes("lớp mới") ||
+      title.includes("làm quen") ||
+      title.includes("chào hỏi") ||
+      title.includes("học tiếng nhật") ||
+      title.includes("クラス") ||
+      title.includes("学校") ||
+      title.includes("友達") ||
+      title.includes("自己紹介")
+    ) {
+      return {
+        domain: "LỚP HỌC & HỌC TẬP TIẾNG NHẬT (CLASSROOM & STUDYING)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là bạn cùng lớp người Nhật thân thiện trong lớp học tiếng Nhật mới.
+- BẮT BUỘC ĐI SÂU 100% VÀO TRỌNG ĐIỂM LỚP HỌC & HỌC TẬP (TUYỆT ĐỐI KHÔNG HỎI SANG MÓN ĂN QUÊ HƯƠNG / ẨM THỰC VIỆT NAM / DU LỊCH):
+  * Lượt 1: Chào đón nồng nhiệt đến lớp học, lắng nghe bạn mới giới thiệu tên và quê quán.
+  * Lượt 2: Hỏi về quá trình học tiếng Nhật & ấn tượng về lớp học: "日本語の勉強はいつから始めましたか？この新しいクラスの雰囲気はどうですか？" (Bắt đầu học từ khi nào? Cảm nhận về không khí lớp mới ra sao?)
+  * Lượt 3: Hỏi sâu về các kỹ năng tiếng Nhật trong lớp: "漢字やリスニング、会話の中で、どれが一番難しいと感じますか？" (Trong chữ Hán, nghe hiểu hay hội thoại, bạn thấy phần nào thử thách/khó nhất?)
+  * Lượt 4: Trao đổi về phương pháp học tập hiệu quả: "普段はどうやって日本語を勉強していますか？何かおすすめの勉強法はありますか？" (Bình thường bạn ôn bài như thế nào? Có bí quyết/phương pháp học nào hay không?)
+  * Lượt 5: Rủ rê học nhóm sau giờ học & mục tiêu học tập: "もしよかったら、放課後一緒に図書館で今日の復習をしませんか？" (Nếu được, sau giờ học hôm nay chúng mình cùng lên thư viện ôn lại bài nhé?)
+  * Lượt 6: Đúc kết bạn cùng lớp chân thành, cùng nhau nỗ lực thi đỗ JLPT và hẹn gặp ở buổi học sau.
+- ĐIỀU CẤM KỴ: TUYỆT ĐỐI KHÔNG hỏi lan man sang đồ ăn quê hương, ẩm thực Việt Nam hay những chuyện đời sống không liên quan đến bối cảnh lớp học!`
+      };
+    }
+
+    // 2. QUÁN CÀ PHÊ / ĐỒ UỐNG (カフェ / 喫茶店 / 注文)
+    if (
+      title.includes("cà phê") ||
+      title.includes("cafe") ||
+      title.includes("đồ uống") ||
+      title.includes("gọi món") ||
+      title.includes("quán nước") ||
+      title.includes("カフェ") ||
+      title.includes("喫茶店")
+    ) {
+      return {
+        domain: "QUÁN CÀ PHÊ & ORDER ĐỒ UỐNG (CAFE & DRINKS ORDERING)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là nhân viên phục vụ tại quán cà phê Nhật Bản.
+- BẮT BUỘC ĐI SÂU 100% VÀO QUY TRÌNH ORDER & PHỤC VỤ CÀ PHÊ CHUẨN:
+  * Lượt 1: Chào khách, hỏi khách đã chọn được đồ uống chưa hoặc muốn gọi món gì (ご注文はお決まりですか？).
+  * Lượt 2: Hỏi kích cỡ (S, M, L), uống nóng hay đá (ホット/アイス), độ ngọt hoặc đổi sữa đậu nành.
+  * Lượt 3: Giới thiệu món bánh ngọt ăn kèm hôm nay (bánh phô mai nướng, bánh sừng bò).
+  * Lượt 4: Xác nhận dùng tại quán (店内) hay mang về (お持ち帰り).
+  * Lượt 5: Báo tổng số tiền, hỏi hình thức thanh toán (tiền mặt, thẻ tín dụng, PayPay, Suica).
+  * Lượt 6: Giao thẻ rung/hóa đơn, hẹn mang đồ uống ra và chúc quý khách ngon miệng.
+- ĐIỀU CẤM KỴ: Không hỏi đời tư, quê quán hay thông tin cá nhân của khách hàng!`
+      };
+    }
+
+    // 3. CỬA HÀNG TIỆN LỢI / SIÊU THỊ (コンビニ / スーパー)
+    if (
+      title.includes("tiện lợi") ||
+      title.includes("siêu thị") ||
+      title.includes("combini") ||
+      title.includes("mua sắm") ||
+      title.includes("thanh toán") ||
+      title.includes("コンビニ") ||
+      title.includes("スーパー")
+    ) {
+      return {
+        domain: "CỬA HÀNG TIỆN LỢI & SIÊU THỊ (CONVENIENCE STORE)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là thu ngân tại cửa hàng tiện lợi Nhật Bản.
+- BẮT BUỘC ĐI SÂU 100% VÀO QUY TRÌNH MUA HÀNG TẠI QUẦY:
+  * Lượt 1: Chào khách, quét mã sản phẩm hoặc chỉ vị trí đồ khách cần tìm.
+  * Lượt 2: Hỏi có cần hâm nóng cơm hộp không (お弁当温めますか？).
+  * Lượt 3: Hỏi có lấy đũa, muỗng hay ống hút không (お箸やスプーンはおつけしますか？).
+  * Lượt 4: Hỏi về túi ni-lông (レジ袋はご利用ですか？).
+  * Lượt 5: Hỏi thẻ tích điểm (ポイントカードはお持ちですか？) và tiến hành thanh toán.
+  * Lượt 6: Đưa hóa đơn, cảm ơn và hẹn gặp lại (ありがとうございました！またお越しくださいませ)。`
+      };
+    }
+
+    // 4. GA TÀU / HỎI ĐƯỜNG / ĐI TÀU ĐIỆN (駅 / 道案内 / 電車)
+    if (
+      title.includes("ga tàu") ||
+      title.includes("hỏi đường") ||
+      title.includes("đi tàu") ||
+      title.includes("tàu điện") ||
+      title.includes("chỉ đường") ||
+      title.includes("駅") ||
+      title.includes("道") ||
+      title.includes("電車")
+    ) {
+      return {
+        domain: "GA TÀU & HỎI ĐƯỜNG (TRAIN STATION & DIRECTIONS)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là nhân viên nhà ga (駅員) hoặc người dân địa phương nhiệt tình hỗ trợ hỏi đường.
+- BẮT BUỘC ĐI SÂU 100% VÀO HƯỚNG DẪN DI CHUYỂN & TUYẾN ĐƯỜNG:
+  * Lượt 1: Xác nhận chính xác điểm đến hành khách muốn đi tới.
+  * Lượt 2: Chỉ dẫn tuyến tàu phù hợp, số hiệu đường ray (〇番線) và hướng đi.
+  * Lượt 3: Hướng dẫn ga chuyển tuyến (乗り換え) hoặc ga dừng, thời gian di chuyển.
+  * Lượt 4: Kiểm tra hành khách đã có thẻ IC (Suica/Pasmo) hay cần mua vé lẻ ở máy tự động.
+  * Lượt 5: Chỉ cổng soát vé (改札口) và cửa ra (〇〇出口).
+  * Lượt 6: Chúc hành khách lên đường bình an, thuận lợi (お気をつけて！).`
+      };
+    }
+
+    // 5. PHỎNG VẤN XIN VIỆC / PART-TIME / ARUBAITO (面接 / アルバイト / 仕事)
+    if (
+      title.includes("phỏng vấn") ||
+      title.includes("xin việc") ||
+      title.includes("arubaito") ||
+      title.includes("part-time") ||
+      title.includes("làm thêm") ||
+      title.includes("面接") ||
+      title.includes("採用")
+    ) {
+      return {
+        domain: "PHỎNG VẤN XIN VIỆC / PART-TIME (JOB INTERVIEW)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là người phỏng vấn / quản lý cửa hàng (店長/面接官) đang phỏng vấn ứng viên.
+- BẮT BUỘC ĐI SÂU 100% VÀO QUY TRÌNH PHỎNG VẤN CHUYÊN NGHIỆP:
+  * Lượt 1: Mời ứng viên ngồi, lắng nghe phần giới thiệu bản thân ngắn gọn.
+  * Lượt 2: Hỏi lý do ứng tuyển (志望動機: "どうしてうちのお店で働きたいと思いましたか？").
+  * Lượt 3: Hỏi kinh nghiệm làm việc hoặc kỹ năng liên quan trước đây.
+  * Lượt 4: Hỏi về ca làm việc (シフト): "Một tuần bạn có thể làm được mấy buổi? Làm được cuối tuần không?"
+  * Lượt 5: Hỏi điểm mạnh nổi bật của ứng viên (長所・自己PR).
+  * Lượt 6: Thông báo thời gian liên hệ báo kết quả (trong vòng 3-5 ngày) và cảm ơn ứng viên đã tới phỏng vấn.`
+      };
+    }
+
+    // 6. BỆNH VIỆN / KHÁM BỆNH / NHÀ THUỐC (病院 / 薬局 / 体調)
+    if (
+      title.includes("bệnh viện") ||
+      title.includes("khám bệnh") ||
+      title.includes("bác sĩ") ||
+      title.includes("nhà thuốc") ||
+      title.includes("sức khỏe") ||
+      title.includes("病院") ||
+      title.includes("クリニック") ||
+      title.includes("体調")
+    ) {
+      return {
+        domain: "KHÁM BỆNH & CHĂM SÓC SỨC KHỎE (HOSPITAL & CLINIC)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là bác sĩ (hoặc dược sĩ) người Nhật đang thăm khám cho bệnh nhân.
+- BẮT BUỘC ĐI SÂU 100% VÀO CHẨN ĐOÁN TRIỆU CHỨNG & HƯỚNG DẪN ĐIỀU TRỊ:
+  * Lượt 1: Hỏi thăm triệu chứng: "どうされましたか？どこが痛い/苦しいですか？"
+  * Lượt 2: Hỏi triệu chứng bắt đầu từ bao giờ (いつ頃からですか？).
+  * Lượt 3: Hỏi có sốt, ho, đau đầu hay buồn nôn không (熱は測りましたか？).
+  * Lượt 4: Hỏi tiền sử dị ứng thuốc (薬のアレルギーはありますか？).
+  * Lượt 5: Giải thích đơn thuốc, hướng dẫn uống thuốc sau ăn (食後) và nghỉ ngơi đầy đủ.
+  * Lượt 6: Dặn dò tái khám nếu sau vài ngày không đỡ, chúc bệnh nhân sớm khỏe lại (お大事にどうぞ).`
+      };
+    }
+
+    // 7. CUỘC SỐNG VÀ THÓI QUEN HÀNG NGÀY (毎日の生活 / 習慣 / 一日の過ごし方)
+    if (
+      title.includes("cuộc sống") ||
+      title.includes("thói quen") ||
+      title.includes("hàng ngày") ||
+      title.includes("thường nhật") ||
+      title.includes("生活") ||
+      title.includes("習慣") ||
+      title.includes("毎日の生活")
+    ) {
+      return {
+        domain: "CUỘC SỐNG & THÓI QUEN HÀNG NGÀY (DAILY LIFE & HABITS)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là người bạn trò chuyện thân tình, quan tâm tìm hiểu về nhịp sống và thói quen sinh hoạt của nhau.
+- BẮT BUỘC ĐI SÂU 100% VÀO THỜI GIAN BIỂU & NHỊP SỐNG HÀNG NGÀY (LINH HOẠT THEO CÂU TRẢ LỜI CỦA NGƯỜI HỌC):
+  * Lượt 1: Hỏi về thói quen buổi sáng: thức dậy lúc mấy giờ (何時に起きますか？) và việc đầu tiên làm sau khi thức dậy.
+  * Lượt 2: Hỏi về bữa sáng và cách di chuyển: thường ăn sáng món gì, đi học/đi làm bằng phương tiện gì (電車/バス/自転車/徒歩).
+  * Lượt 3: Hỏi về nhịp làm việc / học tập trong ngày: thường bắt đầu và kết thúc lúc mấy giờ, bữa trưa ăn ở đâu (căng tin/tự mang bento).
+  * Lượt 4: Hỏi về hoạt động sau khi tan sở / tan học: có tự nấu ăn (自炊) hay đi siêu thị mua đồ, có tập thể dục hay dạo phố không.
+  * Lượt 5: Hỏi về cách thư giãn buổi tối trước khi đi ngủ: nghe nhạc, xem phim, đọc sách, và thường đi ngủ lúc mấy giờ (何時に寝ますか？).
+  * Lượt 6: Đúc kết cuộc trò chuyện ấm áp, chia sẻ sự đồng điệu về thói quen lành mạnh và chúc nhau có một ngày thật tốt lành!`
+      };
+    }
+
+    // 8. BÁO CÁO CÔNG VIỆC HORENSO / DOANH NGHIỆP (ビジネス会話 / 進捗報告 / ほうれんそう)
+    if (
+      title.includes("tiến độ") ||
+      title.includes("báo cáo") ||
+      title.includes("horenso") ||
+      title.includes("công việc") ||
+      title.includes("kinh doanh") ||
+      title.includes("進捗") ||
+      title.includes("報告") ||
+      title.includes("ビジネス")
+    ) {
+      return {
+        domain: "BÁO CÁO TIẾN ĐỘ CÔNG VIỆC & HORENSO (BUSINESS & PROGRESS REPORT)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là Trưởng phòng / Quản lý dự án (課長/リーダー) chuyên nghiệp, lắng nghe báo cáo tiến độ dự án từ cấp dưới.
+- BẮT BUỘC SỬ DỤNG VÀ THỰC HÀNH KÍNH NGỮ CÔNG SỞ (SONKEIGO / KENJOUGO / TEINEIGO):
+  * Lượt 1: Chào hỏi công sở (お疲れ様です), hỏi tình hình tiến độ dự án/nhiệm vụ được giao (進捗状況はどうなっていますか？).
+  * Lượt 2: Xác nhận tỷ lệ phần trăm hoàn thành (何％くらい完了していますか？) và các hạng mục đã hoàn tất thuận lợi.
+  * Lượt 3: Hỏi sâu về các vấn đề phát sinh, rủi ro kỹ thuật hoặc vướng mắc cần hỗ trợ (何か課題や問題点はありますか？).
+  * Lượt 4: Trao đổi về phương án giải quyết (対策), kiểm tra việc phối hợp/thống nhất với các bên liên quan (擦り合わせ/連絡).
+  * Lượt 5: Chốt thời hạn deadline hoặc lịch deploy/báo cáo tiếp theo (金曜日のデプロイ/次回のミーティング).
+  * Lượt 6: Đánh giá cao tinh thần trách nhiệm của cấp dưới, động viên và nhắc nhở giữ gìn sức khỏe (引き続きよろしくお願いします/無理しないでくださいね).`
+      };
+    }
+
+    // 9. QUÁN NHẬU IZAKAYA / RỦ NHAU ĐI ĂN (居酒屋 / 乾杯 / 食事の誘い / 飲み会)
+    if (
+      title.includes("izakaya") ||
+      title.includes("quán nhậu") ||
+      title.includes("đi ăn") ||
+      title.includes("nâng ly") ||
+      title.includes("kanpai") ||
+      title.includes("rủ bạn") ||
+      title.includes("居酒屋") ||
+      title.includes("乾杯") ||
+      title.includes("飲み")
+    ) {
+      return {
+        domain: "QUÁN NHẬU IZAKAYA & GIAO LƯU SAU GIỜ LÀM (IZAKAYA & SOCIAL DINING)",
+        rules: `
+- BỐI CẢNH VAI DIỄN: Bạn là đồng nghiệp/bạn bè thân thiết người Nhật rủ nhau đi xả hơi sau giờ làm việc.
+- BẮT BUỘC ĐI SÂU 100% VÀO VĂN HÓA GIAO LƯU & THƯỞNG THỨC ẨM THỰC TẠI QUÁN NHẬU IZAKAYA:
+  * Lượt 1: Sau giờ làm việc vất vả, rủ bạn đi làm một ly/ăn tối ở quán Izakaya gần ga (仕事終わりに軽く一杯どうですか？).
+  * Lượt 2: Bước vào quán, hỏi bạn uống gì trước (món đầu tiên thường là bia tươi "とりあえず生ビール" hoặc nước ngọt).
+  * Lượt 3: Nâng ly chúc mừng sau ngày làm việc vất vả: "お疲れ様でした！乾杯！(Kanpai!)".
+  * Lượt 4: Xem menu gọi món nhắm đặc trưng: gà xiên nướng (焼き鳥), đậu nành luộc (枝豆), sashimi, trứng cuộn (だし巻き玉子).
+  * Lượt 5: Trò chuyện vui vẻ về công việc/đời sống, hỏi cảm nhận về món ăn và không khí náo nhiệt của quán nhậu Nhật.
+  * Lượt 6: Thảo luận việc thanh toán (chia tiền kiểu Nhật Warikan "割り勘" hoặc một bên mời), hẹn lần sau lại cùng tụ tập.`
+      };
+    }
+
+    // MẶC ĐỊNH CHO CÁC CHỦ ĐỀ KHÁC
+    return {
+      domain: (scenarioTitle || "HỘI THOẠI").toUpperCase(),
+      rules: `
+- BỐI CẢNH VAI DIỄN: Đóng vai nhân vật tương tác trực tiếp trong bối cảnh "${scenarioTitle}".
+- BẮT BUỘC ĐI SÂU VÀO TRỌNG TÂM CỦA CHỦ ĐỀ: Mọi câu hỏi tiếp nối PHẢI bám sát vào ngữ cảnh cụ thể của "${scenarioTitle}". Tuyệt đối không được nhảy sang các câu hỏi chung chung không liên quan đến tình huống!`
+    };
   }
 
   /**
    * Prompt builder for Roleplay with strict conversation flow & off-topic clarification
    */
-  static buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage }) {
+  static buildRoleplayPrompt({ scenarioTitle, level, conversationHistory, userMessage, userName = "Học viên" }) {
     const formattedHistory = (conversationHistory || [])
-      .slice(-8)
+      .slice(-10)
       .map((msg) => `${msg.sender === "ai" ? "Character (AI)" : "Learner"}: "${msg.japanese}"`)
       .join("\n");
+
+    const userTurnsCount = (conversationHistory || []).filter(
+      (m) => m.sender === "user" || m.role === "user"
+    ).length + 1;
+
+    const domainGuidance = this.getScenarioDomainGuidance(scenarioTitle);
+    const identity = getLearnerJapaneseIdentity(userName);
 
     return `
 Hãy đóng vai nhân vật bản ngữ tiếng Nhật trong tình huống giao tiếp: "${scenarioTitle}".
 Trình độ người học: JLPT ${level}.
+Lượt đối đáp hiện tại của người học: Lượt thứ ${userTurnsCount} (Mục tiêu phiên đàm thoại Kaiwa: 6-8 lượt).
+
+==================================================
+THÔNG TIN HỌ TÊN VÀ DANH XƯNG NGƯỜI HỌC (LEARNER IDENTITY):
+- Họ và tên người học: "${userName}"
+- Tên gọi riêng (Given Name): "${identity.givenName}"
+- Tên phiên âm Katakana chuẩn tiếng Nhật: "${identity.katakanaName}" (Họ tên đầy đủ Katakana: "${identity.katakanaFullName}")
+- Romaji: "${identity.romajiName}"
+- Cách gọi xưng hô tự nhiên của người Nhật: "${identity.callingName}" (${identity.callingNameRomaji})
+==================================================
+
+==================================================
+CHỈ DẪN TRỌNG TÂM THEO BỐI CẢNH CHỦ ĐỀ (DOMAIN FOCUS GUIDE):
+Chủ đề chuyên biệt: ${domainGuidance.domain}
+${domainGuidance.rules}
+==================================================
 
 QUY TẮC CỐT LÕI (TUYỆT ĐỐI TUÂN THỦ):
-1. TIẾN TRÌNH HỘI THOẠI & KHÔNG LẶP LẠI CÂU HỎI CŨ:
-   - TUYỆT ĐỐI KHÔNG lặp lại câu hỏi mở đầu hoặc bất kỳ câu hỏi nào bạn đã hỏi trong lịch sử trò chuyện (xem phần Lịch sử trò chuyện bên dưới).
-   - Mỗi lượt hội thoại phải phát triển câu chuyện tiến lên phía trước theo diễn biến thực tế.
+1. CÁ NHÂN HÓA DANH XƯNG VÀ HỌ TÊN NGƯỜI HỌC THEO TÌNH HUỐNG (STRICT PERSONALIZED NAME USAGE):
+   - Xưng hô trong hội thoại: Bạn là người Nhật bản xứ lịch sự và thân thiện. Khi chào hỏi, đặt câu hỏi hoặc khích lệ, bạn NÊN gọi người học bằng danh xưng lịch thiệp: "${identity.callingName}" (Ví dụ: 「${identity.callingName}、こんにちは！」「${identity.callingName}はどう思いますか？」).
+   - Tình huống liên quan đến TÊN (như Tự giới thiệu bản thân 自己紹介, Làm quen trong lớp học mới, Phỏng vấn xin việc 面接, hoặc khi bạn hỏi tên người học):
+     * Trong các câu gợi ý trả lời ("suggestedAnswers"): BẮT BUỘC sử dụng chính xác tên của người học là "${identity.katakanaName}" (hoặc "${identity.katakanaFullName}"), TUYỆT ĐỐI KHÔNG dùng tên ngẫu nhiên hay tên người khác (như "Nam", "Tanaka")!
+     * Ví dụ gợi ý phản xạ khi hỏi/giới thiệu tên:
+       + 「初めまして！私の名前は${identity.katakanaName}です。よろしくお願いします！」
+       + 「${identity.katakanaName}と申します。ベトナムから来ました。どうぞよろしくお願いします！」
+       + 「${identity.katakanaName}と呼んでください。」
 
-2. XỬ LÝ KHI NGƯỜI HỌC TRẢ LỜI LINH TINH / LẠC ĐỀ / KHÔNG HIỂU / CÂU VÔ NGHĨA:
+2. BÁM SÁT TRỌNG TÂM CHỦ ĐỀ NHƯNG KHÔNG ĐƯỢC RẬP KHUÔN, ĐA DẠNG HÓA TÌNH HUỐNG (STRICT TOPIC FOCUS WITH HIGH ADAPTIVE DIVERSITY):
+   - Mọi câu hỏi tiếp theo của bạn PHẢI bám sát vào bối cảnh "${scenarioTitle}" và chỉ dẫn ở trên.
+   - TUYỆT ĐỐI KHÔNG nhảy sang các câu hỏi vu vơ không liên quan (như hỏi về thời tiết hay ẩm thực quê hương khi đang ở trong lớp học hoặc đang phỏng vấn).
+   - TUYỆT ĐỐI KHÔNG TRẢ LỜI NHƯ ROBOT ĐỌC KỊCH BẢN CỨNG NHẮC! Hãy lắng nghe thật sự (Active Listening) và phản xạ sinh động dựa trên điều cụ thể người học vừa nói:
+     * Nếu người học chia sẻ điều gì thú vị, độc đáo (thức dậy sớm chạy bộ, thích uống trà ô long thay vì bia, thích học qua flashcard...), AI hãy biểu lộ cảm xúc ngạc nhiên, đồng cảm (Aizuchi: 「へえ、そうなんですか！」「それは素晴らしいですね！」) và đào sâu vào chi tiết đó.
+     * Nếu người học từ chối lịch sự (bận, không uống được rượu, chưa làm xong...), AI phải thấu hiểu và thích ứng linh hoạt theo hướng giải quyết mới, KHÔNG gượng ép người học vào khuôn mẫu định sẵn!
+
+3. TIẾN TRÌNH HỘI THOẠI & TUYỆT ĐỐI KHÔNG LẶP LẠI CÂU HỎI CŨ (ANTI-REPETITION):
+   - TUYỆT ĐỐI KHÔNG lặp lại câu hỏi mở đầu hoặc bất kỳ câu hỏi nào bạn/nhân vật đã từng hỏi trong lịch sử trò chuyện.
+   - Hãy đào sâu (follow-up) vào câu trả lời của người học thay vì nhảy chủ đề đột ngột hoặc hỏi lại cái cũ.
+   - Mỗi lượt hội thoại phải phát triển câu chuyện tiến lên một bước mới theo lộ trình bối cảnh.
+
+4. ĐỘ DÀI & KẾT THÚC HỘI THOẠI HỢP LÝ:
+   - Nếu lượt hiện tại < 6: Tiếp tục duy trì hội thoại, hỏi mở rộng sang khía cạnh tiếp theo của chủ đề. Đặt "isFinished": false.
+   - Nếu lượt hiện tại >= 6 hoặc người học ngỏ ý chào tạm biệt: AI đưa ra câu đúc kết ấm áp, khen ngợi tinh thần học tập, chào tạm biệt và hẹn gặp lại đúng chuẩn văn hóa Nhật. Đặt "isFinished": true.
+
+5. XỬ LÝ KHI NGƯỜI HỌC TRẢ LỜI LINH TINH / LẠC ĐỀ / KHÔNG HIỂU / CÂU VÔ NGHĨA:
    - Nếu câu người học vừa nói ("${userMessage}") không ăn nhập với câu hỏi trước, nói lạc đề, hoặc là từ ngữ vô nghĩa:
      * AI TUYỆT ĐỐI KHÔNG quay lại câu hỏi ban đầu và KHÔNG giả vờ như đã hiểu.
      * AI PHẢI phản xạ bằng câu nghi vấn làm rõ hoặc ngạc nhiên lịch sự (Clarifying / Puzzled questions) như người Nhật ngoài đời:
@@ -925,18 +1218,22 @@ QUY TẮC CỐT LÕI (TUYỆT ĐỐI TUÂN THỦ):
      * Trong "userEvaluation": Chấm điểm naturalnessScore thấp hơn (35-55), grammarAdvice giải thích nhẹ nhàng bằng tiếng Việt rằng câu nói chưa phù hợp hoặc lạc đề, gợi ý câu trả lời đúng trọng tâm.
      * Trong "suggestedAnswers": Cung cấp 2-3 câu trả lời mẫu đúng trọng tâm ngữ cảnh để hỗ trợ người học lấy lại mạch đối thoại.
 
-3. KHI NGƯỜI HỌC TRẢ LỜI TỰ NHIÊN VÀ ĐÚNG TRỌNG TÂM:
-   - AI đáp lại bằng từ đệm cảm thán (Aizuchi: 「そうなんですね！」「なるほど！」「いいですね！」...) và hỏi tiếp 1 câu mở rộng/đào sâu vào thông tin người học vừa chia sẻ.
+6. KHI NGƯỜI HỌC TRẢ LỜI TỰ NHIÊN VÀ ĐÚNG TRỌNG TÂM:
+   - AI đáp lại bằng từ đệm cảm thán (Aizuchi: 「そうなんですね！」「なるほど！」「いいですね！」...) và hỏi tiếp 1 câu mở rộng/đào sâu vào đúng chủ đề.
    - Câu trả lời của AI ngắn gọn (1-2 câu tiếng Nhật), tự nhiên, chuẩn giao tiếp bản xứ ${level}.
 
-4. ĐÁNH GIÁ CÂU NGƯỜI HỌC VỪA NÓI (userEvaluation):
+7. ĐÁNH GIÁ CÂU NGƯỜI HỌC VỪA NÓI (userEvaluation):
    - naturalnessScore: Chấm điểm độ tự nhiên (0-100).
    - grammarAdvice: Nhận xét ngắn gọn, thực tế bằng tiếng Việt.
    - betterExpression: Gợi ý cách diễn đạt tự nhiên hơn của người bản xứ (nếu có).
    - betterExpressionFurigana: Phiên âm Hiragana/Katakana cho toàn bộ chữ Hán trong betterExpression.
 
-5. GỢI Ý 2-3 CÂU TRẢ LỜI TIẾP THEO (suggestedAnswers):
-   - Mỗi câu có đủ: japanese, furigana (phiên âm toàn bộ chữ Hán sang Hiragana), romaji, translation (tiếng Việt).
+8. GỢI Ý 2-3 CÂU TRẢ LỜI TIẾP THEO (suggestedAnswers) - ĐA DẠNG SẮC THÁI, KHÔNG RẬP KHUÔN:
+   - Gợi ý trong "suggestedAnswers" PHẢI là câu trả lời trực tiếp cho câu hỏi mà AI vừa hỏi trong "aiReply", nhưng BẮT BUỘC mang nhiều lựa chọn đa dạng cho người học:
+     * 1 gợi ý: Trả lời đồng ý / tích cực / hào hứng.
+     * 1 gợi ý: Trả lời chi tiết hơn, nêu lý do hoặc thói quen cụ thể của bản thân.
+     * 1 gợi ý: Trả lời theo hướng khác (từ chối lịch sự, đề xuất phương án thay thế hoặc hỏi ngược lại AI để cuộc trò chuyện có tính tương tác 2 chiều).
+   - Mỗi câu gợi ý BẮT BUỘC có đủ: japanese, furigana (toàn bộ chữ Hán có phiên âm Hiragana), romaji, translation (tiếng Việt).
 
 Lịch sử trò chuyện gần nhất:
 ${formattedHistory || "(Bắt đầu cuộc trò chuyện)"}
@@ -951,6 +1248,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
     "romaji": "Romaji phiên âm Latin",
     "translation": "Bản dịch tiếng Việt tự nhiên"
   },
+  "isFinished": false,
   "userEvaluation": {
     "naturalnessScore": 88,
     "grammarAdvice": "Nhận xét ngắn bằng tiếng Việt về câu nói của bạn",
@@ -972,10 +1270,14 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
   /**
    * Safely parse Roleplay JSON and normalize suggestedAnswers
    */
-  static parseRoleplayJson(rawText, scenarioTitle, level, conversationHistory, userMessage) {
+  static parseRoleplayJson(rawText, scenarioTitle, level, conversationHistory, userMessage, userName = "Học viên") {
     try {
       const cleaned = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned);
+
+      if (parsed) {
+        parsed.isFinished = Boolean(parsed.isFinished);
+      }
 
       if (parsed && parsed.suggestedAnswers && Array.isArray(parsed.suggestedAnswers)) {
         parsed.suggestedAnswers = parsed.suggestedAnswers.map((item) => {
@@ -998,19 +1300,20 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
 
       return parsed;
     } catch {
-      return this.roleplayHeuristically({ scenarioTitle, level, conversationHistory, userMessage });
+      return this.roleplayHeuristically({ scenarioTitle, level, conversationHistory, userMessage, userName });
     }
   }
 
   /**
    * Dynamic Heuristic Roleplay Fallback (Zero external cost / offline resilient / turn-aware progression)
    */
-  static roleplayHeuristically({ scenarioTitle = "", level = "N5", conversationHistory = [], userMessage = "" }) {
+  static roleplayHeuristically({ scenarioTitle = "", level = "N5", conversationHistory = [], userMessage = "", userName = "Học viên" }) {
     const cleanMsg = (userMessage || "").trim().toLowerCase();
     const userTurns = (conversationHistory || []).filter(
       (m) => m.sender === "user" || m.role === "user"
     ).length;
     const currentTurn = userTurns + 1; // 1, 2, 3, 4...
+    const identity = getLearnerJapaneseIdentity(userName);
 
     // 1. Phán đoán nếu câu trả lời của người học là vô nghĩa, linh tinh, quá ngắn hoặc lạc đề hoàn toàn
     const isTooShortOrGibberish =
@@ -1059,125 +1362,198 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
       scenarioTitle.includes("初めまして") ||
       /giới thiệu|chào hỏi|lớp học|bạn bè|làm quen/i.test(scenarioTitle)
     ) {
+      // Lượt 1: Chào đón vào lớp học mới, hỏi tên bạn mới
       if (currentTurn === 1) {
         return {
           aiReply: {
-            japanese: "初めまして！お会いできて嬉しいです。日本に来てどのくらいになりますか？",
-            furigana: "はじめまして！おあいできてうれしいです。にほんにきてどのくらいになりますか？",
-            romaji: "Hajimemashite! Oai dekite ureshii desu. Nihon ni kite dono kurai ni narimasu ka?",
-            translation: "Rất vui được gặp bạn! Bạn đã sang Nhật được bao lâu rồi?",
+            japanese: "初めまして！今日からこのクラスですね。お会いできて嬉しいです！お名前は何とお呼びすればいいですか？",
+            furigana: "はじめまして！きょうからこのクラスですね。おあいできてうれしいです！おなまえはなんとおよびすればいいですか？",
+            romaji: "Hajimemashite! Kyou kara kono kurasu desu ne. Oai dekite ureshii desu! Onamae wa nan to oyobi sureba ii desu ka?",
+            translation: "Chào bạn mới! Từ hôm nay chúng mình học chung lớp này rồi. Rất vui được gặp bạn! Mình có thể gọi bạn là gì nhỉ?",
           },
+          isFinished: false,
           userEvaluation: {
             naturalnessScore: 92,
-            grammarAdvice: "Lời chào hỏi rất tự nhiên và đúng lễ nghi giao tiếp của người Nhật.",
+            grammarAdvice: "Lời chào hỏi và xưng tên rất tự nhiên, đúng lễ nghi giao tiếp lớp học của người Nhật.",
             betterExpression: "初めまして、どうぞよろしくお願いします。",
             betterExpressionFurigana: "はじめまして、どうぞよろしくおねがいします。",
           },
           suggestedAnswers: [
             {
-              japanese: "まだ半年くらいです。",
-              furigana: "まだはんとし・はんねんくらいです。",
-              romaji: "Mada hantoshi kurai desu.",
-              translation: "Mới khoảng nửa năm thôi ạ.",
+              japanese: `初めまして！私の名前は${identity.katakanaName}です。ベトナムから来ました。よろしくお願いします！`,
+              furigana: `はじめまして！わたしのなまえは${identity.katakanaName}です。ベトナムからきました。よろしくおねがいします！`,
+              romaji: `Hajimemashite! Watashi no namae wa ${identity.romajiName} desu. Betonamu kara kimashita. Yoroshiku onegaishimasu!`,
+              translation: `Rất vui được gặp bạn! Tên tôi là ${identity.givenName}, tôi đến từ Việt Nam. Rất mong được giúp đỡ!`,
             },
             {
-              japanese: "先月日本に来たばかりです。",
-              furigana: "せんげつにほんにきたばかりです。",
-              romaji: "Sengetsu Nihon ni kita bakari desu.",
-              translation: "Tôi vừa sang Nhật hồi tháng trước ạ.",
+              japanese: `${identity.katakanaName}と申します。今日からこのクラスでお世話になります。どうぞよろしくお願いします。`,
+              furigana: `${identity.katakanaName}ともうします。きょうからこのクラスでおせわになります。どうぞよろしくおねがいします。`,
+              romaji: `${identity.romajiName} to moushimasu. Kyou kara kono kurasu de osewa ni narimasu. Douzo yoroshiku onegaishimasu.`,
+              translation: `Tôi tên là ${identity.givenName}. Từ hôm nay tôi sẽ học cùng mọi người ở lớp này. Rất mong được chỉ giáo thêm ạ.`,
             },
           ],
         };
       }
 
+      // Lượt 2: Hỏi về thời gian học tiếng Nhật & ấn tượng lớp học mới
       if (currentTurn === 2) {
         return {
           aiReply: {
-            japanese: "そうなんですね！日本での生活にはもう慣れましたか？日本の食べ物や街はどうですか？",
-            furigana: "そうなんですね！にほんでのせいかつにはもうなれましたか？にほんのたべものやまちはどうですか？",
-            romaji: "Sou nan desu ne! Nihon de no seikatsu ni wa mou naremashita ka? Nihon no tabemono ya machi wa dou desu ka?",
-            translation: "Ra là vậy! Bạn đã quen với cuộc sống ở Nhật chưa? Đồ ăn và đường phố Nhật Bản thế nào?",
+            japanese: `${identity.callingName}、よろしくお願いします！日本語の勉強はいつから始めましたか？この新しいクラスの雰囲気はどうですか？`,
+            furigana: `${identity.callingName}、よろしくおねがいします！にほんごのべんきょうはいつからはじめましたか？このあたらしいクラスのふんいきはどうですか？`,
+            romaji: `${identity.callingNameRomaji}, yoroshiku onegaishimasu! Nihongo no benkyou wa itsu kara hajimemashita ka? Kono atarashii kurasu no fuuniki wa dou desu ka?`,
+            translation: `Chào ${identity.givenName}, rất vui được làm quen với bạn! Bạn bắt đầu học tiếng Nhật từ khi nào thế? Bạn thấy không khí lớp học mới này thế nào?`,
           },
+          isFinished: false,
           userEvaluation: {
-            naturalnessScore: 90,
-            grammarAdvice: "Cách diễn đạt mốc thời gian rất chuẩn ngữ pháp và tự nhiên. Hãy tiếp tục duy trì nhé!",
-            betterExpression: `${userMessage}。生活にも少しずつ慣れてきました。`,
-            betterExpressionFurigana: `${userMessage}。せいかつにもすこしずつなれてきました。`,
+            naturalnessScore: 92,
+            grammarAdvice: "Xưng tên và giới thiệu bản thân rất tự nhiên, lễ phép đúng chuẩn người học tiếng Nhật.",
+            betterExpression: `${userMessage}。今日からよろしくお願いします。`,
+            betterExpressionFurigana: `${userMessage}。きょうからよろしくおねがいします。`,
           },
           suggestedAnswers: [
             {
-              japanese: "はい、だんだん慣れてきました。ラーメンがとても美味しいです。",
-              furigana: "はい、だんだんなれてきました。ラーメンがとてもおいしいです。",
-              romaji: "Hai, dandan narete kimashita. Raamen ga totemo oishii desu.",
-              translation: "Vâng, tôi dần quen rồi. Mì Ramen ngon lắm ạ.",
+              japanese: "3ヶ月前から勉強を始めました。クラスの皆さんが親切で安心しました。",
+              furigana: "さんかげつまえからべんきょうをはじめました。クラスのみなさんがしんせつであんしんしました。",
+              romaji: "San-kagetsu mae kara benkyou o hajimemashita. Kurasu no minasan ga shinsetsu de anshin shimashita.",
+              translation: "Tôi bắt đầu học từ 3 tháng trước. Mọi người trong lớp đều rất thân thiện nên tôi cũng yên tâm rồi.",
             },
             {
-              japanese: "まだ少し慣れていませんが、街がとても綺麗で気に入っています。",
-              furigana: "まだすこしなれていませんが、まちがとてもきれいで気にいっています。",
-              romaji: "Mada sukoshi narete imasen ga, machi ga totemo kirei de ki ni itte imasu.",
-              translation: "Tôi vẫn chưa quen lắm, nhưng đường phố rất sạch đẹp và tôi rất thích.",
+              japanese: "ベトナムで半年ほど勉強してきました。少し緊張していますが、とても楽しみです。",
+              furigana: "ベトナムではんとしほどべんきょうしてきました。すこしきんちょうしていますが、とてもたのしみです。",
+              romaji: "Betonamu de hantoshi hodo benkyou shite kimashita. Sukoshi kinchou shite imasu ga, totemo tanoshimi desu.",
+              translation: "Tôi đã học khoảng nửa năm ở Việt Nam. Tuy có chút hồi hộp nhưng tôi rất hào hứng.",
             },
           ],
         };
       }
 
+      // Lượt 3: Hỏi sâu về các kỹ năng tiếng Nhật trong lớp (Kanji, Nghe hay Hội thoại)
       if (currentTurn === 3) {
         return {
           aiReply: {
-            japanese: "いいですね！休みの日は普段どんなことをして過ごしていますか？趣味は何ですか？",
-            furigana: "いいですね！やすみのひはふだんどんなことをしてすごしていますか？しゅみはなんですか？",
-            romaji: "Ii desu ne! Yasumi no hi wa fudan donna koto o shite sugoshite imasu ka? Shuumi wa nan desu ka?",
-            translation: "Tuyệt quá! Ngày nghỉ bạn thường làm gì? Sở thích của bạn là gì?",
+            japanese: "なるほど！日本語の勉強で、漢字やリスニング、会話の中でどれが一番難しいと感じますか？",
+            furigana: "なるほど！にほんごのべんきょうで、かんじやリスニング、かいわのなかでどれがいちばんむずかしいとかんじますか？",
+            romaji: "Naruhodo! Nihongo no benkyou de, kanji ya risuningu, kaiwa no naka de dore ga ichiban muzukashii to kanjimasu ka?",
+            translation: "Thì ra là vậy! Trong quá trình học tiếng Nhật, giữa chữ Hán (Kanji), luyện nghe và hội thoại thì bạn thấy phần nào khó nhất?",
           },
+          isFinished: false,
           userEvaluation: {
-            naturalnessScore: 93,
-            grammarAdvice: "Bạn dùng từ vựng miêu tả cảm nhận rất phong phú và chính xác.",
-            betterExpression: `${userMessage}。日本の文化にもとても興味があります。`,
-            betterExpressionFurigana: `${userMessage}。にほんのぶんかにもとてもきょうみがあります。`,
+            naturalnessScore: 91,
+            grammarAdvice: "Dùng mốc thời gian và tính từ miêu tả ấn tượng lớp học rất chuẩn xác.",
+            betterExpression: `${userMessage}。これからの授業がとても楽しみです。`,
+            betterExpressionFurigana: `${userMessage}。これからのじゅぎょうがとてもたのしみです。`,
           },
           suggestedAnswers: [
             {
-              japanese: "休みの日はよく公園を散歩したり、写真を撮ったりします。",
-              furigana: "やすみのひはよくこうえんをさんぽしたり、しゃしんをとったりします。",
-              romaji: "Yasumi no hi wa yoku kouen o sanpo shitari, shashin o tottari shimasu.",
-              translation: "Ngày nghỉ tôi hay đi dạo công viên và chụp ảnh.",
+              japanese: "漢字を覚えるのが一番難しいです。似ている形が多くて大変です。",
+              furigana: "かんじをおぼえるのがいちばんむずかしいです。にているかたちがおおくてたいへんです。",
+              romaji: "Kanji o oboeru no ga ichiban muzukashii desu. Nite iru katachi ga ookute taihen desu.",
+              translation: "Ghi nhớ chữ Hán là khó nhất. Có nhiều chữ hình dáng na ná nhau nên rất vất vả.",
             },
             {
-              japanese: "家でアニメを見たり、日本語を勉強したりしています。",
-              furigana: "いえでアニメをみたり、にほんごをべんきょうしたりしています。",
-              romaji: "Ie de anime o mitari, Nihongo o benkyou shitari shite imasu.",
-              translation: "Tôi ở nhà xem anime hoặc tự học tiếng Nhật.",
+              japanese: "リスニングと会話が難しいです。ネイティブのスピードについていくのがまだ大変です。",
+              furigana: "リスニングとかいわがむずかしいです。ネイティブのスピードについていくのがまだたいへんです。",
+              romaji: "Risuningu to kaiwa ga muzukashii desu. Neitibu no supiido ni tsuite iku no ga mada taihen desu.",
+              translation: "Luyện nghe và hội thoại là khó nhất. Bắt kịp tốc độ của người bản xứ vẫn còn hơi khó với tôi.",
             },
           ],
         };
       }
 
-      // Turn 4+ (Closing)
+      // Lượt 4: Trao đổi về phương pháp học tập hiệu quả (Flashcard, Shadowing, xem anime)
+      if (currentTurn === 4) {
+        return {
+          aiReply: {
+            japanese: "よく分かります！私も最初は苦労しました。普段はどうやって日本語を勉強していますか？おすすめの勉強法はありますか？",
+            furigana: "よくわかります！わたしもさいしょはくろうしました。ふだんはどうやってにほんごをべんきょうしていますか？おすすめのべんきょうほうはありますか？",
+            romaji: "Yoku wakarimasu! Watashi mo saisho wa kurou shimashita. Fudan wa dou yatte Nihongo o benkyou shite imasu ka? Osusume no benkyouhou wa arimasu ka?",
+            translation: "Mình rất đồng cảm! Hồi đầu mình cũng thấy khó khăn lắm. Thường ngày bạn hay học tiếng Nhật theo cách nào? Bạn có phương pháp học nào hiệu quả không?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 93,
+            grammarAdvice: "Dùng cấu trúc so sánh hơn nhất '～が一番難しい' rất chuẩn xác và tự nhiên.",
+            betterExpression: `${userMessage}。毎日少しずつ練習しています。`,
+            betterExpressionFurigana: `${userMessage}。まいにちすこしずつれんしゅうしています。`,
+          },
+          suggestedAnswers: [
+            {
+              japanese: "私は単語カード（フラッシュカード）アプリを使って、毎日すきま時間に復習しています。",
+              furigana: "わたしはたんごカード（フラッシュカード）アプリをつかって、まいにちすきまじかんにふくしゅうしています。",
+              romaji: "Watashi wa tango kaado (furasshu kaado) apuri o tsukatte, mainichi sukima jikan ni fukushuu shite imasu.",
+              translation: "Tôi dùng app thẻ từ vựng flashcard để tranh thủ ôn tập mỗi khi có thời gian rảnh rỗi.",
+            },
+            {
+              japanese: "好きなアニメやドラマを日本語の字幕で見たり、シャドーイングの練習をしています。",
+              furigana: "すきなアニメやドラマをにほんごのじまくでみたり、シャドーイングのれんしゅうをしています。",
+              romaji: "Suki na anime ya dorama o Nihongo no jimaku de mitari, shadooingu no renshuu o shite imasu.",
+              translation: "Tôi xem anime hay phim Nhật với phụ đề tiếng Nhật và luyện tập phương pháp Shadowing.",
+            },
+          ],
+        };
+      }
+
+      // Lượt 5: Rủ rê học nhóm sau giờ học tại thư viện & cùng nhau ôn bài
+      if (currentTurn === 5) {
+        return {
+          aiReply: {
+            japanese: "とても素晴らしい勉強法ですね！もしよかったら、放課後一緒に図書館で今日の授業の復習をしませんか？",
+            furigana: "とてもすばらしいべんきょうほうですね！もしよかったら、ほうかごいっしょにとしょかんできょうのじゅぎょうのふくしゅうをしませんか？",
+            romaji: "Totemo subarashii benkyouhou desu ne! Moshi yokattara, houkago issho ni toshokan de kyou no jugyou no fukushuu o shimasen ka?",
+            translation: "Cách học đó hay quá! Nếu bạn rảnh, sau giờ học chiều nay tụi mình cùng nhau lên thư viện ôn lại bài học hôm nay nhé?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 94,
+            grammarAdvice: "Diễn đạt phương pháp học tập phong phú, dùng trợ từ và động từ rất chính xác.",
+            betterExpression: `${userMessage}。とても効果的な勉強法だと思います。`,
+            betterExpressionFurigana: `${userMessage}。とてもこうかてきなべんきょうほうだとおもいます。`,
+          },
+          suggestedAnswers: [
+            {
+              japanese: "ぜひ一緒にお願いします！分からない文法を教えてもらえると嬉しいです。",
+              furigana: "ぜひいっしょにおねがいします！わからないぶんぽうをおしえてもらえるとうれしいです。",
+              romaji: "Zehi issho ni onegaishimasu! Wakaranai bumpou o oshiete moraeru to ureshii desu.",
+              translation: "Nhất định rồi, cho mình học cùng với! Nếu có ngữ pháp nào chưa hiểu thì nhờ bạn chỉ giúp nhé.",
+            },
+            {
+              japanese: "はい、喜んで！一人で勉強するより、一緒に復習した方がモチベーションが上がりますね。",
+              furigana: "はい、よろこんで！ひとりでべんきょうするより、いっしょにふくしゅうしたほうがモチベーションがあがりますね。",
+              romaji: "Hai, yorokonde! Hitori de benkyou suru yori, issho ni fukushuu shita hou ga mochibeeshon ga agarimasu ne.",
+              translation: "Vâng, mình rất sẵn lòng! Học cùng nhau chắc chắn sẽ có nhiều động lực hơn tự học một mình.",
+            },
+          ],
+        };
+      }
+
+      // Lượt 6+ (Closing Turn - Kết thúc hội thoại tự nhiên & Hẹn nhau học nhóm)
       return {
         aiReply: {
-          japanese: "素敵ですね！これから同じクラスの仲間として、一緒に日本語の勉強を頑張りましょう！よろしくお願いしますね。",
-          furigana: "すてきですね！これからおなじクラスのなかまとして、いっしょににほんごのべんきょうをがんばりましょう！よろしくおねがいしますね。",
-          romaji: "Suteki desu ne! Korekara onaji kurasu no nakama toshite, issho ni Nihongo no benkyou o gambarimashou! Yoroshiku onegaishimasu ne.",
-          translation: "Tuyệt vời quá! Từ giờ là bạn cùng lớp rồi, chúng mình cùng nhau cố gắng học tiếng Nhật nhé! Rất mong được giúp đỡ.",
+          japanese: "よかった！では今日の授業が終わったら、図書館の前のロビーで待ち合わせしましょうね。これから一緒にJLPT合格目指して頑張りましょう！",
+          furigana: "よかった！できょうのじゅぎょうがおわったら、としょかんのまえのロビーでまちあわせしましょうね。これからいっしょにジェイエルピーティーごうかくめざしてがんばりましょう！",
+          romaji: "Yokatta! Dewa kyou no jugyou ga owattara, toshokan no mae no robii de machiawase shimashou ne. Korekara issho ni JLPT goukaku mezashite gambarimashou!",
+          translation: "Tuyệt quá! Vậy lát tan học tụi mình hẹn nhau ở sảnh trước thư viện nhé. Từ nay cùng nhau cố gắng để đỗ JLPT nhé bạn hiền!",
         },
+        isFinished: true,
         userEvaluation: {
           naturalnessScore: 96,
-          grammarAdvice: "Cuộc đối thoại diễn ra rất lưu loát và tự nhiên. Bạn có phản xạ tiếng Nhật rất tốt!",
-          betterExpression: "はい！こちらこそ、どうぞよろしくお願いします！",
-          betterExpressionFurigana: "はい！こちらこそ、どうぞよろしくおねがいします！",
+          grammarAdvice: "Cuộc đối thoại hoàn chỉnh xuất sắc! Bạn tương tác tự nhiên, kết nối bạn bè thành công trong lớp học.",
+          betterExpression: "はい！約束ですね。後ほどよろしくお願いします！",
+          betterExpressionFurigana: "はい！やくそくですね。のちほどよろしくおねがいします！",
         },
         suggestedAnswers: [
           {
-            japanese: "はい！こちらこそ、どうぞよろしくお願いします！",
-            furigana: "はい！こちらこそ、どうぞよろしくおねがいします！",
-            romaji: "Hai! Kochira koso, douzo yoroshiku onegaishimasu!",
-            translation: "Vâng! Tôi cũng rất mong nhận được sự giúp đỡ của bạn!",
+            japanese: "はい！約束ですね。後ほどよろしくお願いします！",
+            furigana: "はい！やくそくですね。のちほどよろしくおねがいします！",
+            romaji: "Hai! Yakusoku desu ne. Nochihodo yoroshiku onegaishimasu!",
+            translation: "Vâng! Đã hẹn rồi nhé. Lát nữa gặp lại nhờ bạn giúp đỡ nhé!",
           },
           {
-            japanese: "ありがとうございます！仲良くしてくださいね。",
-            furigana: "ありがとうございます！なかよくしてくださいね。",
-            romaji: "Arigatou gozaimasu! Nakayoku shite kudasai ne.",
-            translation: "Cảm ơn bạn! Chúng mình hãy làm bạn tốt nhé.",
+            japanese: "楽しみにしています！今日も授業を頑張りましょう！",
+            furigana: "たのしみにしています！きょうもじゅぎょうをがんばりましょう！",
+            romaji: "Tanoshimi ni shite imasu! Kyou mo jugyou o gambarimashou!",
+            translation: "Mình rất mong đợi! Hôm nay tụi mình cùng học thật tốt nhé!",
           },
         ],
       };
@@ -1360,6 +1736,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
           romaji: "Kaisatsu no temae, hidarigawa ni pinku no kenbaiki ga arimasu. Sokode chaaji ya kounyuu ga dekimasu yo. Oki o tsukete!",
           translation: "Ngay trước cổng soát vé phía bên trái có máy bán vé màu hồng. Nạp tiền hay mua vé ở đó nhé. Chúc bạn lên đường may mắn!",
         },
+        isFinished: true,
         userEvaluation: {
           naturalnessScore: 94,
           grammarAdvice: "Giao tiếp hỏi đường rất tự tin và lịch sự.",
@@ -1383,7 +1760,409 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
       };
     }
 
-    // 5. Phản xạ đa lượt tổng quát cho bất kỳ chủ đề nào khác (Luôn tiến về phía trước, không lặp câu hỏi)
+    // 5. Kịch bản: Cuộc sống và thói quen hàng ngày (毎日の生活 / 習慣 / 過ごし方)
+    if (
+      scenarioTitle.includes("生活") ||
+      scenarioTitle.includes("習慣") ||
+      scenarioTitle.includes("毎日") ||
+      /cuộc sống|thói quen|hàng ngày|thường nhật/i.test(scenarioTitle)
+    ) {
+      if (currentTurn === 1) {
+        return {
+          aiReply: {
+            japanese: "こんにちは！普段の毎日の生活についてお話ししましょう。普段は何時頃に起きることが多いですか？",
+            furigana: "こんにちは！ふだんのまいにちのせいかつについておはなししましょう。ふだんはなんじごろにおきることがおおいですか？",
+            romaji: "Konnichiwa! Fudan no mainichi no seikatsu ni tsuite ohanashi shimashou. Fudan wa nanji goro ni okiru koto ga ooi desu ka?",
+            translation: "Xin chào bạn! Hôm nay chúng mình cùng trò chuyện về cuộc sống hàng ngày nhé. Thường ngày bạn hay thức dậy vào khoảng mấy giờ nhỉ?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 88,
+            grammarAdvice: "Bạn trả lời mốc thời gian bằng trợ từ に rất chuẩn xác.",
+            betterExpression: "毎朝7時頃に起きています。",
+            betterExpressionFurigana: "まいあさしちじごろにおきています。",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "毎朝7時頃に起きています。起きたらすぐに水を一杯飲みます。",
+              furigana: "まいあさしちじごろにおきています。おきたらすぐにみずをいっぱいのみます。",
+              romaji: "Maiasa shichiji goro ni okite imasu. Okitara sugu ni mizu o ippai nomimasu.",
+              translation: "Mỗi sáng tôi thức dậy khoảng 7 giờ. Sau khi dậy tôi uống ngay một cốc nước.",
+            },
+            {
+              japanese: "仕事の日は6時半、休みの日は9時頃までゆっくり寝ています。",
+              furigana: "しごとのひはろくじはん、やすみのひはくじごろまでゆっくりねています。",
+              romaji: "Shigoto no hi wa rokuji-han, yasumi no hi wa kuji goro made yukkuri nete imasu.",
+              translation: "Ngày đi làm tôi dậy lúc 6h30, còn ngày nghỉ thì ngủ nướng thong thả đến 9 giờ.",
+            },
+            {
+              japanese: "夜遅くまで勉強しているので、朝は8時頃に起きます。",
+              furigana: "よるおそくまでべんきょうしているので、あさははちじごろにおきます。",
+              romaji: "Yoru osoku made benkyou shite iru node, asa wa hachiji goro ni okimasu.",
+              translation: "Vì học khuya nên buổi sáng tôi thường thức dậy vào khoảng 8 giờ.",
+            },
+          ],
+        };
+      }
+
+      if (currentTurn === 2) {
+        return {
+          aiReply: {
+            japanese: "いい習慣ですね！朝ごはんは普段何を食べていますか？学校や職場へはどうやって通っていますか？",
+            furigana: "いいしゅうかんですね！あさごはんはふだんなにをたべていますか？がっこうやしょくばへはどうやってかよっていますか？",
+            romaji: "Ii shuukan desu ne! Asagohan wa fudan nani o tabete imasu ka? Gakkou ya shokuba e wa dou yatte kayotte imasu ka?",
+            translation: "Thói quen tốt quá! Buổi sáng bạn thường ăn gì? Bạn đến trường hay nơi làm việc bằng phương tiện gì?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 90,
+            grammarAdvice: "Dùng trợ từ で để chỉ phương tiện di chuyển (電車で/自転車で) rất chính xác.",
+            betterExpression: `${userMessage}。電車で通っています。`,
+            betterExpressionFurigana: `${userMessage}。でんしゃでかよっています。`,
+          },
+          suggestedAnswers: [
+            {
+              japanese: "パンと目玉焼きを食べて、電車で通勤しています。",
+              furigana: "パンとめだまやきをたべて、でんしゃでつうきんしています。",
+              romaji: "Pan to medamayaki o tabete, densha de tsuukin shite imasu.",
+              translation: "Tôi ăn bánh mì với trứng ốp la, rồi đi làm bằng tàu điện.",
+            },
+            {
+              japanese: "あまり時間がなくてバナナを食べるだけです。自転車で15分くらいです。",
+              furigana: "あまりじかんがなくてバナナをたべるだけです。じてんしゃでじゅうごふんくらいです。",
+              romaji: "Amari jikan ga nakute banana o taberu dake desu. Jitensha de juugofun kurai desu.",
+              translation: "Tôi không có nhiều thời gian nên chỉ kịp ăn một quả chuối. Đi xe đạp mất khoảng 15 phút.",
+            },
+          ],
+        };
+      }
+
+      return {
+        aiReply: {
+          japanese: "健康的な一日を過ごされているんですね！夜寝る前のリラックスタイムも大切に、これからも毎日元気にお過ごしくださいね！",
+          furigana: "けんこうてきないちにちをすごされているんですね！よるねるまえのリラックスタイムもたいせつに、これからもまいにちげんきにおすごしくださいね！",
+          romaji: "Kenkouteki na ichinichi o sugosarete iru n desu ne! Yoru neru mae no rirakkusu taimu mo taisetsu ni, korekara mo mainichi genki ni osugoshi kudasai ne!",
+          translation: "Bạn có một ngày sinh hoạt thật điều độ và lành mạnh! Hãy trân trọng khoảng thời gian thư giãn trước khi ngủ và chúc bạn luôn tràn đầy năng lượng mỗi ngày nhé!",
+        },
+        isFinished: true,
+        userEvaluation: {
+          naturalnessScore: 93,
+          grammarAdvice: "Miêu tả thói quen sinh hoạt rất tự nhiên và trôi chảy. Phản xạ tuyệt vời!",
+          betterExpression: "お話を聞いていただきありがとうございました！",
+          betterExpressionFurigana: "おはなしをきいていただきありがとうございました！",
+        },
+        suggestedAnswers: [
+          {
+            japanese: "はい、ありがとうございます！とても楽しくお話しできました。",
+            furigana: "はい、ありがとうございます！とてもたのしくおはなしできました。",
+            romaji: "Hai, arigatou gozaimasu! Totemo tanoshiku ohanashi dekimashita.",
+            translation: "Vâng, cảm ơn bạn rất nhiều! Cuộc trò chuyện hôm nay rất vui.",
+          },
+          {
+            japanese: "はい！お互いに健康に気をつけて頑張りましょうね！",
+            furigana: "はい！おたがいにけんこうにきをつけてがんばりましょうね！",
+            romaji: "Hai! Otagai ni kenkou ni ki o tsukete gambarimashou ne!",
+            translation: "Vâng! Cả hai chúng ta cùng giữ gìn sức khỏe và cố gắng nhé!",
+          },
+        ],
+      };
+    }
+
+    // 6. Kịch bản: Báo cáo công việc HORENSO (ビジネス会話 / 進捗報告 / 仕事)
+    if (
+      scenarioTitle.includes("進捗") ||
+      scenarioTitle.includes("報告") ||
+      scenarioTitle.includes("ビジネス") ||
+      /tiến độ|báo cáo|horenso|công việc|kinh doanh/i.test(scenarioTitle)
+    ) {
+      if (currentTurn === 1) {
+        return {
+          aiReply: {
+            japanese: "お疲れ様です。現在担当されているプロジェクトの進捗状況はどうですか？問題なく進んでいますか？",
+            furigana: "おつかれさまです。げんざいたんとうされているプロジェクトのしんちょくじょうきょうはどうですか？もんだいなくすすんでいますか？",
+            romaji: "Otsukaresama desu. Genzai tantou sarete iru purojekuto no shinchoku joukyou wa dou desu ka? Mondai naku susunde imasu ka?",
+            translation: "Chào bạn, vất vả rồi. Tình hình tiến độ dự án bạn đang phụ trách thế nào rồi? Mọi việc vẫn tiến triển thuận lợi chứ?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 89,
+            grammarAdvice: "Kính ngữ công sở (Otsukaresama desu) dùng rất lịch sự và chuyên nghiệp.",
+            betterExpression: "お疲れ様です。現在の進捗状況をご報告いたします。",
+            betterExpressionFurigana: "おつかれさまです。げんざいのしんちょくじょうきょうをごほうこくいたします。",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "お疲れ様です。現在80％ほど完了しており、予定通り順調に進んでおります。",
+              furigana: "おつかれさまです。げんざいはちじっパーセントほどかんりょうしており、よていどおりじゅんちょうにすすんでおります。",
+              romaji: "Otsukaresama desu. Genzai hachiju-paasento hodo kanryou shite ori, yotei doori junchou ni susunde orimasu.",
+              translation: "Chào anh/chị. Hiện tại đã hoàn thành khoảng 80% và đang tiến triển rất thuận lợi theo đúng kế hoạch ạ.",
+            },
+            {
+              japanese: "一部の機能で少し遅れが出ておりますが、明日中には追いつく見込みです。",
+              furigana: "いちぶのきのうですこしおくれがでておりますが、あすじゅうにはおいつくみこみです。",
+              romaji: "Ichibu no kinou de sukoshi okure ga dete orimasu ga, asuchuu ni wa oitsuku mikomi desu.",
+              translation: "Một số chức năng đang hơi chậm một chút, nhưng dự kiến trong ngày mai sẽ bắt kịp tiến độ ạ.",
+            },
+          ],
+        };
+      }
+
+      if (currentTurn === 2) {
+        return {
+          aiReply: {
+            japanese: "状況把握できました。何か課題やトラブル、私の方でサポートできる点はありますか？",
+            furigana: "じょうきょうはあくできました。なにかかだいやトラブル、わたしのほうでサポートできるてんはありますか？",
+            romaji: "Joukyou haaku dekimashita. Nanika kadai ya toraburu, watashi no hou de sapooto dekiru ten wa arimasu ka?",
+            translation: "Tôi nắm được tình hình rồi. Có phát sinh vấn đề hay rủi ro gì cần tôi hỗ trợ không?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 92,
+            grammarAdvice: "Báo cáo số liệu phần trăm và tình trạng dự án rất rõ ràng, đúng chuẩn HORENSO.",
+            betterExpression: `${userMessage}。特に問題はございません。`,
+            betterExpressionFurigana: `${userMessage}。とくにもんだいはございません。`,
+          },
+          suggestedAnswers: [
+            {
+              japanese: "今のところ大きな問題はございません。予定通り金曜日にデプロイいたします。",
+              furigana: "いまのところおおきなもんだいはございません。よていどおりきんようびにデプロイいたします。",
+              romaji: "Ima no tokoro ookina mondai wa gozaimasen. Yotei doori kinyoubi ni depuroi itashimasu.",
+              translation: "Hiện tại không có vấn đề gì lớn ạ. Dự kiến thứ 6 này chúng tôi sẽ deploy đúng hạn.",
+            },
+            {
+              japanese: "仕様の確認で1点ご相談したいことがございます。今10分ほどお時間よろしいでしょうか？",
+              furigana: "しようのかくにんでいってんごそうだんしたいことがございます。いまじゅっぷんほどおじかんよろしいでしょうか？",
+              romaji: "Shiyou no kakunin de itten gosoudan shitai koto ga gozaimasu. Ima juppun hodo ojikan yoroshii deshou ka?",
+              translation: "Có một điểm về tài liệu đặc tả em muốn xin ý kiến. Hiện tại anh/chị có thể cho em xin khoảng 10 phút được không ạ?",
+            },
+          ],
+        };
+      }
+
+      return {
+        aiReply: {
+          japanese: "承知いたしました。迅速かつ正確な報告をありがとうございました。引き続きよろしくお願いいたします！無理はしないでくださいね。",
+          furigana: "しょうちいたしました。じんそくかつせいかくなほうこくをありがとうございました。ひきつづきよろしくおねがいいたします！むりはしないでくださいね。",
+          romaji: "Shouchi itashimashita. Jinsoku katsu seikaku na houkoku o arigatou gozaimashita. Hikitsuzuki yoroshiku onegai itashimasu! Muri wa shinaide kudasai ne.",
+          translation: "Tôi đã hiểu. Cảm ơn bạn đã báo cáo nhanh chóng và chính xác. Tiếp tục phát huy nhé, đừng làm việc quá sức nha!",
+        },
+        isFinished: true,
+        userEvaluation: {
+          naturalnessScore: 95,
+          grammarAdvice: "Kỹ năng báo cáo HORENSO bằng tiếng Nhật công sở xuất sắc!",
+          betterExpression: "承知いたしました。引き続きどうぞよろしくお願いいたします。",
+          betterExpressionFurigana: "しょうちいたしました。ひきつづきどうぞよろしくおねがいいたします。",
+        },
+        suggestedAnswers: [
+          {
+            japanese: "かしこまりました。引き続きよろしくお願いいたします！",
+            furigana: "かしこまりました。ひきつづきよろしくおねがいいたします！",
+            romaji: "Kashikomarimashita. Hikitsuzuki yoroshiku onegai itashimasu!",
+            translation: "Dạ vâng, em hiểu rồi ạ. Em xin phép tiếp tục công việc!",
+          },
+        ],
+      };
+    }
+
+    // 7. Kịch bản: Quán nhậu Izakaya (居酒屋 / 乾杯 / 飲み会)
+    if (
+      scenarioTitle.includes("居酒屋") ||
+      scenarioTitle.includes("乾杯") ||
+      scenarioTitle.includes("飲み") ||
+      /izakaya|quán nhậu|đi ăn|kanpai/i.test(scenarioTitle)
+    ) {
+      if (currentTurn === 1) {
+        return {
+          aiReply: {
+            japanese: "今日もお仕事お疲れ様でした！喉が渇きましたね。最初の飲み物は何にしますか？とりあえずビールにしますか？",
+            furigana: "きょうもおしごとおつかれさまでした！のどがかわきましたね。さいしょのみものはなににしますか？とりあえずビールにしますか？",
+            romaji: "Kyou mo oshigoto otsukaresama deshita! Nodo ga kawakimashita ne. Saisho no nomimono wa nan ni shimasu ka? Toriaezu biiru ni shimasu ka?",
+            translation: "Hôm nay làm việc vất vả rồi! Khát nước quá nhỉ. Món đồ uống đầu tiên bạn chọn gì? Làm ly bia tươi trước nhé?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 90,
+            grammarAdvice: "Văn hóa Izakaya Nhật Bản thường bắt đầu bằng câu 'Toriaezu nama' (Trước hết cho ly bia tươi).",
+            betterExpression: "とりあえず生ビールでお願いします！",
+            betterExpressionFurigana: "とりあえずなまビールでおねがいします！",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "いいですね！とりあえず生ビールをお願いします！",
+              furigana: "いいですね！とりあえずなまビールをおねがいします！",
+              romaji: "Ii desu ne! Toriaezu nama biiru o onegaishimasu!",
+              translation: "Tuyệt quá! Trước hết cho tôi một ly bia tươi nhé!",
+            },
+            {
+              japanese: "すみません、お酒に弱いのでウーロン茶をお願いします。",
+              furigana: "すみません、おさけによわいのでウーロンちゃをおねがいします。",
+              romaji: "Sumimasen, osake ni yowai node uuroncha o onegaishimasu.",
+              translation: "Xin lỗi, tửu lượng tôi hơi yếu nên cho tôi một ly trà ô long nhé.",
+            },
+          ],
+        };
+      }
+
+      if (currentTurn === 2) {
+        return {
+          aiReply: {
+            japanese: "お疲れ様でした！乾杯！おつまみは何を頼みましょうか？焼き鳥や枝豆、唐揚げなどはいかがですか？",
+            furigana: "おつかれさまでした！かんぱい！おつまみはなにをたのみましょうか？やきとりやえだまめ、からあげなどはいかがですか？",
+            romaji: "Otsukaresama deshita! Kampai! Otsumami wa nani o tanomimashou ka? Yakitori ya edamame, karaage nado wa ikaga desu ka?",
+            translation: "Vất vả rồi! Nâng ly nào! Gọi món nhắm gì đây nhỉ? Bạn thấy gà xiên nướng, đậu nành luộc hay gà rán thế nào?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 92,
+            grammarAdvice: "Nâng ly 'Kampai' tạo không khí rất hào hứng và tự nhiên.",
+            betterExpression: "乾杯！焼き鳥の盛り合わせを頼みましょう。",
+            betterExpressionFurigana: "かんぱい！やきとりのもりあわせをたのみましょう。",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "乾杯！焼き鳥の盛り合わせと枝豆を頼みましょう！",
+              furigana: "かんぱい！やきとりのもりあわせとえだまめをたのみましょう！",
+              romaji: "Kampai! Yakitori no moriawase to edamame o tanomimashou!",
+              translation: "Nâng ly nào! Chúng mình gọi đĩa thập cẩm gà xiên nướng với đậu nành luộc nhé!",
+            },
+            {
+              japanese: "居酒屋のポテトサラダと唐揚げも美味しそうですね！",
+              furigana: "いざかやのポテトサラダとからあげもおいしそうですね！",
+              romaji: "Izakaya no poteto sarada to karaage mo oishisou desu ne!",
+              translation: "Salad khoai tây và gà rán của quán nhậu trông cũng hấp dẫn quá!",
+            },
+          ],
+        };
+      }
+
+      return {
+        aiReply: {
+          japanese: "料理もお酒も美味しくて、とても楽しい夜になりましたね！お会計は割り勘にしましょうか。またぜひ行きましょうね！",
+          furigana: "りょうりもおさけもおおいしくて、とてもたのしいよるになりましたね！おかいけいはわりかんにしましょうか。またぜひいきましょうね！",
+          romaji: "Ryouri mo osake mo oishikute, totemo tanoshii yoru ni narimashita ne! Okaikei wa warikan ni shimashou ka. Mata zehi ikimashou ne!",
+          translation: "Món ăn và đồ uống đều ngon, một buổi tối thật là vui vẻ! Hóa đơn mình chia đều (Warikan) nhé. Lần sau nhất định lại tụ tập tiếp nha!",
+        },
+        isFinished: true,
+        userEvaluation: {
+          naturalnessScore: 95,
+          grammarAdvice: "Giao tiếp quán nhậu sống động, am hiểu văn hóa chia tiền Warikan của Nhật Bản.",
+          betterExpression: "ごちそうさまでした！また一緒に行きましょう！",
+          betterExpressionFurigana: "ごちそうさまでした！またいっしょにいきましょう！",
+        },
+        suggestedAnswers: [
+          {
+            japanese: "はい！割り勘でお願いします。とても楽しかったです！",
+            furigana: "はい！わりかんでおねがいします。とてもたのしかったです！",
+            romaji: "Hai! Warikan de onegaishimasu. Totemo tanoshikatta desu!",
+            translation: "Vâng! Chia đều tiền nhé. Hôm nay vui quá!",
+          },
+          {
+            japanese: "ごちそうさまでした！また誘ってくださいね！",
+            furigana: "ごちそうさまでした！またさそってくださいね！",
+            romaji: "Gochisousama deshita! Mata sasotte kudasai ne!",
+            translation: "Cảm ơn bữa ăn ngon! Lần tới nhớ rủ tôi tiếp nhé!",
+          },
+        ],
+      };
+    }
+
+    // 8. Kịch bản: Bệnh viện / Khám bệnh (病院 / 診察 / 体調)
+    if (
+      scenarioTitle.includes("病院") ||
+      scenarioTitle.includes("診察") ||
+      scenarioTitle.includes("体調") ||
+      /bệnh viện|khám bệnh|bác sĩ|nhà thuốc/i.test(scenarioTitle)
+    ) {
+      if (currentTurn === 1) {
+        return {
+          aiReply: {
+            japanese: "こんにちは。今日はどうされましたか？どこか具合が悪いですか？",
+            furigana: "こんにちは。きょうはどうされましたか？どこかぐあいがわるいですか？",
+            romaji: "Konnichiwa. Kyou wa dou saremashita ka? Dokoka guai ga warui desu ka?",
+            translation: "Chào bạn. Hôm nay bạn thấy trong người thế nào? Bạn cảm thấy không khỏe ở đâu?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 88,
+            grammarAdvice: "Miêu tả triệu chứng kèm thời gian bắt đầu bị đau rất rõ ràng.",
+            betterExpression: "昨日から頭が痛くて、熱もあります。",
+            betterExpressionFurigana: "きのうからあたまがいたくて、ねつもあります。",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "昨日から頭が痛くて、熱が38度近くあります。",
+              furigana: "きのうからあたまがいたくて、ねつがさんじゅうはちどちかくあります。",
+              romaji: "Kinou kara atama ga itakute, netsu ga sanjuuhachi-do chikaku arimasu.",
+              translation: "Từ hôm qua tôi bị đau đầu và sốt gần 38 độ ạ.",
+            },
+            {
+              japanese: "喉がとても痛くて、咳も少し出ます。",
+              furigana: "のどがとてもいたくて、せきもすこしでます。",
+              romaji: "Nodo ga totemo itakute, seki mo sukoshi demasu.",
+              translation: "Họng tôi rất đau và có bị ho một chút nữa ạ.",
+            },
+          ],
+        };
+      }
+
+      if (currentTurn === 2) {
+        return {
+          aiReply: {
+            japanese: "それは辛いですね。薬のアレルギーは何かありますか？妊娠の可能性はありますか？",
+            furigana: "それはつらいですね。くすりのアレルギーはなにかありますか？にんしんのかのうせいはありますか？",
+            romaji: "Sore wa tsurai desu ne. Kusuri no arerugii wa nanika arimasu ka? Ninshin no kanousei wa arimasu ka?",
+            translation: "Thế thì mệt mỏi quá. Bạn có bị dị ứng loại thuốc nào không? Có khả năng đang mang thai không?",
+          },
+          isFinished: false,
+          userEvaluation: {
+            naturalnessScore: 91,
+            grammarAdvice: "Trả lời xác nhận tiền sử dị ứng thuốc chính xác giúp bác sĩ kê đơn an toàn.",
+            betterExpression: "いいえ、薬のアレルギーはありません。",
+            betterExpressionFurigana: "いいえ、くすりのアレルギーはありません。",
+          },
+          suggestedAnswers: [
+            {
+              japanese: "いいえ、特に薬のアレルギーはありません。",
+              furigana: "いいえ、とくにくすりのアレルギーはありません。",
+              romaji: "Iie, tokuni kusuri no arerugii wa arimasen.",
+              translation: "Dạ không, tôi không có dị ứng thuốc gì đặc biệt ạ.",
+            },
+            {
+              japanese: "抗生物質で以前じんましんが出たことがあります。",
+              furigana: "こうせいぶっしつでいぜんじんましんがでたことがあります。",
+              romaji: "Kousei busshitsu de izen jimmashin ga deta koto ga arimasu.",
+              translation: "Trước đây tôi từng bị nổi mề đay khi dùng kháng sinh ạ.",
+            },
+          ],
+        };
+      }
+
+      return {
+        aiReply: {
+          japanese: "解熱剤と喉の炎症を抑えるお薬を3日分出しておきますね。食後に飲んで、温かくして休んでください。お大事にどうぞ！",
+          furigana: "げねつざいとのどのえんしょうをおさえるおくすりをみっかぶんておきますね。しょくごにのんで、あたたかくしてやすんでください。おだいじにどうぞ！",
+          romaji: "Genetsuzai to nodo no enshou o osaeru okusuri o mikka-bun dashite okimasu ne. Shokugo ni nonde, atatakaku shite yasunde kudasai. Odaiji ni douzo!",
+          translation: "Bác sĩ kê cho bạn thuốc hạ sốt và thuốc giảm viêm họng trong 3 ngày nhé. Hãy uống sau bữa ăn, giữ ấm và nghỉ ngơi thật nhiều. Chúc bạn sớm bình phục!",
+        },
+        isFinished: true,
+        userEvaluation: {
+          naturalnessScore: 94,
+          grammarAdvice: "Đáp lại lời dặn của bác sĩ đúng lễ nghi phòng khám Nhật Bản.",
+          betterExpression: "分かりました。ありがとうございました。",
+          betterExpressionFurigana: "わかりました。ありがとうございました。",
+        },
+        suggestedAnswers: [
+          {
+            japanese: "分かりました。診察していただき、ありがとうございました！",
+            furigana: "わかりました。しんさつしていただき、ありがとうございました！",
+            romaji: "Wakarimashita. Shinsatsu shite itadaki, arigatou gozaimashita!",
+            translation: "Tôi hiểu rồi. Cảm ơn bác sĩ đã thăm khám cho tôi ạ!",
+          },
+        ],
+      };
+    }
+
+    // 9. Phản xạ đa lượt tổng quát cho bất kỳ chủ đề nào khác (Luôn tiến về phía trước, không lặp câu hỏi)
     if (currentTurn === 1) {
       return {
         aiReply: {
@@ -1485,11 +2264,12 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
     level = "N5",
     aiMessage = "",
     conversationHistory = [],
+    userName = "Học viên",
   }) {
     // 1. Try Google Gemini Key Pool (Multi-key round-robin & auto-failover)
     if (this.hasGeminiKeys()) {
       try {
-        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory });
+        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory, userName });
         const rawContent = await this.callGemini({ prompt, temperature: 0.7, isJson: true });
         const parsed = this.parseSuggestionsJson(rawContent);
         if (parsed && parsed.suggestedAnswers && parsed.suggestedAnswers.length > 0) {
@@ -1503,7 +2283,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
     // 2. Try Claude
     if (config.ai.anthropicApiKey) {
       try {
-        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory });
+        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory, userName });
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
@@ -1533,7 +2313,7 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
     // 3. Try OpenAI
     if (config.ai.openaiApiKey) {
       try {
-        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory });
+        const prompt = this.buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory, userName });
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -1569,29 +2349,39 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
 
     // 4. Context-Aware Heuristic Generator
     return {
-      suggestedAnswers: this.getHeuristicSuggestions({ scenarioTitle, aiMessage, level }),
+      suggestedAnswers: this.getHeuristicSuggestions({ scenarioTitle, aiMessage, level, userName }),
     };
   }
 
   /**
    * Prompt builder for Roleplay Suggestions
    */
-  static buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory = [] }) {
+  static buildSuggestionsPrompt({ scenarioTitle, level, aiMessage, conversationHistory = [], userName = "Học viên" }) {
     const formattedHistory = conversationHistory
       .slice(-4)
       .map((msg) => `${msg.sender === "ai" ? "Character (AI)" : "Learner"}: "${msg.japanese}"`)
       .join("\n");
 
+    const domainGuidance = this.getScenarioDomainGuidance(scenarioTitle);
+    const identity = getLearnerJapaneseIdentity(userName);
+
     return `
 Bạn là chuyên gia sư phạm tiếng Nhật bản ngữ của JTalk AI.
 Tình huống giao tiếp thực tế: "${scenarioTitle}".
+Lĩnh vực bối cảnh: ${domainGuidance.domain}
 Trình độ người học: JLPT ${level}.
+Họ tên người học: "${userName}" (Tên tiếng Nhật Katakana: "${identity.katakanaName}", Danh xưng lịch sự: "${identity.callingName}").
 Câu nói của đối phương (nhân vật AI): "${aiMessage}".
 ${formattedHistory ? `Lịch sử đối thoại trước đó:\n${formattedHistory}` : ""}
 
 Nhiệm vụ:
-Tạo ra 2 đến 3 câu gợi ý phản xạ ngắn gọn (1 câu tiếng Nhật mỗi gợi ý), TỰ NHIÊN và ĐÚNG NGỮ CẢNH NHẤT để người học có thể chọn đáp lại ngay câu nói của đối phương.
-Các gợi ý phải sát với tình huống thực tế của "${scenarioTitle}" và câu của nhân vật vừa nói ("${aiMessage}").
+Tạo ra 2 đến 3 câu gợi ý phản xạ ngắn gọn (1 câu tiếng Nhật mỗi gợi ý), TỰ NHIÊN, BÁM SÁT TRỌNG TÂM BỐI CẢNH và ĐÚNG NGỮ CẢNH NHẤT để người học có thể chọn đáp lại ngay câu nói của đối phương.
+Các gợi ý phải sát với tình huống thực tế của "${scenarioTitle}" và câu của nhân vật vừa nói ("${aiMessage}"). TUYỆT ĐỐI KHÔNG gợi ý lạc đề sang các chủ đề không liên quan (như hỏi về món ăn quê hương khi đang ở trong lớp học).
+
+ĐẶC BIỆT LƯU Ý VỀ TÊN NGƯỜI HỌC TRONG GỢI Ý (PERSONALIZED NAME IN SUGGESTIONS):
+- Nếu câu nói của đối phương ("${aiMessage}") đang hỏi về tên (お名前は？ / 誰？), hỏi tự giới thiệu bản thân (自己紹介), hoặc chào hỏi gặp mặt lần đầu:
+  Trong các câu gợi ý trả lời ("suggestedAnswers"), BẮT BUỘC sử dụng chính xác tên của người học là "${identity.katakanaName}" (hoặc "${identity.katakanaFullName}"), TUYỆT ĐỐI KHÔNG DÙNG TÊN "Nam" hay bất kỳ tên ngẫu nhiên nào khác!
+  Ví dụ: 「初めまして！私の名前は${identity.katakanaName}です。」 hoặc 「${identity.katakanaName}と申します。」
 
 Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
 {
@@ -1637,9 +2427,309 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
   /**
    * Intelligent Context-Aware Heuristic Suggestions
    */
-  static getHeuristicSuggestions({ scenarioTitle = "", aiMessage = "", level = "N5" }) {
+  static getHeuristicSuggestions({ scenarioTitle = "", aiMessage = "", level = "N5", userName = "Học viên" }) {
     const titleLower = (scenarioTitle || "").toLowerCase();
     const msgLower = (aiMessage || "").toLowerCase();
+    const identity = getLearnerJapaneseIdentity(userName);
+
+    // 0. SPECIFIC INTENT MATCHING FIRST (Ưu tiên nhận diện chính xác ý đồ câu hỏi của AI trước)
+    // A. AI hỏi tên (お名前は何ですか？ / お名前は？ / 誰ですか？ / お名前をお伺い)
+    if (
+      msgLower.includes("名前") ||
+      msgLower.includes("なまえ") ||
+      msgLower.includes("お名前") ||
+      msgLower.includes("誰")
+    ) {
+      return [
+        {
+          japanese: `初めまして！私の名前は${identity.katakanaName}です。よろしくお願いします。`,
+          furigana: `はじめまして！わたしのなまえは${identity.katakanaName}です。よろしくおねがいします。`,
+          romaji: `Hajimemashite! Watashi no namae wa ${identity.romajiName} desu. Yoroshiku onegaishimasu.`,
+          translation: `Rất vui được gặp bạn! Tên tôi là ${identity.givenName}. Rất mong được giúp đỡ.`,
+        },
+        {
+          japanese: `${identity.katakanaName}と申します。ベトナムから来ました。どうぞよろしくお願いします。`,
+          furigana: `${identity.katakanaName}ともうします。ベトナムからきました。どうぞよろしくおねがいします。`,
+          romaji: `${identity.romajiName} to moushimasu. Betonamu kara kimashita. Douzo yoroshiku onegaishimasu.`,
+          translation: `Tôi tên là ${identity.givenName}. Tôi đến từ Việt Nam. Rất mong được giúp đỡ ạ.`,
+        },
+        {
+          japanese: `初めまして、${identity.katakanaName}です。趣味は日本語を勉強することです。`,
+          furigana: `はじめまして、${identity.katakanaName}です。しゅみはにほんごをべんきょうすることです。`,
+          romaji: `Hajimemashite, ${identity.romajiName} desu. Shuumi wa Nihongo o benkyou suru koto desu.`,
+          translation: `Xin chào, tôi là ${identity.givenName}. Sở thích của tôi là học tiếng Nhật.`,
+        },
+      ];
+    }
+
+    // B. AI hỏi xuất xứ / đến từ đâu / quê quán (どこから / 出身 / 国 / どちら)
+    if (
+      msgLower.includes("どこから") ||
+      msgLower.includes("出身") ||
+      msgLower.includes("しゅっしん") ||
+      msgLower.includes("国は") ||
+      msgLower.includes("どちらから") ||
+      msgLower.includes("どちらのご出身")
+    ) {
+      return [
+        {
+          japanese: "ハノイから来ました。とても賑やかな街です。",
+          furigana: "ハノイからきました。とてもにぎやかなまちです。",
+          romaji: "Hanoi kara kimashita. Totemo nigiyaka na machi desu.",
+          translation: "Tôi đến từ Hà Nội. Đó là một thành phố rất nhộn nhịp.",
+        },
+        {
+          japanese: "ベトナムのダナンから来ました。海がとても綺麗です。",
+          furigana: "ベトナムのダナンからきました。うみがとてもきれいです。",
+          romaji: "Betonamu no Danan kara kimashita. Umi ga totemo kirei desu.",
+          translation: "Tôi đến từ Đà Nẵng, Việt Nam. Biển ở đó rất đẹp.",
+        },
+      ];
+    }
+
+    // C. AI hỏi thời gian ở Nhật (どのくらい / いつ日本 / 何年 / 何ヶ月)
+    if (
+      msgLower.includes("どのくらい") ||
+      msgLower.includes("どの位") ||
+      msgLower.includes("いつ日本") ||
+      msgLower.includes("何年") ||
+      msgLower.includes("何ヶ月")
+    ) {
+      return [
+        {
+          japanese: "日本に来てまだ半年くらいです。だんだん慣れてきました。",
+          furigana: "にほんにきてまだはんとし・はんねんくらいです。だんだんなれてきました。",
+          romaji: "Nihon ni kite mada hantoshi kurai desu. Dandan narete kimashita.",
+          translation: "Tôi sang Nhật mới khoảng nửa năm thôi. Đang dần quen rồi ạ.",
+        },
+        {
+          japanese: "先月日本に来たばかりなので、まだ少し緊張しています。",
+          furigana: "せんげつにほんにきたばかりなので、まだすこしきんちょうしています。",
+          romaji: "Sengetsu Nihon ni kita bakari na node, mada sukoshi kinchou shite imasu.",
+          translation: "Tôi vừa sang Nhật hồi tháng trước nên vẫn còn hơi bỡ ngỡ một chút.",
+        },
+      ];
+    }
+
+    // D. AI hỏi về quen cuộc sống chưa / cảm nhận (慣れましたか / 生活 / どうですか)
+    if (
+      msgLower.includes("慣れ") ||
+      msgLower.includes("なれ") ||
+      msgLower.includes("生活") ||
+      msgLower.includes("街はどう") ||
+      msgLower.includes("いかがですか")
+    ) {
+      return [
+        {
+          japanese: "はい、だんだん慣れてきました。街がとても綺麗ですね。",
+          furigana: "はい、だんだんなれてきました。まちがとてもきれいですね。",
+          romaji: "Hai, dandan narete kimashita. Machi ga totemo kirei desu ne.",
+          translation: "Vâng, tôi dần quen rồi. Đường phố ở đây rất sạch đẹp ạ.",
+        },
+        {
+          japanese: "まだ少し慣れていませんが、毎日とても楽しいです。",
+          furigana: "まだすこしなれていませんが、まいにちとてもたのしいです。",
+          romaji: "Mada sukoshi narete imasen ga, mainichi totemo tanoshii desu.",
+          translation: "Tôi vẫn chưa quen lắm, nhưng mỗi ngày đều rất vui.",
+        },
+      ];
+    }
+
+    // D1. AI hỏi thời gian học tiếng Nhật & cảm nhận không khí lớp học (いつから始め / 勉強はいつ / 始めた / クラスの雰囲気 / 雰囲気はどう)
+    if (
+      msgLower.includes("いつから始め") ||
+      msgLower.includes("いつからはじめ") ||
+      msgLower.includes("勉強はいつ") ||
+      msgLower.includes("クラスの雰囲気") ||
+      msgLower.includes("雰囲気はどう") ||
+      msgLower.includes("ふんいき") ||
+      (msgLower.includes("勉強") && msgLower.includes("いつ"))
+    ) {
+      return [
+        {
+          japanese: "3ヶ月前から勉強を始めました。クラスの皆さんが親切で安心しました。",
+          furigana: "さんかげつまえからべんきょうをはじめました。クラスのみなさんがしんせつであんしんしました。",
+          romaji: "San-kagetsu mae kara benkyou o hajimemashita. Kurasu no minasan ga shinsetsu de anshin shimashita.",
+          translation: "Tôi bắt đầu học từ 3 tháng trước. Mọi người trong lớp đều rất thân thiện nên tôi cũng yên tâm rồi.",
+        },
+        {
+          japanese: "ベトナムで半年ほど勉強してきました。少し緊張していますが、とても楽しみです。",
+          furigana: "ベトナムではんとしほどべんきょうしてきました。すこしきんちょうしていますが、とてもたのしみです。",
+          romaji: "Betonamu de hantoshi hodo benkyou shite kimashita. Sukoshi kinchou shite imasu ga, totemo tanoshimi desu.",
+          translation: "Tôi đã học khoảng nửa năm ở Việt Nam. Tuy có chút hồi hộp nhưng tôi rất hào hứng.",
+        },
+      ];
+    }
+
+    // D2. AI hỏi kỹ năng tiếng Nhật nào khó nhất (どれが一番難しい / 一番難しい / 漢字やリスニング / 何が難しい / 難しいと感じ)
+    if (
+      msgLower.includes("一番難しい") ||
+      msgLower.includes("いちばんむずかしい") ||
+      msgLower.includes("どれが一番") ||
+      msgLower.includes("何が難しい") ||
+      msgLower.includes("難しいと感じ") ||
+      (msgLower.includes("難しい") && (msgLower.includes("漢字") || msgLower.includes("リスニング") || msgLower.includes("会話")))
+    ) {
+      return [
+        {
+          japanese: "漢字を覚えるのが一番難しいです。似ている形が多くて大変です。",
+          furigana: "かんじをおぼえるのがいちばんむずかしいです。にているかたちがおおくてたいへんです。",
+          romaji: "Kanji o oboeru no ga ichiban muzukashii desu. Nite iru katachi ga ookute taihen desu.",
+          translation: "Ghi nhớ chữ Hán là khó nhất. Có nhiều chữ nét na ná nhau nên rất vất vả.",
+        },
+        {
+          japanese: "リスニングと会話が難しいです。ネイティブのスピードについていくのがまだ大変です。",
+          furigana: "リスニングとかいわがむずかしいです。ネイティブのスピードについていくのがまだたいへんです。",
+          romaji: "Risuningu to kaiwa ga muzukashii desu. Neitibu no supiido ni tsuite iku no ga mada taihen desu.",
+          translation: "Luyện nghe và hội thoại là khó nhất. Bắt kịp tốc độ của người bản xứ vẫn còn hơi khó với tôi.",
+        },
+      ];
+    }
+
+    // D3. AI hỏi về phương pháp học tập hiệu quả (おすすめの勉強法 / どうやって日本語を勉強 / 勉強法はありますか / おすすめの勉強)
+    if (
+      msgLower.includes("勉強法") ||
+      msgLower.includes("べんきょうほう") ||
+      msgLower.includes("どうやって日本語") ||
+      msgLower.includes("どうやって勉強") ||
+      (msgLower.includes("おすすめ") && msgLower.includes("勉強"))
+    ) {
+      return [
+        {
+          japanese: "私は単語カード（フラッシュカード）アプリを使って、毎日すきま時間に復習しています。",
+          furigana: "わたしはたんごカード（フラッシュカード）アプリをつかって、まいにちすきまじかんにふくしゅうしています。",
+          romaji: "Watashi wa tango kaado (furasshu kaado) apuri o tsukatte, mainichi sukima jikan ni fukushuu shite imasu.",
+          translation: "Tôi dùng app thẻ từ vựng flashcard để tranh thủ ôn tập mỗi khi có thời gian rảnh rỗi.",
+        },
+        {
+          japanese: "好きなアニメやドラマを日本語の字幕で見たり、シャドーイングの練習をしています。",
+          furigana: "すきなアニメやドラマをにほんごのじまくでみたり、シャドーイングのれんしゅうをしています。",
+          romaji: "Suki na anime ya dorama o Nihongo no jimaku de mitari, shadooingu no renshuu o shite imasu.",
+          translation: "Tôi xem anime hay phim Nhật với phụ đề tiếng Nhật và luyện tập phương pháp Shadowing.",
+        },
+      ];
+    }
+
+    // D4. AI rủ rê học nhóm sau giờ học tại thư viện (図書館 / 放課後 / 一緒に / 復習しませんか / 待ち合わせ)
+    if (
+      msgLower.includes("図書館") ||
+      msgLower.includes("としょかん") ||
+      msgLower.includes("放課後") ||
+      msgLower.includes("ほうかご") ||
+      msgLower.includes("復習しませんか") ||
+      (msgLower.includes("一緒") && (msgLower.includes("復習") || msgLower.includes("勉強")))
+    ) {
+      return [
+        {
+          japanese: "ぜひ一緒にお願いします！分からない文法を教えてもらえると嬉しいです。",
+          furigana: "ぜひいっしょにおねがいします！わからないぶんぽうをおしえてもらえるとうれしいです。",
+          romaji: "Zehi issho ni onegaishimasu! Wakaranai bumpou o oshiete moraeru to ureshii desu.",
+          translation: "Nhất định rồi, cho mình học cùng với! Nếu có ngữ pháp nào chưa hiểu thì nhờ bạn chỉ giúp nhé.",
+        },
+        {
+          japanese: "はい、喜んで！一人で勉強するより、一緒に復習した方がモチベーションが上がりますね。",
+          furigana: "はい、よろこんで！ひとりでべんきょうするより、いっしょにふくしゅうしたほうがモチベーションがあがりますね。",
+          romaji: "Hai, yorokonde! Hitori de benkyou suru yori, issho ni fukushuu shita hou ga mochibeeshon ga agarimasu ne.",
+          translation: "Vâng, mình rất sẵn lòng! Học cùng nhau chắc chắn sẽ có nhiều động lực hơn tự học một mình.",
+        },
+      ];
+    }
+
+    // E. AI hỏi về đồ ăn Nhật Bản (食べ物 / 料理 / 何が好き / ラーメン / 寿司)
+    if (
+      msgLower.includes("食べ物") ||
+      msgLower.includes("たべもの") ||
+      msgLower.includes("料理") ||
+      msgLower.includes("りょうり") ||
+      msgLower.includes("何が好き")
+    ) {
+      return [
+        {
+          japanese: "ラーメンが大好きです！特に豚骨ラーメンが美味しいです。",
+          furigana: "ラーメンがだいすきです！とくにとんこつラーメンがおいしいです。",
+          romaji: "Raamen ga daisuki desu! Tokuni tonkotsu raamen ga oishii desu.",
+          translation: "Tôi rất thích mì ramen! Đặc biệt là ramen xương hầm rất ngon.",
+        },
+        {
+          japanese: "お寿司や天ぷらが好きです。何でも美味しく食べられます。",
+          furigana: "おすしやてんぷらがすきです。なんでもおいしくたべられます。",
+          romaji: "Osushi ya tempura ga suki desu. Nandemo oishiku taberaremasu.",
+          translation: "Tôi thích sushi và tempura. Món ăn Nhật nào tôi cũng thấy ngon.",
+        },
+      ];
+    }
+
+    // F. AI hỏi về sở thích / ngày nghỉ (趣味 / 休み / 普段 / 何をして)
+    if (
+      msgLower.includes("趣味") ||
+      msgLower.includes("しゅみ") ||
+      msgLower.includes("休み") ||
+      msgLower.includes("やすみ") ||
+      msgLower.includes("普段")
+    ) {
+      return [
+        {
+          japanese: "休みの日はよく公園を散歩したり、写真を撮ったりします。",
+          furigana: "やすみのひはよくこうえんをさんぽしたり、しゃしんをとったりします。",
+          romaji: "Yasumi no hi wa yoku kouen o sanpo shitari, shashin o tottari shimasu.",
+          translation: "Ngày nghỉ tôi hay đi dạo công viên và chụp ảnh.",
+        },
+        {
+          japanese: "家でアニメを見たり、日本語を勉強したりしています。",
+          furigana: "いえでアニメをみたり、にほんごをべんきょうしたりしています。",
+          romaji: "Ie de anime o mitari, Nihongo o benkyou shitari shite imasu.",
+          translation: "Tôi ở nhà xem anime hoặc tự học tiếng Nhật.",
+        },
+      ];
+    }
+
+    // G. AI hỏi về lý do học tiếng Nhật / mục tiêu tương lai (どうして / 勉強しよう / 将来 / 目標)
+    if (
+      msgLower.includes("どうして") ||
+      msgLower.includes("勉強しよう") ||
+      msgLower.includes("将来") ||
+      msgLower.includes("目標")
+    ) {
+      return [
+        {
+          japanese: "将来、日本のIT企業でエンジニアとして働きたいからです。",
+          furigana: "しょうらい、にほんのアイティーきぎょうでエンジニアとしてはたらきたいからです。",
+          romaji: "Shourai, Nihon no IT kigyou de enjinia toshite hatarakitai kara desu.",
+          translation: "Vì trong tương lai tôi muốn làm kỹ sư IT tại một doanh nghiệp Nhật Bản.",
+        },
+        {
+          japanese: "日本のアニメや文化が大好きで、自由に日本語で話せるようになりたいからです。",
+          furigana: "にほんのアニメやぶんかがだいすきで、じゆうににほんごではなせるようになりたいからです。",
+          romaji: "Nihon no anime ya bunka ga daisuki de, jiyuu ni Nihongo de hanaseru you ni naritai kara desu.",
+          translation: "Vì tôi rất yêu thích văn hóa anime Nhật Bản và muốn giao tiếp tiếng Nhật lưu loát.",
+        },
+      ];
+    }
+
+    // H. AI chào tạm biệt / kết thúc (頑張りましょう / またね / 失礼 / また次回 / お疲れ様)
+    if (
+      msgLower.includes("頑張りましょう") ||
+      msgLower.includes("がんばりましょう") ||
+      msgLower.includes("またね") ||
+      msgLower.includes("また次回") ||
+      msgLower.includes("お疲れ様") ||
+      msgLower.includes("よろしくおねがいしますね")
+    ) {
+      return [
+        {
+          japanese: "はい！こちらこそ、これからどうぞよろしくお願いします！",
+          furigana: "はい！こちらこそ、これからどうぞよろしくおねがいします！",
+          romaji: "Hai! Kochira koso, korekara douzo yoroshiku onegaishimasu!",
+          translation: "Vâng! Tôi cũng rất mong nhận được sự giúp đỡ của bạn từ nay về sau ạ!",
+        },
+        {
+          japanese: "お話しできてとても楽しかったです。ありがとうございました！",
+          furigana: "おはなしできてとてもたのしかったです。ありがとうございました！",
+          romaji: "Ohanashi dekite totemo tanoshikatta desu. Arigatou gozaimashita!",
+          translation: "Nói chuyện với bạn rất vui. Cảm ơn bạn rất nhiều ạ!",
+        },
+      ];
+    }
 
     // 1. Bakery / Bread / Tiệm bánh (e.g. Mua bánh mì ở tiệm bánh Nhật Bản)
     if (
@@ -1805,16 +2895,16 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
     ) {
       return [
         {
-          japanese: "初めまして！どうぞよろしくお願いします。",
-          furigana: "はじめまして！どうぞよろしくおねがいします。",
-          romaji: "Hajimemashite! Douzo yoroshiku onegaishimasu.",
-          translation: "Rất vui được gặp bạn! Rất mong được giúp đỡ.",
+          japanese: `初めまして！私の名前は${identity.katakanaName}です。どうぞよろしくお願いします。`,
+          furigana: `はじめまして！わたしのなまえは${identity.katakanaName}です。どうぞよろしくおねがいします。`,
+          romaji: `Hajimemashite! Watashi no namae wa ${identity.romajiName} desu. Douzo yoroshiku onegaishimasu.`,
+          translation: `Rất vui được gặp bạn! Tên tôi là ${identity.givenName}. Rất mong được giúp đỡ.`,
         },
         {
-          japanese: "こんにちは！ベトナムから来ました。",
-          furigana: "こんにちは！ベトナムからきました。",
-          romaji: "Konnichiwa! Betonamu kara kimashita.",
-          translation: "Xin chào! Tôi đến từ Việt Nam.",
+          japanese: `${identity.katakanaName}と申します。ベトナムから来ました。`,
+          furigana: `${identity.katakanaName}ともうします。ベトナムからきました。`,
+          romaji: `${identity.romajiName} to moushimasu. Betonamu kara kimashita.`,
+          translation: `Tôi tên là ${identity.givenName}. Tôi đến từ Việt Nam.`,
         },
       ];
     }
@@ -1829,10 +2919,10 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
     ) {
       return [
         {
-          japanese: "本日はお時間をいただきありがとうございます。",
-          furigana: "ほんじつはおじかんをいただきありがとうございます。",
-          romaji: "Honjitsu wa ojikan o itadaki arigatou gozaimasu.",
-          translation: "Cảm ơn quý công ty đã dành thời gian hôm nay ạ.",
+          japanese: `${identity.katakanaName}と申します。本日はお時間をいただきありがとうございます。`,
+          furigana: `${identity.katakanaName}ともうします。ほんじつはおじかんをいただきありがとうございます。`,
+          romaji: `${identity.romajiName} to moushimasu. Honjitsu wa ojikan o itadaki arigatou gozaimasu.`,
+          translation: `Tôi tên là ${identity.givenName}. Cảm ơn quý công ty đã dành thời gian hôm nay ạ.`,
         },
         {
           japanese: "どうぞよろしくお願いいたします。",
@@ -1881,6 +2971,152 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
         translation: "Bạn có thể chỉ rõ hơn giúp tôi được không ạ?",
       },
     ];
+  }
+
+  /**
+   * 5. AI Vocabulary Classifier & Enricher
+   * Phân loại chính xác từ loại (wordType: noun, verb, adjective, adverb, phrase, other),
+   * Furigana và Romaji cho danh sách từ vựng tiếng Nhật.
+   */
+  static async enrichVocabularyBatchWithAi(items) {
+    if (!Array.isArray(items) || items.length === 0) return items;
+
+    // 1. Thử gọi Gemini nếu có key
+    if (this.hasGeminiKeys()) {
+      try {
+        const prompt = `
+Bạn là chuyên gia ngôn ngữ học tiếng Nhật và giáo trình JLPT của JTalk AI.
+Nhiệm vụ: Phân tích chính xác từ loại (wordType), bổ sung Furigana Hiragana chuẩn xác, Romaji Hepburn, và tinh chỉnh nghĩa tiếng Việt gọn gàng cho danh sách từ vựng sau.
+
+QUY TẮC PHÂN LOẠI TỪ LOẠI (wordType) BẮT BUỘC CHỌN 1 TRONG CÁC GIÁ TRỊ:
+- "verb": Động từ (nhóm 1 Godan, nhóm 2 Ichidan, nhóm 3 Suru/Kuru). Ví dụ: 寝る, 食べる, 行く, 話す, 待つ, 呼ぶ, 勉強する.
+- "noun": Danh từ (người, đồ vật, địa điểm, thời gian, sự việc). Ví dụ: 学生, 本, 車, 朝, 友達, 日本, 部屋.
+- "adjective": Tính từ (tính từ đuôi -i như 高い, 暑い, 広い; và tính từ đuôi -na như 静か, きれい, 元気, 有名).
+- "adverb": Phó từ (bổ nghĩa cho động từ/tính từ). Ví dụ: とても, たくさん, ゆっくり, ぜんぜん, もう, まだ, ちょっと.
+- "phrase": Cụm từ, thành ngữ, câu chào hỏi giao tiếp cố định. Ví dụ: こんにちは, おはようございます, お疲れ様です, よろしくお願いします, 初めまして.
+- "other": Trợ từ, thán từ hoặc từ loại khác.
+
+Danh sách từ cần xử lý:
+${JSON.stringify(
+  items.map((i) => ({
+    id: i.id || i._id,
+    kanji: i.kanji || i.word,
+    furigana: i.furigana || "",
+    meaning: i.meaning || i.definition || "",
+  }))
+)}
+
+Trả về DUY NHẤT một chuỗi JSON hợp lệ theo cấu trúc sau (không kèm markdown ngoài json):
+{
+  "enrichedItems": [
+    {
+      "id": "id tương ứng của từng từ",
+      "kanji": "từ tiếng Nhật chuẩn có Kanji nếu có",
+      "furigana": "cách đọc Hiragana chuẩn",
+      "romaji": "romaji phiên âm chuẩn Hepburn",
+      "meaning": "nghĩa tiếng Việt hoặc tiếng Anh rõ ràng, súc tích",
+      "wordType": "verb"
+    }
+  ]
+}
+`;
+
+        const raw = await this.callGemini({ prompt, temperature: 0.1, isJson: true });
+        const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+
+        if (parsed && Array.isArray(parsed.enrichedItems) && parsed.enrichedItems.length > 0) {
+          const map = new Map();
+          parsed.enrichedItems.forEach((p) => {
+            if (p.id) map.set(String(p.id), p);
+          });
+
+          return items.map((item) => {
+            const key = String(item.id || item._id);
+            const enriched = map.get(key);
+            if (enriched) {
+              return {
+                ...item,
+                kanji: enriched.kanji || item.kanji,
+                furigana: enriched.furigana || item.furigana,
+                romaji: enriched.romaji || item.romaji,
+                meaning: enriched.meaning || item.meaning,
+                wordType: ["noun", "verb", "adjective", "adverb", "phrase", "other"].includes(
+                  enriched.wordType
+                )
+                  ? enriched.wordType
+                  : item.wordType || "noun",
+              };
+            }
+            return item;
+          });
+        }
+      } catch (err) {
+        console.warn("Lỗi gọi Gemini AI phân loại từ vựng, chuyển sang Heuristic NLP:", err.message);
+      }
+    }
+
+    // 2. Fallback Heuristic NLP tiếng Nhật (Chạy offline siêu tốc và cực kỳ chuẩn xác)
+    return items.map((item) => {
+      const kanji = (item.kanji || item.word || "").trim();
+      const meaning = (item.meaning || item.definition || "").toLowerCase().trim();
+      const furigana = (item.furigana || "").trim();
+
+      let detectedType = "noun";
+
+      // A. Nhận diện Động từ (Verb)
+      const verbEndings = /[うくぐすつぬぶむる]$/;
+      const isSuruVerb = kanji.endsWith("する") || furigana.endsWith("する");
+      const hasVerbMeaning =
+        meaning.startsWith("to ") ||
+        /\b(ăn|uống|đi|ngủ|đến|nói|chạy|học|làm|mua|bán|xem|nhìn|đọc|viết|nghe|nghĩ|chờ|gọi|mặc|mở|đóng|bắt đầu|kết thúc)\b/.test(
+          meaning
+        );
+
+      if (isSuruVerb || (verbEndings.test(kanji) && (hasVerbMeaning || kanji.length <= 4))) {
+        detectedType = "verb";
+      }
+      // B. Nhận diện Tính từ (Adjective)
+      else if (
+        kanji.endsWith("い") &&
+        /[一-龯]/.test(kanji) &&
+        !verbEndings.test(kanji.slice(-1))
+      ) {
+        detectedType = "adjective";
+      } else if (
+        /\b(đẹp|sạch|yên tĩnh|nổi tiếng|khỏe mạnh|thân thiện|rảnh rỗi|thích|ghét|vất vả|tiện lợi|quan trọng)\b/.test(
+          meaning
+        ) ||
+        meaning.includes("(na-adj)") ||
+        meaning.includes("(adj)")
+      ) {
+        detectedType = "adjective";
+      }
+      // C. Nhận diện Phó từ (Adverb)
+      else if (
+        /^(とても|たいへん|すごく|ゆっくり|たくさん|もう|まだ|ちょっと|すこし|ぜんぜん|すぐ|だんだn|たぶん|かならず|ぜひ)$/.test(
+          furigana || kanji
+        ) ||
+        /\b(rất|lắm|nhiều|chậm rãi|chưa|đã|ngay lập tức|hoàn toàn|chắc chắn)\b/.test(meaning)
+      ) {
+        detectedType = "adverb";
+      }
+      // D. Nhận diện Cụm từ (Phrase)
+      else if (
+        kanji.length > 6 ||
+        kanji.includes(" ") ||
+        /^(こんにちは|おはよう|こんばんは|さようなら|ありがとう|いただきます|ごちそうさま|お疲れ様|初めまして|よろしく)/.test(
+          furigana || kanji
+        )
+      ) {
+        detectedType = "phrase";
+      }
+
+      return {
+        ...item,
+        wordType: detectedType,
+      };
+    });
   }
 }
 
