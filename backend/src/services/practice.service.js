@@ -282,6 +282,7 @@ export class PracticeService {
    */
   static async handleRoleplayChat({
     userId,
+    userName = "Học viên",
     lessonId,
     scenarioTitle,
     level = "N5",
@@ -310,6 +311,7 @@ export class PracticeService {
       level: finalLevel,
       conversationHistory,
       userMessage: userMessage.trim(),
+      userName,
     });
 
     return aiResult;
@@ -320,6 +322,7 @@ export class PracticeService {
    */
   static async handleRoleplaySuggestions({
     userId,
+    userName = "Học viên",
     lessonId,
     scenarioTitle,
     level = "N5",
@@ -342,6 +345,7 @@ export class PracticeService {
       level: finalLevel,
       aiMessage,
       conversationHistory,
+      userName,
     });
 
     return result;

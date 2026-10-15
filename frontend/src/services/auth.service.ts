@@ -49,6 +49,15 @@ export const authService = {
     return res.data;
   },
 
+  setupDemoStreak: async (username?: string) => {
+    const res = await api.post(
+      "/auth/setup-demo-streak",
+      { username },
+      { withCredentials: true }
+    );
+    return res.data;
+  },
+
   signOut: async () => {
     return api.post("/auth/signout", { withCredentials: true });
   },

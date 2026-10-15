@@ -287,11 +287,19 @@ export const deletePractice = async (req, res, next) => {
  */
 export const aiRoleplayChat = async (req, res, next) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user?._id;
+    const userName =
+      req.body.userName ||
+      req.user?.displayName ||
+      req.user?.firstName ||
+      (req.user?.lastName ? `${req.user.lastName} ${req.user.firstName || ""}`.trim() : "") ||
+      req.user?.username ||
+      "Học viên";
     const { lessonId, scenarioTitle, level, conversationHistory, userMessage } = req.body;
 
     const result = await PracticeService.handleRoleplayChat({
       userId,
+      userName,
       lessonId,
       scenarioTitle,
       level,
@@ -312,10 +320,18 @@ export const aiRoleplayChat = async (req, res, next) => {
 export const getRoleplaySuggestions = async (req, res, next) => {
   try {
     const userId = req.user?._id;
+    const userName =
+      req.body.userName ||
+      req.user?.displayName ||
+      req.user?.firstName ||
+      (req.user?.lastName ? `${req.user.lastName} ${req.user.firstName || ""}`.trim() : "") ||
+      req.user?.username ||
+      "Học viên";
     const { lessonId, scenarioTitle, level, aiMessage, conversationHistory } = req.body;
 
     const result = await PracticeService.handleRoleplaySuggestions({
       userId,
+      userName,
       lessonId,
       scenarioTitle,
       level,

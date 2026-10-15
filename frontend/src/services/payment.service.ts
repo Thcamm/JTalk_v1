@@ -1,27 +1,5 @@
 import api from "@/services/api";
 
-export interface CreateMoMoPaymentResponse {
-  success: boolean;
-  message?: string;
-  orderCode?: string;
-  order?: {
-    _id: string;
-    orderCode: string;
-    amount: number;
-    status: string;
-  };
-  amount?: number;
-  bankId?: string;
-  accountNo?: string;
-  phone?: string;
-  accountName?: string;
-  payUrl?: string;
-  qrCodeUrl?: string;
-  deeplink?: string;
-  transferContent?: string;
-  status?: string;
-}
-
 export interface CreateVietQRPaymentResponse {
   success: boolean;
   message?: string;
@@ -63,7 +41,7 @@ export interface OrderItem {
   _id: string;
   orderCode: string;
   amount: number;
-  paymentMethod: "momo" | "vnpay" | "vietqr" | string;
+  paymentMethod: "vietqr" | string;
   status: "pending" | "completed" | "failed" | "cancelled" | string;
   transactionId?: string;
   paidAt?: string | null;
@@ -103,37 +81,7 @@ export const paymentService = {
   },
 
   /**
-   * Create MoMo payment for 99,000 VND / 30-day Premium plan
-   */
-  createMoMoPayment: async (planType: string = "monthly_99k"): Promise<CreateMoMoPaymentResponse> => {
-    const res = await api.post("/payments/momo/create", { planType });
-    const payload = res.data?.data || res.data;
-    return {
-      ...payload,
-      success: res.data?.success !== false,
-      message: res.data?.message || payload?.message,
-    };
-  },
-
-  /**
-   * Confirm MoMo payment status or verify transfer
-   */
-  confirmMoMoPayment: async (orderCode: string): Promise<ConfirmVietQRPaymentResponse> => {
-    const res = await api.post("/payments/momo/confirm", { orderCode });
-    const payload = res.data?.data || res.data;
-    const resolvedStatus = (payload?.status || res.data?.status || "pending").toLowerCase();
-    const isCompleted = resolvedStatus === "completed" || resolvedStatus === "success";
-
-    return {
-      ...payload,
-      success: Boolean(res.data?.success && isCompleted),
-      status: resolvedStatus,
-      message: res.data?.message || payload?.message,
-    };
-  },
-
-  /**
-   * Check order status after returning from MoMo gateway callback or via auto-polling
+   * Check order status via auto-polling or manual refresh
    */
   getOrderStatus: async (orderCode: string): Promise<OrderStatusResponse> => {
     const res = await api.get(`/payments/order/${orderCode}`);

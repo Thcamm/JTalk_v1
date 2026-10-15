@@ -14,9 +14,11 @@ import {
   GraduationCap,
   Sparkles,
   X,
+  BookMarked,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/useSidebarStore";
 import { useAuth } from "@/hooks/useAuth";
+import { SocialSidebarWidget } from "@/components/common/SocialIcons";
 
 const adminNavItems = [
   {
@@ -30,6 +32,12 @@ const adminNavItems = [
     to: "/admin/lessons",
     icon: Video,
     badge: "YouTube",
+  },
+  {
+    text: "Kho Từ vựng & Quizlet",
+    to: "/admin/vocabulary",
+    icon: BookMarked,
+    badge: "Quizlet",
   },
   {
     text: "Khóa học & Chủ đề",
@@ -199,6 +207,11 @@ export default function AdminSidebar() {
               );
             })}
           </nav>
+        </div>
+
+        {/* Kênh Mạng Xã Hội Facebook & TikTok của JTalk */}
+        <div className="px-3 pt-2">
+          <SocialSidebarWidget isCollapsed={isCollapsed} theme="admin" />
         </div>
 
         {/* Footer / Return to Student Dashboard */}

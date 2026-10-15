@@ -15,6 +15,8 @@ import SidebarItem from "./SidebarItem";
 import { sidebarItems } from "./sidebar-data";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebarStore } from "@/stores/useSidebarStore";
+import { FacebookIcon, TikTokIcon } from "@/components/common/SocialIcons";
+import { SOCIAL_LINKS } from "@/constants/socialLinks";
 
 export default function Sidebar() {
   const { isPremium, user } = useAuth();
@@ -120,7 +122,7 @@ export default function Sidebar() {
                   icon={<Icon size={18} />}
                   text={item.text}
                   to={item.to}
-                  highlight={item.highlight}
+                  highlight={(item as any).highlight}
                   isCollapsed={isCollapsed}
                 />
               );
@@ -142,6 +144,64 @@ export default function Sidebar() {
 
         {/* Upgrade banner / Button at bottom */}
         <div className="p-3 border-t border-slate-100 dark:border-slate-800/80">
+          {/* 2 Icon Mạng Xã Hội Facebook & TikTok bên trên gói Premium 1 khoảng ngắn */}
+          {!isCollapsed ? (
+            <div className="mb-2.5">
+              <div className="flex items-center justify-between mb-1.5 px-0.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 flex items-center gap-1">
+                  <Sparkles size={11} className="text-rose-500" />
+                  <span>Kênh JTalk</span>
+                </span>
+                <span className="text-[10px] font-bold text-rose-500">
+                  Follow nhận quà 🎁
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={SOCIAL_LINKS.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-[#1877F2] hover:bg-[#166fe5] text-white text-xs font-black shadow-2xs hover:scale-102 active:scale-95 transition-all cursor-pointer"
+                  title={`Fanpage Facebook: ${SOCIAL_LINKS.facebookName}`}
+                >
+                  <FacebookIcon size={13} className="text-white fill-white shrink-0" />
+                  <span>Facebook</span>
+                </a>
+                <a
+                  href={SOCIAL_LINKS.tiktok}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-black dark:bg-slate-800 hover:bg-slate-900 text-white text-xs font-black shadow-2xs hover:scale-102 active:scale-95 transition-all cursor-pointer"
+                  title={`Kênh TikTok: ${SOCIAL_LINKS.tiktokName}`}
+                >
+                  <TikTokIcon size={13} className="text-white fill-white shrink-0" />
+                  <span>TikTok</span>
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 mb-2.5">
+              <a
+                href={SOCIAL_LINKS.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 rounded-xl bg-[#1877F2] text-white flex items-center justify-center shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                title={`Facebook: ${SOCIAL_LINKS.facebookName}`}
+              >
+                <FacebookIcon size={15} className="text-white fill-white" />
+              </a>
+              <a
+                href={SOCIAL_LINKS.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 rounded-xl bg-black dark:bg-slate-800 text-white flex items-center justify-center shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                title={`TikTok: ${SOCIAL_LINKS.tiktokName}`}
+              >
+                <TikTokIcon size={15} className="text-white fill-white" />
+              </a>
+            </div>
+          )}
+
           {user?.role === "admin" ? (
             isCollapsed ? (
               <Link

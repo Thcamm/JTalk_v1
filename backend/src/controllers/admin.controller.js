@@ -3,6 +3,7 @@ import Course from "../models/Course.js";
 import Topic from "../models/Topic.js";
 import Lesson from "../models/Lesson.js";
 import Practice from "../models/Practice.js";
+import SystemVocabulary from "../models/SystemVocabulary.js";
 import { successResponse, errorResponse } from "../utils/apiResponse.js";
 import { AiService } from "../services/ai.service.js";
 import CurriculumService from "../services/curriculum.service.js";
@@ -23,6 +24,7 @@ export const getStats = async (_req, res, next) => {
       totalLessons,
       totalVideoLessons,
       totalPractices,
+      totalSystemVocabularies,
       recentUsers,
       recentLessons,
     ] = await Promise.all([
@@ -39,6 +41,7 @@ export const getStats = async (_req, res, next) => {
         ],
       }),
       Practice.countDocuments(),
+      SystemVocabulary.countDocuments(),
       User.find()
         .select("-hashedPassword")
         .sort({ createdAt: -1 })
@@ -62,6 +65,7 @@ export const getStats = async (_req, res, next) => {
         totalLessons,
         totalVideoLessons,
         totalPractices,
+        totalSystemVocabularies,
       },
       recentUsers,
       recentLessons,

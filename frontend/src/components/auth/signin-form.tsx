@@ -19,7 +19,6 @@ import {
   Zap,
   X,
   KeyRound,
-  Mail,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { authService } from "@/services/auth.service";
@@ -46,6 +45,7 @@ export function SigninForm() {
   const [forgotNewPass, setForgotNewPass] = useState("");
   const [isForgotLoading, setIsForgotLoading] = useState(false);
   const [demoOtpHint, setDemoOtpHint] = useState<string | null>(null);
+  const [previewMailUrl, setPreviewMailUrl] = useState<string | null>(null);
 
   const handleRequestForgotCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +60,12 @@ export function SigninForm() {
       if (code) {
         setDemoOtpHint(code);
         setForgotCode(code);
+      }
+      const preview = res?.data?.previewUrl || res?.previewUrl;
+      if (preview) {
+        setPreviewMailUrl(preview);
+      } else {
+        setPreviewMailUrl(null);
       }
       toast.success(res?.message || "Mã xác thực đã được gửi.");
       setForgotStep("verify");
@@ -87,10 +93,11 @@ export function SigninForm() {
       setShowForgotPassword(false);
       setForgotStep("request");
       setDemoOtpHint(null);
+      setPreviewMailUrl(null);
       setForgotNewPass("");
       setForgotCode("");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Mã xác thực không đúng hoặc đã hết hạn.");
+      toast.error(err?.response?.data?.message || "Mã xác thực không hợp lệ hoặc đã hết hạn.");
     } finally {
       setIsForgotLoading(false);
     }
@@ -113,15 +120,67 @@ export function SigninForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
   });
 
+  const [isSettingUpDemo, setIsSettingUpDemo] = useState(false);
+
+  const handleFillStreakDemo = async () => {
+    try {
+      setIsSettingUpDemo(true);
+      const res = await authService.setupDemoStreak("demo_streak");
+      setValue("username", "demo_streak", { shouldValidate: true });
+      setValue("password", "Password123@", { shouldValidate: true });
+
+      // Xóa toàn bộ cờ cache vinh danh để đảm bảo pop-up ngọn lửa kích hoạt 100% khi vào Dashboard
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("jtalk_streak_celebrated")) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+      } catch {
+        // ignore
+      }
+
+      toast.success(
+        res?.message ||
+          "Đã chuẩn bị tài khoản Demo chuỗi 6 ngày! Bấm Đăng nhập để kích hoạt ngày thứ 7 trước hội đồng."
+      );
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Không thể chuẩn bị tài khoản demo.");
+    } finally {
+      setIsSettingUpDemo(false);
+    }
+  };
+
   const onSubmit = async (data: SignInFormValues) => {
     try {
       setIsSubmitting(true);
       const { username, password } = data;
+
+      // Nếu đăng nhập tài khoản demo, dọn dẹp cờ vinh danh để pop-up luôn kích hoạt sống động
+      if (username.toLowerCase().includes("demo_streak")) {
+        try {
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith("jtalk_streak_celebrated")) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach((k) => localStorage.removeItem(k));
+        } catch {
+          // ignore
+        }
+      }
+
       await signIn(username, password);
 
       const currentUser = useAuthStore.getState().user;
@@ -170,6 +229,34 @@ export function SigninForm() {
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
                 Đăng nhập vào tài khoản JTalk để tiếp tục chuỗi luyện nói Kaiwa
               </p>
+            </div>
+
+            {/* Quick Demo for Council Presentation */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-fuchsia-500/10 via-purple-500/10 to-pink-500/10 border border-fuchsia-400/30 flex items-center justify-between gap-3 text-left">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-pink-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Flame size={16} className="fill-current animate-pulse text-amber-200" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                    Demo Hội Đồng
+                    <span className="text-3xs px-1.5 py-0.5 rounded-md bg-fuchsia-500/20 text-fuchsia-700 dark:text-fuchsia-300 font-extrabold">
+                      Chuỗi 6 ngày
+                    </span>
+                  </p>
+                  <p className="text-3xs text-slate-500 dark:text-slate-400 truncate">
+                    Bấm để nạp sẵn tài khoản kích hoạt ngày thứ 7
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleFillStreakDemo}
+                disabled={isSettingUpDemo}
+                className="px-3 py-1.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 active:scale-95 text-white text-2xs font-black transition-all shadow-xs cursor-pointer whitespace-nowrap disabled:opacity-50 shrink-0"
+              >
+                {isSettingUpDemo ? "Đang chuẩn bị..." : "1-Click Điền Demo"}
+              </button>
             </div>
 
             {/* Username Input */}
@@ -371,7 +458,7 @@ export function SigninForm() {
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {forgotStep === "request"
-                    ? "Nhập email hoặc username tài khoản của bạn"
+                    ? "Nhập tên đăng nhập, hệ thống sẽ tự động gửi mã OTP về email của bạn"
                     : "Nhập mã xác thực OTP và mật khẩu mới"}
                 </p>
               </div>
@@ -382,21 +469,24 @@ export function SigninForm() {
               <form onSubmit={handleRequestForgotCode} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-2xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Tên đăng nhập hoặc Email
+                    Tên đăng nhập tài khoản (hoặc Email)
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
-                      <Mail size={16} />
+                      <UserIcon size={16} />
                     </div>
                     <input
                       type="text"
                       required
-                      placeholder="user@example.com hoặc username"
+                      placeholder="VD: thcamm (hoặc email của bạn)"
                       value={forgotTarget}
                       onChange={(e) => setForgotTarget(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all shadow-2xs"
                     />
                   </div>
+                  <p className="text-3xs text-slate-500 dark:text-slate-400 leading-relaxed pt-0.5">
+                    💡 <em>Bạn chỉ cần nhập <strong>Tên đăng nhập</strong>, hệ thống tự động tra cứu và gửi mã OTP trực tiếp về địa chỉ email bạn đã dùng để đăng ký tài khoản.</em>
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-2">
@@ -422,6 +512,20 @@ export function SigninForm() {
                 {demoOtpHint && (
                   <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl text-xs text-amber-800 dark:text-amber-300">
                     Mã xác thực thử nghiệm của bạn là: <strong className="font-mono text-sm tracking-widest">{demoOtpHint}</strong>
+                  </div>
+                )}
+
+                {previewMailUrl && (
+                  <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-2xl text-xs text-indigo-800 dark:text-indigo-300 flex items-center justify-between gap-2">
+                    <span>Hộp thư thử nghiệm ảo:</span>
+                    <a
+                      href={previewMailUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold underline text-indigo-600 dark:text-indigo-400 hover:text-indigo-800"
+                    >
+                      Xem email đã gửi ↗
+                    </a>
                   </div>
                 )}
 

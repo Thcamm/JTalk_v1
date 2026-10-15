@@ -162,14 +162,14 @@ export const PremiumModal = ({
                 onClick={handleGoToCheckout}
                 className="w-full py-4 px-6 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:translate-y-0.5 text-white font-extrabold rounded-2xl shadow-lg hover:shadow-xl hover:shadow-rose-500/20 transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-[0.99] cursor-pointer"
               >
-                <span>Nâng cấp 99.000đ ngay (VietQR / MoMo)</span>
+                <span>Nâng cấp 99.000đ ngay (VietQR 24/7)</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
             )}
 
             <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>Hỗ trợ chuyển khoản ngân hàng 24/7 & Ví MoMo bảo mật</span>
+              <span>Chuyển khoản liên ngân hàng 24/7 qua VietQR Napas tự động</span>
             </div>
           </div>
         </div>

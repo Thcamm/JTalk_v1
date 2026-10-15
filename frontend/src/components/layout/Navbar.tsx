@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "@/lib/react-router-compat";
 import {
   Search,
@@ -51,6 +51,50 @@ export default function Navbar() {
 
   const targetLevel = user?.profile?.targetLevel || "N5";
   const xpPoints = user?.gamification?.totalXp || 0;
+
+  // Visual Streak Tier Theme for Navbar button
+  const streakTierStyle = useMemo(() => {
+    if (streak <= 2) {
+      return {
+        bg: "bg-orange-50 dark:bg-orange-950/40 border-orange-200/80 dark:border-orange-800/60 text-orange-900 dark:text-orange-200 hover:bg-orange-100/80",
+        flame: "text-orange-500 fill-orange-500",
+        tierName: "Lửa Cam Hổ Phách",
+      };
+    }
+    if (streak <= 6) {
+      return {
+        bg: "bg-rose-50 dark:bg-rose-950/40 border-rose-200/80 dark:border-rose-800/60 text-rose-900 dark:text-rose-200 hover:bg-rose-100/80",
+        flame: "text-rose-500 fill-rose-500",
+        tierName: "Lửa Đỏ Nhiệt Huyết",
+      };
+    }
+    if (streak <= 13) {
+      return {
+        bg: "bg-fuchsia-50 dark:bg-fuchsia-950/40 border-fuchsia-200/80 dark:border-fuchsia-800/60 text-fuchsia-900 dark:text-fuchsia-200 hover:bg-fuchsia-100/80",
+        flame: "text-fuchsia-500 fill-fuchsia-500",
+        tierName: "Lửa Hồng Tím Neon",
+      };
+    }
+    if (streak <= 29) {
+      return {
+        bg: "bg-cyan-50 dark:bg-cyan-950/40 border-cyan-200/80 dark:border-cyan-800/60 text-cyan-900 dark:text-cyan-200 hover:bg-cyan-100/80",
+        flame: "text-cyan-500 fill-cyan-500",
+        tierName: "Lửa Lam Thanh Khiết",
+      };
+    }
+    if (streak <= 99) {
+      return {
+        bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100/80",
+        flame: "text-amber-500 fill-amber-500",
+        tierName: "Lửa Hoàng Kim Siêu Cấp",
+      };
+    }
+    return {
+      bg: "bg-purple-50 dark:bg-purple-950/40 border-purple-200/80 dark:border-purple-800/60 text-purple-900 dark:text-purple-200 hover:bg-purple-100/80",
+      flame: "text-purple-500 fill-purple-500",
+      tierName: "Lửa Vũ Trụ Huyền Thoại",
+    };
+  }, [streak]);
 
   return (
     <>
@@ -124,10 +168,10 @@ export default function Navbar() {
           <button
             onClick={() => setShowCheckInModal(true)}
             type="button"
-            className="flex items-center gap-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 px-2.5 sm:px-3 py-1.5 text-xs font-black text-rose-900 dark:text-rose-200 shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs hover:bg-rose-100/80 dark:hover:bg-rose-900/40"
-            title={`Chuỗi ${streak} ngày học liên tiếp! Bấm để xem Thẻ điểm danh 7 ngày.`}
+            className={`flex items-center gap-1.5 rounded-full border px-2.5 sm:px-3 py-1.5 text-xs font-black shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs ${streakTierStyle.bg}`}
+            title={`Chuỗi ${streak} ngày học liên tiếp (${streakTierStyle.tierName})! Bấm để vinh danh ngọn lửa.`}
           >
-            <Flame size={15} className="text-rose-500 fill-rose-500 animate-pulse" />
+            <Flame size={15} className={`${streakTierStyle.flame} animate-pulse`} />
             <span>{streak}</span>
             <span className="hidden sm:inline">ngày</span>
           </button>

@@ -26,10 +26,11 @@ export const useAuth = () => {
     // Quản trị viên (admin) có toàn quyền truy cập hệ thống mà không cần mua/gán gói premium
     if (user?.role === "admin") return true;
     if (!user || !user.subscription) return false;
-    const { tier, expiresAt } = user.subscription;
+    const tier = user.subscription.tier;
     if (tier !== "premium") return false;
-    if (expiresAt) {
-      return new Date(expiresAt).getTime() > Date.now();
+    const expiry = user.subscription.expiresAt || (user.subscription as any).endDate;
+    if (expiry) {
+      return new Date(expiry).getTime() > Date.now();
     }
     return true;
   }, [user]);

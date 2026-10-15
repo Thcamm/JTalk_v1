@@ -30,6 +30,12 @@ import {
   Lock,
   ArrowUpRight,
   Crown,
+  Eye,
+  EyeOff,
+  User,
+  Mail,
+  Check,
+  Loader2,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -56,10 +62,12 @@ import { ChangePasswordModal } from "@/components/profile/ChangePasswordModal";
 import { OnboardingQuizModal } from "@/components/gamification/OnboardingQuizModal";
 import { JapaneseMascot } from "@/components/common/JapaneseMascot";
 import { toast } from "sonner";
+import { userService } from "@/services/user.service";
+import { useAuthStore } from "@/stores/useAuthStore";
 import type { Practice, Course } from "@/types";
 
 interface ProfilePageProps {
-  defaultTab?: "progress" | "practices" | "orders";
+  defaultTab?: "progress" | "practices" | "orders" | "settings";
 }
 
 export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
@@ -67,19 +75,38 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
   const [searchParams] = useSearchParams();
 
   // Tab initialization: defaultTab prop > URL search param "?tab=..." > "progress"
-  const tabFromQuery = searchParams.get("tab") as "progress" | "practices" | "orders" | null;
+  const tabFromQuery = searchParams.get("tab") as "progress" | "practices" | "orders" | "settings" | null;
   const initialTab =
     defaultTab ||
-    (tabFromQuery === "practices" || tabFromQuery === "orders" || tabFromQuery === "progress"
+    (tabFromQuery === "practices" || tabFromQuery === "orders" || tabFromQuery === "settings" || tabFromQuery === "progress"
       ? tabFromQuery
       : "progress");
 
-  const [activeTab, setActiveTab] = useState<"progress" | "practices" | "orders">(initialTab);
+  const [activeTab, setActiveTab] = useState<"progress" | "practices" | "orders" | "settings">(initialTab);
   const [weeklyLogs, setWeeklyLogs] = useState<DailyStudyLog[]>([]);
   const [practices, setPractices] = useState<Practice[]>([]);
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // States for Profile In-Page Editor
+  const [profileLastName, setProfileLastName] = useState("");
+  const [profileFirstName, setProfileFirstName] = useState("");
+  const [profileDisplayName, setProfileDisplayName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileTargetLevel, setProfileTargetLevel] = useState<"N5" | "N4" | "N3" | "N2" | "N1">("N5");
+  const [profileGoal, setProfileGoal] = useState<"daily_conversation" | "interview" | "business" | "travel">("daily_conversation");
+  const [profileDailyMinutes, setProfileDailyMinutes] = useState<number>(15);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // States for In-Page Change Password
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [isChangingPass, setIsChangingPass] = useState(false);
 
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -87,6 +114,120 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
   const [showOnboardingQuiz, setShowOnboardingQuiz] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize and prefill profile information whenever user state changes
+  useEffect(() => {
+    if (user) {
+      let initialLastName = user.lastName || "";
+      let initialFirstName = user.firstName || "";
+      if (!initialLastName && !initialFirstName && user.displayName) {
+        const parts = user.displayName.trim().split(/\s+/);
+        if (parts.length === 1) {
+          initialFirstName = parts[0];
+        } else if (parts.length > 1) {
+          initialFirstName = parts[parts.length - 1];
+          initialLastName = parts.slice(0, parts.length - 1).join(" ");
+        }
+      }
+      setProfileLastName(initialLastName);
+      setProfileFirstName(initialFirstName);
+      setProfileDisplayName(user.displayName || "");
+      setProfileBio(user.bio || "");
+      setProfileTargetLevel(user.profile?.targetLevel || "N5");
+      setProfileGoal(user.profile?.goal || "daily_conversation");
+      setProfileDailyMinutes(user.profile?.dailyTargetMinutes || 15);
+    }
+  }, [user]);
+
+  // Password strength meter
+  const newPasswordStrength = useMemo(() => {
+    if (!newPassword) return { level: 0, text: "", color: "bg-slate-200" };
+    if (newPassword.length < 6) return { level: 1, text: "Yếu (tối thiểu 6 ký tự)", color: "bg-rose-500" };
+    let score = 1;
+    if (/[A-Z]/.test(newPassword)) score++;
+    if (/[0-9]/.test(newPassword)) score++;
+    if (/[^A-Za-z0-9]/.test(newPassword)) score++;
+    if (score <= 2) return { level: 2, text: "Trung bình", color: "bg-amber-500" };
+    return { level: 3, text: "Mạnh và an toàn", color: "bg-emerald-500" };
+  }, [newPassword]);
+
+  // Handler for saving in-page profile
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileDisplayName.trim() && !profileFirstName.trim()) {
+      toast.error("Vui lòng nhập họ tên của bạn.");
+      return;
+    }
+
+    try {
+      setIsSavingProfile(true);
+      const updated = await userService.updateProfile({
+        firstName: profileFirstName.trim(),
+        lastName: profileLastName.trim(),
+        displayName: profileDisplayName.trim() || `${profileLastName} ${profileFirstName}`.trim(),
+        bio: profileBio.trim(),
+        targetLevel: profileTargetLevel,
+        goal: profileGoal,
+        dailyTargetMinutes: profileDailyMinutes,
+      });
+
+      if (updated) {
+        useAuthStore.getState().updateUser({
+          firstName: updated.firstName || profileFirstName.trim(),
+          lastName: updated.lastName || profileLastName.trim(),
+          displayName: updated.displayName || profileDisplayName.trim() || `${profileLastName} ${profileFirstName}`.trim(),
+          bio: updated.bio,
+          profile: updated.profile,
+        });
+      }
+
+      toast.success("Cập nhật thông tin hồ sơ thành công!");
+      await fetchMe();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Cập nhật hồ sơ thất bại";
+      toast.error(msg);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  // Handler for in-page change password
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword) {
+      toast.error("Vui lòng nhập mật khẩu hiện tại.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Mật khẩu mới phải có tối thiểu 6 ký tự.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+    if (currentPassword === newPassword) {
+      toast.error("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
+      return;
+    }
+
+    try {
+      setIsChangingPass(true);
+      await userService.changePassword({
+        currentPassword,
+        newPassword,
+      });
+      toast.success("Đổi mật khẩu thành công! Tài khoản của bạn đã được bảo vệ.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Đổi mật khẩu thất bại";
+      toast.error(msg);
+    } finally {
+      setIsChangingPass(false);
+    }
+  };
 
   // Audio playback handler
   const togglePlayAudio = (id: string, audioUrl?: string) => {
@@ -368,11 +509,15 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                 <div className="flex items-center gap-2 pt-2 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => setShowEditProfileModal(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
+                    onClick={() => setActiveTab("settings")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98 ${
+                      activeTab === "settings"
+                        ? "bg-rose-600 text-white shadow-rose-500/20"
+                        : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200"
+                    }`}
                   >
-                    <UserCog size={13} className="text-rose-500" />
-                    <span>Sửa thông tin & Mục tiêu</span>
+                    <UserCog size={13} className={activeTab === "settings" ? "text-white" : "text-rose-500"} />
+                    <span>Sửa hồ sơ & Mật khẩu</span>
                   </button>
 
                   <button
@@ -381,7 +526,7 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98"
                   >
                     <KeyRound size={13} className="text-amber-500" />
-                    <span>Đổi mật khẩu</span>
+                    <span>Đổi mật khẩu nhanh</span>
                   </button>
 
                   <button
@@ -569,6 +714,20 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                 {orders.length}
               </span>
             )}
+          </button>
+
+          {/* Tab 4: Cài đặt hồ sơ & Mật khẩu */}
+          <button
+            onClick={() => setActiveTab("settings")}
+            type="button"
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "settings"
+                ? "bg-rose-600 text-white shadow-md shadow-rose-600/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+          >
+            <UserCog className="w-4 h-4" />
+            <span>Cài đặt hồ sơ & Mật khẩu</span>
           </button>
         </div>
 
@@ -1023,7 +1182,13 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                       {isPremium ? (
                         <>
                           <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
-                          <span>Gói Premium Đang Hoạt Động</span>
+                          <span>
+                            {user?.role === "admin"
+                              ? "Quản trị viên · VIP Trọn đời"
+                              : user?.subscription?.expiresAt
+                              ? `Hạn dùng: ${new Date(user.subscription.expiresAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })} (còn ${Math.max(0, Math.ceil((new Date(user.subscription.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} ngày)`
+                              : "Gói Premium Đang Hoạt Động"}
+                          </span>
                         </>
                       ) : (
                         <>
@@ -1050,7 +1215,7 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                         to="/checkout"
                         className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-rose-700 dark:text-rose-300 font-extrabold text-xs rounded-2xl border border-rose-300 dark:border-rose-700 shadow-2xs transition-all"
                       >
-                        <span>Gia hạn thêm gói tháng</span>
+                        <span>Chi tiết gói & Quản lý</span>
                         <ChevronRight className="w-4 h-4" />
                       </Link>
                     ) : (
@@ -1108,7 +1273,7 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                     className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 active:scale-95 text-white rounded-2xl text-xs font-black shadow-md hover:shadow-lg transition-all"
                   >
                     <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>Nâng cấp 99.000đ qua VietQR / MoMo</span>
+                    <span>Nâng cấp 99.000đ qua VietQR 24/7</span>
                   </Link>
                 </div>
               ) : (
@@ -1182,18 +1347,14 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
 
                             {/* Payment Method */}
                             <td className="py-4 px-3">
-                              {order.paymentMethod === "vietqr" ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-900/50 text-2xs font-bold whitespace-nowrap">
-                                  <Landmark className="w-3 h-3" />
-                                  <span>VietQR 24/7</span>
-                                </span>
-                              ) : order.paymentMethod === "vnpay" ? (
+                              {order.paymentMethod === "vnpay" ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-900/50 text-2xs font-bold whitespace-nowrap">
                                   VNPay
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-pink-50 dark:bg-pink-950/40 text-[#A50064] dark:text-pink-300 border border-pink-200/80 dark:border-pink-900/50 text-2xs font-bold whitespace-nowrap">
-                                  Ví MoMo
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-900/50 text-2xs font-bold whitespace-nowrap">
+                                  <Landmark className="w-3 h-3" />
+                                  <span>VietQR 24/7</span>
                                 </span>
                               )}
                             </td>
@@ -1250,6 +1411,414 @@ export const ProfilePage = ({ defaultTab }: ProfilePageProps = {}) => {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            TAB 4: CÀI ĐẶT HỒ SƠ & MẬT KHẨU (Settings & Security)
+        ======================================================== */}
+        {activeTab === "settings" && (
+          <div className="space-y-7 animate-in fade-in duration-200">
+            {/* Top Info Banner */}
+            <div className="rounded-3xl p-6 sm:p-7 bg-gradient-to-r from-rose-500/10 via-amber-500/5 to-transparent border border-rose-200/60 dark:border-rose-900/40 relative overflow-hidden">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                    <UserCog size={13} />
+                    <span>Quản lý Tài Khoản & Bảo Mật</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                    Chỉnh sửa Hồ sơ & Đổi Mật khẩu
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                    Cập nhật họ tên, mục tiêu luyện Kaiwa và bảo mật tài khoản của bạn.
+                  </p>
+                </div>
+                <div className="shrink-0 flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Mã tài khoản: <code className="text-2xs font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-slate-700 dark:text-slate-300">{user?._id?.slice(-8) || "JTalk"}</code>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid 2 Columns: Profile on the left, Password on the right */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
+              {/* Column 1: Chỉnh sửa Hồ sơ cá nhân (7 cols) */}
+              <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+                      <User size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                        Thông tin cá nhân & Lộ trình
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Chỉnh sửa trực tiếp họ tên và mục tiêu học tập
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveProfile} className="space-y-5">
+                  {/* Account Identifiers (Locked / Fixed) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/60">
+                    {/* Username - Locked */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <Lock size={12} className="text-slate-400" />
+                          <span>Tên đăng nhập</span>
+                        </label>
+                      </div>
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={user?.username || ""}
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed select-all"
+                        title="Tên đăng nhập cố định, không thể thay đổi"
+                      />
+                    </div>
+
+                    {/* Email - Linked */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <Mail size={12} className="text-slate-400" />
+                          <span>Email liên kết</span>
+                        </label>
+                      </div>
+                      <input
+                        type="email"
+                        readOnly
+                        disabled
+                        value={user?.email || ""}
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed select-all"
+                        title="Email nhận mã OTP khi khôi phục mật khẩu"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Prefilled First & Last Names */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Họ và tên đệm
+                      </label>
+                      <input
+                        type="text"
+                        value={profileLastName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setProfileLastName(val);
+                          const combined = `${val} ${profileFirstName}`.trim();
+                          if (combined) setProfileDisplayName(combined);
+                        }}
+                        placeholder="ví dụ: Nguyễn Văn"
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Tên <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={profileFirstName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setProfileFirstName(val);
+                          const combined = `${profileLastName} ${val}`.trim();
+                          if (combined) setProfileDisplayName(combined);
+                        }}
+                        placeholder="ví dụ: Nam"
+                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Display Name */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Tên hiển thị công khai <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-3xs text-slate-400">Tự động cập nhật theo Họ & Tên</span>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={profileDisplayName}
+                      onChange={(e) => setProfileDisplayName(e.target.value)}
+                      placeholder="ví dụ: Nguyễn Văn Nam"
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+
+                  {/* Bio */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Giới thiệu ngắn (Bio)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={profileBio}
+                      onChange={(e) => setProfileBio(e.target.value)}
+                      placeholder="Mục tiêu của tôi là đỗ N3 và giao tiếp tự tin khi đi phỏng vấn..."
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-none"
+                    />
+                  </div>
+
+                  {/* JLPT Target Level */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <Target size={14} className="text-rose-500" />
+                      <span>Mục tiêu trình độ JLPT</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {(["N5", "N4", "N3", "N2", "N1"] as const).map((lvl) => {
+                        const isSelected = profileTargetLevel === lvl;
+                        return (
+                          <button
+                            key={lvl}
+                            type="button"
+                            onClick={() => setProfileTargetLevel(lvl)}
+                            className={`py-2 px-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
+                              isSelected
+                                ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                                : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+                            }`}
+                          >
+                            {lvl}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Goal and Daily Minutes */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1.5">
+                      <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <Sparkles size={14} className="text-amber-500" />
+                        <span>Mục đích học</span>
+                      </label>
+                      <select
+                        value={profileGoal}
+                        onChange={(e) => setProfileGoal(e.target.value as any)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+                      >
+                        <option value="daily_conversation">💬 Hội thoại đời sống</option>
+                        <option value="interview">💼 Phỏng vấn xin việc</option>
+                        <option value="business">🏢 Tiếng Nhật công sở</option>
+                        <option value="travel">✈️ Du lịch & Giao lưu</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <Clock size={14} className="text-indigo-500" />
+                        <span>Mục tiêu mỗi ngày</span>
+                      </label>
+                      <select
+                        value={profileDailyMinutes}
+                        onChange={(e) => setProfileDailyMinutes(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+                      >
+                        <option value={15}>15 phút / ngày</option>
+                        <option value={30}>30 phút / ngày</option>
+                        <option value={45}>45 phút / ngày</option>
+                        <option value={60}>60 phút / ngày</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={isSavingProfile}
+                      className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-500 hover:brightness-105 text-white text-xs font-black shadow-md shadow-rose-500/25 transition-all cursor-pointer disabled:opacity-50 active:scale-98"
+                    >
+                      {isSavingProfile ? (
+                        <>
+                          <Loader2 size={15} className="animate-spin" />
+                          <span>Đang lưu thông tin...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check size={15} />
+                          <span>Lưu Thay Đổi Hồ Sơ</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Column 2: Đổi Mật Khẩu (5 cols) */}
+              <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                      <KeyRound size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                        Đổi mật khẩu tài khoản
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Bảo vệ tài khoản với mật khẩu mạnh
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  {/* Current Password */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Mật khẩu hiện tại <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPass ? "text" : "password"}
+                        required
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Nhập mật khẩu hiện tại"
+                        className="w-full px-4 py-2.5 pr-11 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPass(!showCurrentPass)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* New Password */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Mật khẩu mới <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPass ? "text" : "password"}
+                        required
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Tối thiểu 6 ký tự"
+                        className="w-full px-4 py-2.5 pr-11 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    {/* Password Strength Indicator */}
+                    {newPassword && (
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center justify-between text-3xs font-bold">
+                          <span className="text-slate-500">Độ bảo mật:</span>
+                          <span
+                            className={
+                              newPasswordStrength.level === 3
+                                ? "text-emerald-500"
+                                : newPasswordStrength.level === 2
+                                ? "text-amber-500"
+                                : "text-rose-500"
+                            }
+                          >
+                            {newPasswordStrength.text}
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${newPasswordStrength.color}`}
+                            style={{ width: `${(newPasswordStrength.level / 3) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Xác nhận mật khẩu mới <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPass ? "text" : "password"}
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Nhập lại mật khẩu mới"
+                        className="w-full px-4 py-2.5 pr-11 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPass(!showConfirmPass)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      >
+                        {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    {confirmPassword && (
+                      <p
+                        className={`text-3xs font-bold ${
+                          newPassword === confirmPassword ? "text-emerald-500" : "text-rose-500"
+                        }`}
+                      >
+                        {newPassword === confirmPassword
+                          ? "✓ Mật khẩu xác nhận trùng khớp"
+                          : "✕ Mật khẩu xác nhận chưa khớp"}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-3xs text-slate-500 dark:text-slate-400 space-y-1">
+                    <p className="font-bold text-slate-700 dark:text-slate-300">💡 Lời khuyên an toàn:</p>
+                    <p>• Sử dụng ít nhất 6 ký tự kết hợp chữ in hoa, số và ký hiệu.</p>
+                    <p>• Không đặt mật khẩu trùng với tên đăng nhập hoặc ngày sinh.</p>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={isChangingPass}
+                      className="inline-flex items-center justify-center gap-2 w-full px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-500 hover:brightness-105 text-white text-xs font-black shadow-md shadow-amber-500/25 transition-all cursor-pointer disabled:opacity-50 active:scale-98"
+                    >
+                      {isChangingPass ? (
+                        <>
+                          <Loader2 size={15} className="animate-spin" />
+                          <span>Đang đổi mật khẩu...</span>
+                        </>
+                      ) : (
+                        <>
+                          <KeyRound size={15} />
+                          <span>Cập Nhật Mật Khẩu</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}

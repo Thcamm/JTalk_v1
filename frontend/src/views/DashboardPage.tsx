@@ -27,6 +27,7 @@ import { PremiumModal } from "@/components/common/PremiumModal";
 import { HankoStampCard } from "@/components/gamification/HankoStampCard";
 import { DailyQuestsWidget } from "@/components/gamification/DailyQuestsWidget";
 import { OnboardingQuizModal } from "@/components/gamification/OnboardingQuizModal";
+import { SocialCommunityCard } from "@/components/common/SocialIcons";
 import type { Practice } from "@/types";
 
 export const DashboardPage = () => {
@@ -474,6 +475,9 @@ export const DashboardPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Cộng Đồng Học Tiếng Nhật JTalk - Follow Facebook & TikTok */}
+        <SocialCommunityCard variant="dashboard" />
 
         {/* Practice Recent List */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">

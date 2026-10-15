@@ -93,10 +93,10 @@ export function Breadcrumbs() {
       return [{ label: "Nâng cấp Gói Premium" }];
     }
 
-    if (pathname === "/payment/momo/callback") {
+    if (pathname.startsWith("/payment/")) {
       return [
         { label: "Gói Premium", href: "/checkout" },
-        { label: "Kết quả thanh toán MoMo" },
+        { label: "Kết quả thanh toán" },
       ];
     }
 

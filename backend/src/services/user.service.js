@@ -36,7 +36,13 @@ export class UserService {
       endDate: { $gt: now },
     }).sort({ endDate: -1 });
 
-    const isPremium = !!activeSub;
+    const isPremium = user.role === "admin" || !!activeSub;
+
+    // Tự động đồng bộ snapshot user.subscription trong DB nếu gói đã hết hạn
+    if (!isPremium && user.subscription?.tier === "premium") {
+      user.subscription.tier = "free";
+      await user.save();
+    }
 
     // Calculate today's quota usage and Practice-to-Earn bonus
     const todayStr = getTodayDateString();
@@ -55,11 +61,13 @@ export class UserService {
     const subscriptionInfo = {
       isPremium,
       tier: isPremium ? "premium" : "free",
-      status: activeSub ? activeSub.status : "free",
-      planType: activeSub ? activeSub.planType : null,
-      startDate: activeSub ? activeSub.startDate : null,
-      endDate: activeSub ? activeSub.endDate : null,
-      expires_at: activeSub ? activeSub.endDate : null,
+      status: activeSub ? activeSub.status : (user.role === "admin" ? "active" : "free"),
+      planType: activeSub ? activeSub.planType : (user.role === "admin" ? "admin_vip" : null),
+      startDate: activeSub ? activeSub.startDate : (user.subscription?.startDate || null),
+      endDate: activeSub ? activeSub.endDate : (user.subscription?.expiresAt || null),
+      expiresAt: activeSub ? activeSub.endDate : (user.subscription?.expiresAt || null),
+      expires_at: activeSub ? activeSub.endDate : (user.subscription?.expiresAt || null),
+      subscriptionId: activeSub ? activeSub._id : (user.subscription?.subscriptionId || null),
     };
 
     // Verify if streak is still active or expired (missed yesterday, or protected by freeze)
@@ -118,8 +126,15 @@ export class UserService {
    * Updates user profile fields
    */
   static async updateProfile(userId, updateData) {
+    if (updateData.username !== undefined) {
+      // Tên đăng nhập là trường định danh duy nhất, không cho phép thay đổi
+      console.warn(`[USER] Từ chối yêu cầu đổi username cho userId: ${userId}`);
+    }
+
     const allowedFields = [
       "displayName",
+      "firstName",
+      "lastName",
       "avatarUrl",
       "bio",
       "phone",
@@ -129,7 +144,18 @@ export class UserService {
     const updates = {};
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
-        updates[field] = updateData[field];
+        updates[field] = typeof updateData[field] === "string" ? updateData[field].trim() : updateData[field];
+      }
+    }
+
+    // Tự động đồng bộ displayName nếu cập nhật firstName / lastName
+    if (updates.firstName !== undefined || updates.lastName !== undefined) {
+      const currentUser = await User.findById(userId).select("firstName lastName displayName").lean();
+      const finalFirstName = updates.firstName !== undefined ? updates.firstName : (currentUser?.firstName || "");
+      const finalLastName = updates.lastName !== undefined ? updates.lastName : (currentUser?.lastName || "");
+      const combined = `${finalLastName} ${finalFirstName}`.trim();
+      if (!updates.displayName && combined) {
+        updates.displayName = combined;
       }
     }
 

@@ -28,6 +28,12 @@ import {
 import { useThemeStore } from "@/stores/useThemeStore";
 import { playHankoStampAudio } from "@/components/gamification/HankoStampCard";
 import { practiceService } from "@/services/practice.service";
+import { SOCIAL_LINKS } from "@/constants/socialLinks";
+import {
+  FacebookIcon,
+  TikTokIcon,
+  SocialCommunityCard,
+} from "@/components/common/SocialIcons";
 
 export default function LandingPage() {
   const { isDark, toggleTheme } = useThemeStore();
@@ -1102,7 +1108,7 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-rose-500" />
-              <span>Hỗ trợ thanh toán MoMo tiện lợi</span>
+              <span>Hỗ trợ thanh toán VietQR 24/7 tự động</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-rose-500" />
@@ -1130,6 +1136,13 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ================= COMMUNITY / SOCIAL FOLLOW SECTION ================= */}
+      <section className="py-10 border-t border-rose-100 dark:border-slate-800/80 bg-gradient-to-b from-transparent via-rose-500/5 to-transparent">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8">
+          <SocialCommunityCard variant="landing" />
+        </div>
+      </section>
+
       {/* ================= FOOTER ================= */}
       <footer className="border-t border-rose-100 dark:border-slate-800 bg-white/60 dark:bg-[#0b0f17] py-12 text-slate-500 dark:text-slate-400 text-xs font-medium">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -1151,6 +1164,31 @@ export default function LandingPage() {
             <a href="#hanko" className="hover:text-rose-600 transition">Thẻ Điểm Danh</a>
             <Link to="/signin" className="hover:text-rose-600 transition">Đăng nhập</Link>
             <Link to="/signup" className="hover:text-rose-600 transition">Đăng ký</Link>
+          </div>
+
+          {/* Icon Mạng xã hội Facebook & TikTok */}
+          <div className="flex items-center gap-2.5">
+            <span className="text-3xs uppercase font-extrabold tracking-wider text-slate-400 mr-0.5 hidden sm:inline">
+              Theo dõi chúng mình:
+            </span>
+            <a
+              href={SOCIAL_LINKS.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-blue-50 dark:bg-slate-800 text-[#1877F2] hover:bg-[#1877F2] hover:text-white transition-all shadow-2xs hover:scale-110 cursor-pointer"
+              title="Fanpage Facebook JTalk"
+            >
+              <FacebookIcon size={16} />
+            </a>
+            <a
+              href={SOCIAL_LINKS.tiktok}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all shadow-2xs hover:scale-110 cursor-pointer"
+              title="Kênh TikTok @jtalk.vn"
+            >
+              <TikTokIcon size={16} />
+            </a>
           </div>
 
           <p className="text-3xs text-slate-400 text-center md:text-right">

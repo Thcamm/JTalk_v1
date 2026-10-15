@@ -32,6 +32,7 @@ import { soundEffects } from "@/utils/soundEffects";
 import { PremiumModal } from "@/components/common/PremiumModal";
 import { Badge } from "@/components/common/Badge";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { getLearnerJapaneseIdentity } from "@/utils/vietnameseToKatakana";
 import type { Lesson } from "@/types";
 
 // Fallback scenarios with full multi-turn authentic Japanese dialogues
@@ -534,11 +535,40 @@ const SCENARIO_FALLBACKS: Record<string, Partial<Lesson>> = {
   },
 };
 
-const getFallbackScenario = (id?: string): Partial<Lesson> => {
-  if (id && SCENARIO_FALLBACKS[id]) {
-    return SCENARIO_FALLBACKS[id];
+const getFallbackScenario = (id?: string, rawName?: string): Partial<Lesson> => {
+  const base = (id && SCENARIO_FALLBACKS[id]) ? SCENARIO_FALLBACKS[id] : SCENARIO_FALLBACKS["sc-1"];
+  if (!rawName) return base;
+
+  const identity = getLearnerJapaneseIdentity(rawName);
+  const cloned = JSON.parse(JSON.stringify(base)) as Partial<Lesson>;
+
+  if (cloned.sampleSentence) {
+    cloned.sampleSentence = cloned.sampleSentence.replace(/ナム/g, identity.katakanaName);
   }
-  return SCENARIO_FALLBACKS["sc-1"];
+  if (cloned.translation) {
+    cloned.translation = cloned.translation.replace(/\bNam\b/g, identity.givenName);
+  }
+  if (Array.isArray(cloned.dialogues)) {
+    cloned.dialogues = cloned.dialogues.map((d) => ({
+      ...d,
+      japanese: d.japanese
+        ?.replace(/ナムさん/g, `${identity.katakanaName}さん`)
+        .replace(/ナム/g, identity.katakanaName),
+      furigana: d.furigana
+        ?.replace(/ナムさん/g, `${identity.katakanaName}さん`)
+        .replace(/ナム/g, identity.katakanaName),
+      romaji: d.romaji
+        ?.replace(/Namu-san/g, identity.callingNameRomaji)
+        .replace(/Namu/g, identity.romajiName),
+      translation: d.translation
+        ?.replace(/\bNam\b/g, identity.givenName)
+        ?.replace(/bạn Nam/gi, `bạn ${identity.givenName}`),
+      expectedAnswer: d.expectedAnswer
+        ?.replace(/ナムさん/g, `${identity.katakanaName}さん`)
+        .replace(/ナム/g, identity.katakanaName),
+    }));
+  }
+  return cloned;
 };
 
 const hasKanji = (text?: string): boolean => {
@@ -619,9 +649,11 @@ export const PracticeRoomPage = () => {
     const fetchLesson = async () => {
       if (!lessonId) return;
 
+      const rawLearnerName = user?.displayName || user?.firstName || user?.username || "";
+
       // If lessonId directly matches a known fallback scenario
       if (lessonId.startsWith("sc-")) {
-        const fb = getFallbackScenario(lessonId);
+        const fb = getFallbackScenario(lessonId, rawLearnerName);
         session.setLesson({
           _id: lessonId,
           topicId: "topic-fb",
@@ -655,7 +687,7 @@ export const PracticeRoomPage = () => {
           if (!hasValidDialogues && !hasJapaneseSample) {
             // Bài học trong DB không có hội thoại giao tiếp (ví dụ bài ngữ pháp/video chỉ có tiêu đề tiếng Việt)
             // Tự động làm giàu dữ liệu bằng kịch bản hội thoại tiếng Nhật bản xứ chuẩn
-            const fb = getFallbackScenario(lessonId);
+            const fb = getFallbackScenario(lessonId, rawLearnerName);
             session.setLesson({
               ...data,
               dialogues: fb.dialogues,
@@ -669,7 +701,7 @@ export const PracticeRoomPage = () => {
       } catch (err: unknown) {
         console.error("Failed to load lesson from API:", err);
         if (isMounted) {
-          const fb = getFallbackScenario(lessonId);
+          const fb = getFallbackScenario(lessonId, rawLearnerName);
           const fallbackLesson: Lesson = {
             _id: lessonId,
             topicId: "topic-1",
@@ -1283,7 +1315,7 @@ export const PracticeRoomPage = () => {
         )}
       </main>
 
-      {/* MoMo Premium Upgrade Modal */}
+      {/* Premium Upgrade Modal */}
       <PremiumModal
         isOpen={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}

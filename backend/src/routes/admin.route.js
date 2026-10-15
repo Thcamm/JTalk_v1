@@ -17,6 +17,16 @@ import {
   cleanDuplicateVideosHandler,
 } from "../controllers/admin.controller.js";
 import {
+  importVocabulary,
+  importVocabularyToLesson,
+  getAdminVocabularies,
+  createAdminVocabulary,
+  updateAdminVocabulary,
+  deleteAdminVocabulary,
+  deleteAdminVocabularyBulk,
+  enrichVocabularyWithAiHandler,
+} from "../controllers/admin.vocabulary.controller.js";
+import {
   createLesson,
   updateLesson,
   deleteLesson,
@@ -55,5 +65,15 @@ router.delete("/courses/:id", deleteAdminCourse);
 // 5. Topic Management
 router.get("/topics", getAdminTopics);
 router.post("/topics", createAdminTopic);
+
+// 6. Vocabulary & Master Bank Bulk Management
+router.get("/vocabulary", getAdminVocabularies);
+router.post("/vocabulary", createAdminVocabulary);
+router.post("/vocabulary/ai-enrich", enrichVocabularyWithAiHandler);
+router.post("/vocabulary/import", importVocabulary);
+router.post("/vocabulary/import-to-lesson", importVocabularyToLesson);
+router.delete("/vocabulary/bulk", deleteAdminVocabularyBulk);
+router.patch("/vocabulary/:id", updateAdminVocabulary);
+router.delete("/vocabulary/:id", deleteAdminVocabulary);
 
 export default router;

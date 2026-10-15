@@ -32,6 +32,8 @@ export interface LeaderboardResponse {
 
 export interface UpdateProfilePayload {
   displayName?: string;
+  firstName?: string;
+  lastName?: string;
   bio?: string;
   phone?: string;
   avatarUrl?: string;

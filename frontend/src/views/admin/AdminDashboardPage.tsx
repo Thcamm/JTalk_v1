@@ -8,6 +8,7 @@ import {
 } from "@/services/admin.service";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { YouTubeIcon } from "@/components/common/YouTubeIcon";
+import { SocialCommunityCard } from "@/components/common/SocialIcons";
 import {
   Users,
   Video,
@@ -20,6 +21,7 @@ import {
   Clock,
   Award,
   TrendingUp,
+  BookMarked,
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -96,7 +98,14 @@ export default function AdminDashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <Link
+              href="/admin/vocabulary"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-bold active:scale-95 transition-all shadow-md"
+            >
+              <BookMarked size={16} className="text-indigo-400" />
+              <span>Kho Từ vựng Quizlet</span>
+            </Link>
             <Link
               href="/admin/lessons/new"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-black shadow-lg shadow-indigo-600/30 active:scale-95 transition-all"
@@ -110,6 +119,9 @@ export default function AdminDashboardPage() {
         {/* Ambient background glow */}
         <div className="absolute -right-20 -bottom-20 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
       </div>
+
+      {/* Kênh Mạng Xã Hội Fanpage Facebook & TikTok */}
+      <SocialCommunityCard variant="admin" />
 
       {/* KPI Bento Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, User, Target, Clock, Sparkles, Check, Loader2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { X, User, Target, Clock, Sparkles, Check, Loader2, Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { userService } from "@/services/user.service";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -37,6 +37,24 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   user,
   onSuccess,
 }) => {
+  // Điền sẵn họ và tên từ bản ghi người dùng, hoặc tự động phân tích từ displayName
+  const initialNames = useMemo(() => {
+    if (user?.lastName || user?.firstName) {
+      return {
+        lastName: user.lastName || "",
+        firstName: user.firstName || "",
+      };
+    }
+    const parts = (user?.displayName || "").trim().split(/\s+/);
+    if (parts.length === 0 || !parts[0]) return { lastName: "", firstName: "" };
+    if (parts.length === 1) return { lastName: "", firstName: parts[0] };
+    const firstName = parts[parts.length - 1];
+    const lastName = parts.slice(0, parts.length - 1).join(" ");
+    return { lastName, firstName };
+  }, [user]);
+
+  const [lastName, setLastName] = useState(initialNames.lastName);
+  const [firstName, setFirstName] = useState(initialNames.firstName);
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [bio, setBio] = useState(user?.bio || "");
   const [targetLevel, setTargetLevel] = useState<"N5" | "N4" | "N3" | "N2" | "N1">(
@@ -52,27 +70,43 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handleLastNameChange = (val: string) => {
+    setLastName(val);
+    const combined = `${val} ${firstName}`.trim();
+    if (combined) setDisplayName(combined);
+  };
+
+  const handleFirstNameChange = (val: string) => {
+    setFirstName(val);
+    const combined = `${lastName} ${val}`.trim();
+    if (combined) setDisplayName(combined);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!displayName.trim()) {
-      toast.error("Vui lòng nhập tên hiển thị.");
+    if (!displayName.trim() && !firstName.trim()) {
+      toast.error("Vui lòng nhập họ tên của bạn.");
       return;
     }
 
     try {
       setSubmitting(true);
       const updated = await userService.updateProfile({
-        displayName: displayName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        displayName: displayName.trim() || `${lastName} ${firstName}`.trim(),
         bio: bio.trim(),
         targetLevel,
         goal,
         dailyTargetMinutes,
       });
 
-      // Synchronize freshly updated display name into auth store immediately
+      // Đồng bộ thông tin người dùng mới nhất vào auth store ngay lập tức
       if (updated) {
         useAuthStore.getState().updateUser({
-          displayName: updated.displayName || displayName.trim(),
+          firstName: updated.firstName || firstName.trim(),
+          lastName: updated.lastName || lastName.trim(),
+          displayName: updated.displayName || displayName.trim() || `${lastName} ${firstName}`.trim(),
           bio: updated.bio,
           profile: updated.profile,
         });
@@ -122,11 +156,89 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Account Identifiers (Readonly) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+            {/* Username - Fixed / Locked */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <Lock size={12} className="text-slate-400" />
+                  <span>Tên đăng nhập</span>
+                </label>
+                <span className="text-3xs font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                  🔒 Cố định
+                </span>
+              </div>
+              <input
+                type="text"
+                readOnly
+                disabled
+                value={user?.username || ""}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed select-all"
+                title="Tên đăng nhập là định danh tài khoản, không thể thay đổi"
+              />
+            </div>
+
+            {/* Email - Linked */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <Mail size={12} className="text-slate-400" />
+                  <span>Email liên kết</span>
+                </label>
+                <span className="text-3xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800">
+                  ✉️ Nhận OTP
+                </span>
+              </div>
+              <input
+                type="email"
+                readOnly
+                disabled
+                value={user?.email || ""}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs font-bold text-slate-500 dark:text-slate-400 cursor-not-allowed select-all"
+                title="Email dùng để nhận mã xác thực OTP khôi phục mật khẩu"
+              />
+            </div>
+          </div>
+
+          {/* Prefilled First & Last Names */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Họ và tên đệm
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => handleLastNameChange(e.target.value)}
+                placeholder="ví dụ: Nguyễn Văn"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Tên <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={firstName}
+                onChange={(e) => handleFirstNameChange(e.target.value)}
+                placeholder="ví dụ: Nam"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+              />
+            </div>
+          </div>
+
           {/* Display Name */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Tên hiển thị <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Tên hiển thị công khai <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-3xs text-slate-400">Tự động ghép từ Họ & Tên</span>
+            </div>
             <input
               type="text"
               required

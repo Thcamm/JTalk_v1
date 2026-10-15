@@ -35,7 +35,7 @@ export const config = {
       return [...new Set(list)].filter((k) => k && !k.startsWith("your_"));
     })(),
     geminiApiKey: (process.env.GEMINI_API_KEY || "").trim(),
-    geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash",
     openaiApiKey: process.env.OPENAI_API_KEY || "",
     openaiModel: process.env.OPENAI_MODEL || "gpt-4o",
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
@@ -70,32 +70,6 @@ export const config = {
     },
   },
 
-  momo: {
-    // MoMo nhận tiền (VietQR MoMo Napas & STK đa năng)
-    bankId: (process.env.MOMO_BANK_ID || "971005").trim(), // 971005 là mã BIN chuẩn Napas của Ví MoMo
-    accountNo: (process.env.MOMO_ACCOUNT_NO || "PSP2606717600000005").trim(),
-    accountName: (process.env.MOMO_ACCOUNT_NAME || "NGUYEN DUC THIEN CAM").trim(),
-    template: (process.env.MOMO_TEMPLATE || "compact2").trim(),
-    phone: (process.env.MOMO_PHONE || "0975383173").trim(),
-
-    // MoMo Sandbox Test Credentials (Chuẩn dùng cho App MoMo Test & Sandbox Gateway)
-    partnerCode:
-      process.env.MOMO_PARTNER_CODE && process.env.MOMO_PARTNER_CODE !== "MOMO_TEST_PARTNER"
-        ? process.env.MOMO_PARTNER_CODE
-        : "MOMO",
-    accessKey:
-      process.env.MOMO_ACCESS_KEY && process.env.MOMO_ACCESS_KEY !== "MOMO_TEST_ACCESS_KEY"
-        ? process.env.MOMO_ACCESS_KEY
-        : "F8BBA842ECF85",
-    secretKey:
-      process.env.MOMO_SECRET_KEY && process.env.MOMO_SECRET_KEY !== "MOMO_TEST_SECRET_KEY"
-        ? process.env.MOMO_SECRET_KEY
-        : "K951B6PE1waDMi640xX0qPDp5JmZEoq9",
-    endpoint: process.env.MOMO_ENDPOINT || "https://test-payment.momo.vn/v2/gateway/api/create",
-    redirectUrl: process.env.MOMO_REDIRECT_URL || "http://localhost:5173/payment/momo/callback",
-    ipnUrl: process.env.MOMO_IPN_URL || "http://localhost:5001/api/v1/payments/momo/webhook",
-  },
-
   vietqr: {
     // Ngân hàng nhận tiền: MB, VCB, TCB, ACB, ICB (VietinBank), BIDV, TPB, VPB...
     bankId: (process.env.VIETQR_BANK_ID || "MB").trim(),
@@ -103,6 +77,15 @@ export const config = {
     accountName: (process.env.VIETQR_ACCOUNT_NAME || "JTALK").trim(),
     template: (process.env.VIETQR_TEMPLATE || "compact2").trim(),
     webhookApiKey: (process.env.VIETQR_WEBHOOK_API_KEY || "").trim(),
+  },
+
+  mail: {
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: parseInt(process.env.SMTP_PORT || "465", 10),
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : true,
+    user: (process.env.SMTP_USER || "").trim(),
+    pass: (process.env.SMTP_PASS || "").trim(),
+    from: process.env.EMAIL_FROM || '"JTalk Support" <support@jtalk.com>',
   },
 };
 

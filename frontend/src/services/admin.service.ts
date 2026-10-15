@@ -11,6 +11,7 @@ export interface AdminStatsResponse {
     totalLessons: number;
     totalVideoLessons: number;
     totalPractices: number;
+    totalSystemVocabularies?: number;
   };
   recentUsers: User[];
   recentLessons: Array<{
@@ -98,6 +99,67 @@ export interface CreateLessonPayload {
   isPublished?: boolean;
   sampleSentence?: string;
   translation?: string;
+}
+
+export interface SystemVocabItem {
+  _id: string;
+  kanji: string;
+  furigana: string;
+  romaji: string;
+  meaning: string;
+  level: "N5" | "N4" | "N3" | "N2" | "N1";
+  wordType: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
+  exampleSentence?: string;
+  exampleTranslation?: string;
+  source?: string;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdminVocabResponse {
+  items: SystemVocabItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  stats: {
+    total: number;
+    N5: number;
+    N4: number;
+    N3: number;
+    N2: number;
+    N1: number;
+  };
+}
+
+export interface ImportVocabPayload {
+  items: Array<{
+    kanji: string;
+    furigana?: string;
+    romaji?: string;
+    meaning: string;
+    level?: string;
+    wordType?: string;
+    exampleSentence?: string;
+    exampleTranslation?: string;
+    source?: string;
+    tags?: string[];
+  }>;
+  defaultLevel?: string;
+  overwrite?: boolean;
+  tags?: string[];
+  source?: string;
+}
+
+export interface ImportVocabResult {
+  totalReceived: number;
+  totalValid: number;
+  insertedCount: number;
+  updatedCount: number;
+  skippedCount: number;
 }
 
 export const adminService = {
@@ -235,6 +297,67 @@ export const adminService = {
         deletedDuplicatesCount: number;
       };
     }>("/admin/clean-duplicate-videos");
+    return res.data.data;
+  },
+
+  // 9. Vocabulary & Master Bank Bulk Management
+  getVocabularies: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    level?: string;
+  }): Promise<AdminVocabResponse> => {
+    const res = await api.get<{ data: AdminVocabResponse }>("/admin/vocabulary", { params });
+    return res.data.data;
+  },
+
+  enrichVocabularyWithAi: async (
+    items: Array<{ id?: string; kanji: string; furigana?: string; meaning: string }>
+  ): Promise<any[]> => {
+    const res = await api.post<{ data: any[] }>("/admin/vocabulary/ai-enrich", { items });
+    return res.data.data;
+  },
+
+  importVocabularies: async (payload: ImportVocabPayload): Promise<ImportVocabResult> => {
+    const res = await api.post<{ data: ImportVocabResult }>("/admin/vocabulary/import", payload);
+    return res.data.data;
+  },
+
+  importVocabulariesToLesson: async (payload: {
+    lessonId: string;
+    items: Array<{ kanji: string; word?: string; meaning: string; romaji?: string }>;
+    replaceExisting?: boolean;
+  }): Promise<{ lessonId: string; title: string; totalVocabulary: number }> => {
+    const res = await api.post<{
+      data: { lessonId: string; title: string; totalVocabulary: number };
+    }>("/admin/vocabulary/import-to-lesson", payload);
+    return res.data.data;
+  },
+
+  createVocabulary: async (payload: Partial<SystemVocabItem>): Promise<SystemVocabItem> => {
+    const res = await api.post<{ data: SystemVocabItem }>("/admin/vocabulary", payload);
+    return res.data.data;
+  },
+
+  updateVocabulary: async (
+    id: string,
+    payload: Partial<SystemVocabItem>
+  ): Promise<SystemVocabItem> => {
+    const res = await api.patch<{ data: SystemVocabItem }>(`/admin/vocabulary/${id}`, payload);
+    return res.data.data;
+  },
+
+  deleteVocabulary: async (id: string): Promise<void> => {
+    await api.delete(`/admin/vocabulary/${id}`);
+  },
+
+  deleteVocabulariesBulk: async (payload: {
+    ids?: string[];
+    level?: string;
+  }): Promise<{ deletedCount: number }> => {
+    const res = await api.delete<{ data: { deletedCount: number } }>("/admin/vocabulary/bulk", {
+      data: payload,
+    });
     return res.data.data;
   },
 };

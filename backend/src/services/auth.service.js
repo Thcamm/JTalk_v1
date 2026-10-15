@@ -4,6 +4,7 @@ import crypto from "crypto";
 import User from "../models/User.js";
 import Session from "../models/Session.js";
 import config from "../config/index.js";
+import mailService from "./mail.service.js";
 
 /**
  * Service for user authentication and session management
@@ -48,6 +49,8 @@ export class AuthService {
       username: trimmedUsername,
       hashedPassword,
       email: trimmedEmail,
+      firstName: (firstName || "").trim(),
+      lastName: (lastName || "").trim(),
       displayName: resolvedDisplayName,
     });
 
@@ -222,10 +225,30 @@ export class AuthService {
     user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
+    // Gửi email OTP tới địa chỉ email của người dùng
+    let mailResult = null;
+    if (user.email) {
+      try {
+        mailResult = await mailService.sendResetPasswordOtp({
+          toEmail: user.email,
+          displayName: user.displayName || user.username,
+          otpCode: resetCode,
+        });
+      } catch (mErr) {
+        console.warn("[AUTH] Gửi email OTP thất bại:", mErr.message);
+      }
+    }
+
+    // Che bớt email hiển thị để bảo mật (ví dụ: th***@gmail.com)
+    const maskedEmail = user.email
+      ? user.email.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + "*".repeat(Math.max(1, b.length)) + c)
+      : "";
+
     return {
-      message: "Mã xác thực đặt lại mật khẩu đã được tạo thành công.",
-      email: user.email,
-      resetCode, // Returned for instant testing and local dev ease
+      message: `Mã xác thực OTP đã được gửi đến email ${maskedEmail || user.email}. Vui lòng kiểm tra hộp thư đến (hoặc hòm thư Spam).`,
+      email: maskedEmail || user.email,
+      previewUrl: mailResult?.previewUrl || null,
+      resetCode: config.env === "development" ? resetCode : undefined, // Trợ giúp test khi dev
     };
   }
 

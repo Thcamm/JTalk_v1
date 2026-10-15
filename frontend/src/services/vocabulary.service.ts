@@ -89,6 +89,21 @@ export const DEFAULT_STARTER_VOCABULARY: VocabularyItem[] = [
   },
 ];
 
+export interface SystemVocabLearnerItem {
+  _id: string;
+  kanji: string;
+  furigana: string;
+  romaji: string;
+  meaning: string;
+  level: "N5" | "N4" | "N3" | "N2" | "N1";
+  wordType: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
+  exampleSentence?: string;
+  exampleTranslation?: string;
+  source?: string;
+  tags?: string[];
+  isSaved?: boolean;
+}
+
 export interface SRSReviewResult {
   item: VocabularyItem;
   srsStage: number;
@@ -100,6 +115,67 @@ export interface SRSReviewResult {
 }
 
 export const vocabularyService = {
+  getSystemVocabularies: async (params?: {
+    level?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    items: SystemVocabLearnerItem[];
+    total: number;
+    totalPages: number;
+    levelCounts: {
+      all: number;
+      N5: number;
+      N4: number;
+      N3: number;
+      N2: number;
+      N1: number;
+      [key: string]: number;
+    };
+  }> => {
+    try {
+      const searchParams = new URLSearchParams();
+      if (params?.level && params.level !== "all") searchParams.append("level", params.level);
+      if (params?.search?.trim()) searchParams.append("search", params.search.trim());
+      if (params?.page) searchParams.append("page", String(params.page));
+      if (params?.limit) searchParams.append("limit", String(params.limit));
+
+      const url = `/vocabularies/system${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+      const res = await api.get(url);
+      const data = res.data?.data || res.data;
+      return {
+        items: data?.items || [],
+        total: data?.pagination?.total || 0,
+        totalPages: data?.pagination?.totalPages || 1,
+        levelCounts: data?.levelCounts || { all: 0, N5: 0, N4: 0, N3: 0, N2: 0, N1: 0 },
+      };
+    } catch (err) {
+      console.warn("Lỗi khi tải kho từ vựng chung:", err);
+      return {
+        items: [],
+        total: 0,
+        totalPages: 1,
+        levelCounts: { all: 0, N5: 0, N4: 0, N3: 0, N2: 0, N1: 0 },
+      };
+    }
+  },
+
+  saveFromSystem: async (payload: {
+    systemVocabId?: string;
+    kanji: string;
+    furigana?: string;
+    romaji?: string;
+    meaning: string;
+    level?: string;
+    wordType?: string;
+    exampleSentence?: string;
+    exampleTranslation?: string;
+  }): Promise<VocabularyItem> => {
+    const res = await api.post("/vocabularies/save-from-system", payload);
+    return res.data?.data || res.data;
+  },
+
   getVocabularies: async (params?: {
     level?: string;
     isMastered?: string;
