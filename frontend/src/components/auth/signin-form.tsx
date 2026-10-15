@@ -231,33 +231,6 @@ export function SigninForm() {
               </p>
             </div>
 
-            {/* Quick Demo for Council Presentation */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-fuchsia-500/10 via-purple-500/10 to-pink-500/10 border border-fuchsia-400/30 flex items-center justify-between gap-3 text-left">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-pink-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Flame size={16} className="fill-current animate-pulse text-amber-200" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5">
-                    Demo Hội Đồng
-                    <span className="text-3xs px-1.5 py-0.5 rounded-md bg-fuchsia-500/20 text-fuchsia-700 dark:text-fuchsia-300 font-extrabold">
-                      Chuỗi 6 ngày
-                    </span>
-                  </p>
-                  <p className="text-3xs text-slate-500 dark:text-slate-400 truncate">
-                    Bấm để nạp sẵn tài khoản kích hoạt ngày thứ 7
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleFillStreakDemo}
-                disabled={isSettingUpDemo}
-                className="px-3 py-1.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 active:scale-95 text-white text-2xs font-black transition-all shadow-xs cursor-pointer whitespace-nowrap disabled:opacity-50 shrink-0"
-              >
-                {isSettingUpDemo ? "Đang chuẩn bị..." : "1-Click Điền Demo"}
-              </button>
-            </div>
 
             {/* Username Input */}
             <div className="space-y-1.5">
