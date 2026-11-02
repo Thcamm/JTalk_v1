@@ -375,9 +375,11 @@ export interface VocabularyItem {
   furigana?: string;
   romaji?: string;
   meaning: string;
+  sinoVietnamese?: string;
   level: "N5" | "N4" | "N3" | "N2" | "N1";
   wordType?: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
   exampleSentence?: string;
+  exampleFurigana?: string;
   exampleTranslation?: string;
   isMastered: boolean;
   reviewCount: number;
@@ -398,9 +400,11 @@ export interface CreateVocabularyPayload {
   furigana?: string;
   romaji?: string;
   meaning: string;
+  sinoVietnamese?: string;
   level?: "N5" | "N4" | "N3" | "N2" | "N1";
   wordType?: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
   exampleSentence?: string;
+  exampleFurigana?: string;
   exampleTranslation?: string;
   sourceLessonId?: string | null;
   tags?: string[];

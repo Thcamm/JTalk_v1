@@ -107,9 +107,11 @@ export interface SystemVocabItem {
   furigana: string;
   romaji: string;
   meaning: string;
+  sinoVietnamese?: string;
   level: "N5" | "N4" | "N3" | "N2" | "N1";
   wordType: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
   exampleSentence?: string;
+  exampleFurigana?: string;
   exampleTranslation?: string;
   source?: string;
   tags?: string[];
@@ -312,9 +314,15 @@ export const adminService = {
   },
 
   enrichVocabularyWithAi: async (
-    items: Array<{ id?: string; kanji: string; furigana?: string; meaning: string }>
+    items: Array<{ id?: string; kanji: string; furigana?: string; meaning: string }>,
+    targetLevel?: string
   ): Promise<any[]> => {
-    const res = await api.post<{ data: any[] }>("/admin/vocabulary/ai-enrich", { items });
+    const res = await api.post<{ data: any[] }>("/admin/vocabulary/ai-enrich", { items, targetLevel });
+    return res.data.data;
+  },
+
+  resetAllVocabularies: async (): Promise<{ deletedCount: number }> => {
+    const res = await api.post<{ data: { deletedCount: number } }>("/admin/vocabulary/reset-all");
     return res.data.data;
   },
 

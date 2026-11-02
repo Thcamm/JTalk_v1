@@ -1,5 +1,13 @@
 import config from "../config/index.js";
 import { getLearnerJapaneseIdentity } from "../utils/vietnameseToKatakana.js";
+import {
+  translateToVietnamese,
+  sanitizeExampleTranslation,
+  getSinoVietnamese,
+  isEnglishText,
+  kataToHira,
+  hiraganaToRomaji,
+} from "../utils/japaneseMeaningTranslator.js";
 
 /**
  * Gemini Key Pool Manager
@@ -465,7 +473,7 @@ export class AiService {
    * Helper to call Google Gemini API with Gemini Multi-Key Pool
    * Round-Robin load distribution, 429 quota exhaustion tracking & instantaneous failover
    */
-  static async callGemini({ prompt, temperature = 0.2, isJson = true }) {
+  static async callGemini({ prompt, temperature = 0.2, isJson = true, timeoutMs = 12000 }) {
     if (!geminiPool.hasKeys()) {
       throw new Error("Không có GEMINI_API_KEY nào khả dụng trong cấu hình.");
     }
@@ -503,7 +511,7 @@ export class AiService {
           };
 
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8500); // 8.5s responsive timeout cho mạng quốc tế
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
           const response = await fetch(url, {
             method: "POST",
@@ -2974,33 +2982,44 @@ Trả về ĐÚNG ĐỊNH DẠNG JSON sau (không kèm markdown ngoài json):
   }
 
   /**
-   * 5. AI Vocabulary Classifier & Enricher
-   * Phân loại chính xác từ loại (wordType: noun, verb, adjective, adverb, phrase, other),
-   * Furigana và Romaji cho danh sách từ vựng tiếng Nhật.
+   * 5. AI Vocabulary Deep Analyzer & Enricher
+   * Phân tích chuyên sâu từ vựng tiếng Nhật từ file CSV:
+   * - Bóc tách Kanji chuẩn xác
+   * - Phiên âm Furigana & Romaji
+   * - Dịch 100% nghĩa sang tiếng Việt tự nhiên, súc tích (TUYỆT ĐỐI không để tiếng Anh)
+   * - Trích xuất Âm Hán Việt (Sino-Vietnamese) cho chữ Hán nếu có
+   * - Phân loại từ loại (wordType)
+   * - Tạo câu ví dụ tiếng Nhật tự nhiên kèm Furigana và bản dịch nghĩa tiếng Việt chuẩn
    */
-  static async enrichVocabularyBatchWithAi(items) {
+  static async enrichVocabularyBatchWithAi(items, targetLevel = "N5") {
     if (!Array.isArray(items) || items.length === 0) return items;
 
-    // 1. Thử gọi Gemini nếu có key
-    if (this.hasGeminiKeys()) {
-      try {
-        const prompt = `
-Bạn là chuyên gia ngôn ngữ học tiếng Nhật và giáo trình JLPT của JTalk AI.
-Nhiệm vụ: Phân tích chính xác từ loại (wordType), bổ sung Furigana Hiragana chuẩn xác, Romaji Hepburn, và tinh chỉnh nghĩa tiếng Việt gọn gàng cho danh sách từ vựng sau.
+    const prompt = `
+BẠN LÀ CHUYÊN GIA BIÊN DỊCH TIẾNG NHẬT - TIẾNG VIỆT VÀ GIÁO TRÌNH JLPT (N5 - N1) CỦA JTALK AI.
+Dữ liệu đầu vào được nạp từ các bộ thẻ Quizlet/CSV, trong đó cột định nghĩa (meaning/definition) THƯỜNG LÀ TIẾNG ANH HOẶC DẠNG THÔ.
 
-QUY TẮC PHÂN LOẠI TỪ LOẠI (wordType) BẮT BUỘC CHỌN 1 TRONG CÁC GIÁ TRỊ:
-- "verb": Động từ (nhóm 1 Godan, nhóm 2 Ichidan, nhóm 3 Suru/Kuru). Ví dụ: 寝る, 食べる, 行く, 話す, 待つ, 呼ぶ, 勉強する.
-- "noun": Danh từ (người, đồ vật, địa điểm, thời gian, sự việc). Ví dụ: 学生, 本, 車, 朝, 友達, 日本, 部屋.
-- "adjective": Tính từ (tính từ đuôi -i như 高い, 暑い, 広い; và tính từ đuôi -na như 静か, きれい, 元気, 有名).
-- "adverb": Phó từ (bổ nghĩa cho động từ/tính từ). Ví dụ: とても, たくさん, ゆっくり, ぜんぜん, もう, まだ, ちょっと.
-- "phrase": Cụm từ, thành ngữ, câu chào hỏi giao tiếp cố định. Ví dụ: こんにちは, おはようございます, お疲れ様です, よろしくお願いします, 初めまして.
-- "other": Trợ từ, thán từ hoặc từ loại khác.
+NHIỆM VỤ ĐẶC BIỆT QUAN TRỌNG:
+1. "meaning": BẮT BUỘC DỊCH TOÀN BỘ 100% CÁC ĐỊNH NGHĨA TIẾNG ANH SANG TIẾNG VIỆT CHUẨN XÁC, TỰ NHIÊN, DỄ HIỂU.
+   - Tuyệt đối không để lại bất kỳ từ tiếng Anh nào trong "meaning" (Ví dụ: 'before, in front of' -> 'Trước, ở phía trước, trước mặt'; 'smart phone' -> 'Điện thoại thông minh, smartphone'; 'dangerous' -> 'Nguy hiểm'; 'class; lecture' -> 'Tiết học, bài giảng'; 'to skip a class' -> 'Trốn học, bùng học'; 'to eat' -> 'Ăn'; 'delicious' -> 'Ngon miệng').
+   - NẾU ĐỊNH NGHĨA ĐẦU VÀO CÓ KÈM ÂM HÁN VIỆT IN HOA Ở CUỐI (Ví dụ: 'Bên cạnh HOÀNH', 'Chai BÌNH', 'Địa điểm TRƯỜNG SỞ', 'Hội thi, thể thao VẬN ĐỘNG HỘI'): BẮT BUỘC BÓC TÁCH 'meaning' chỉ chứa nghĩa tiếng Việt sạch ('Bên cạnh', 'Chai', 'Địa điểm', 'Hội thi thể thao'), và chuyển phần in hoa vào 'sinoVietnamese'. Tuyệt đối không để chữ in hoa Hán Việt dính vào 'meaning' hoặc câu ví dụ.
+2. "kanji": Chuẩn hóa dạng chữ Hán chuẩn nhất nếu từ tiếng Nhật đó có Kanji.
+   - NẾU ĐẦU VÀO CÓ KHOẢNG TRẮNG GIỮA KANA VÀ KANJI NHƯ 'よこ 横', 'びん 瓶', 'ばしょ 場所', 'うんどうかい 運動会': BẮT BUỘC TÁCH RIÊNG: 'kanji' là chữ Hán chuẩn ('横', '瓶', '場所', '運動会') và 'furigana' là Kana ('よこ', 'びん', 'ばしょ', 'うんどうかい'). TUYỆT ĐỐI KHÔNG ĐỂ KHOẢNG TRẮNG HAY CẢ KANA VÀ KANJI TRONG Ô 'kanji'.
+   - Nếu từ thuần Kana như 'ありがとう', 'ずいぶん', 'ガス': giữ nguyên Kana chuẩn.
+3. "furigana": Cách đọc Hiragana/Katakana chuẩn xác của từ (BẮT BUỘC ĐIỀN ĐẦY ĐỦ, KHÔNG ĐỂ TRỐNG nếu từ có Kanji, ví dụ: '横' -> 'よこ', '瓶' -> 'びん', '場所' -> 'ばしょ', '運動会' -> 'うんどうかい', 'ガス' -> 'ガス' hoặc 'がす').
+4. "romaji": Phiên âm Romaji chuẩn Hepburn VIẾT LIỀN KHÔNG CÓ DẤU CÁCH GIỮA CÁC CHỮ (Ví dụ: 'gasu', 'zuibun', 'yoko', 'bin', 'basho', 'undoukai'). BẮT BUỘC ĐIỀN ĐỦ CHO TẤT CẢ CÁC TỪ!
+5. "sinoVietnamese": ÂM HÁN VIỆT IN HOA CỦA TỪ (NẾU TỪ ĐÓ CÓ KANJI).
+   - Ví dụ: '横' -> 'HOÀNH', '瓶' -> 'BÌNH', '場所' -> 'TRƯỜNG SỞ', '運動会' -> 'VẬN ĐỘNG HỘI', '前に' -> 'TIỀN', '危ない' -> 'NGUY', '授業' -> 'THỤ NGHIỆP', '寝る' -> 'TẨM', '学生' -> 'HỌC SINH', '先生' -> 'TIÊN SINH', '勉強' -> 'MIỄN CƯỠNG'.
+   - Nếu từ thuần Katakana hoặc Hiragana không có chữ Hán như 'スマホ', 'サボる', 'パン', 'ガス': để chuỗi rỗng "".
+6. "wordType": Bắt buộc chọn 1 trong: "noun", "verb", "adjective", "adverb", "phrase", "other".
+7. "exampleSentence": MỘT CÂU VÍ DỤ TIẾNG NHẬT TỰ NHIÊN, NGẮN GỌN, CHUẨN JLPT ${targetLevel} có chứa từ vựng đó (có kèm Kanji chuẩn). Ví dụ: '学校の前にコンビニがあります。' hoặc '授業をサボってはいけません。'.
+8. "exampleFurigana": Toàn bộ phiên âm Hiragana cho câu ví dụ trên để người học đọc được.
+9. "exampleTranslation": BẢN DỊCH TIẾNG VIỆT 100% CHUẨN XÁC, TỰ NHIÊN CỦA CÂU VÍ DỤ TRÊN (TUYỆT ĐỐI KHÔNG CHỨA TIẾNG ANH VÀ KHÔNG CHỨA ÂM HÁN VIỆT IN HOA).
 
 Danh sách từ cần xử lý:
 ${JSON.stringify(
   items.map((i) => ({
     id: i.id || i._id,
-    kanji: i.kanji || i.word,
+    kanji: i.kanji || i.word || "",
     furigana: i.furigana || "",
     meaning: i.meaning || i.definition || "",
   }))
@@ -3010,19 +3029,100 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ theo cấu trúc sau (không
 {
   "enrichedItems": [
     {
-      "id": "id tương ứng của từng từ",
-      "kanji": "từ tiếng Nhật chuẩn có Kanji nếu có",
+      "id": "id tương ứng của từ",
+      "kanji": "từ tiếng Nhật chuẩn có Kanji",
       "furigana": "cách đọc Hiragana chuẩn",
-      "romaji": "romaji phiên âm chuẩn Hepburn",
-      "meaning": "nghĩa tiếng Việt hoặc tiếng Anh rõ ràng, súc tích",
-      "wordType": "verb"
+      "romaji": "romaji phiên âm chuẩn",
+      "meaning": "nghĩa tiếng Việt 100% rõ ràng, chính xác (đã dịch từ tiếng Anh)",
+      "sinoVietnamese": "ÂM HÁN VIỆT IN HOA hoặc rỗng",
+      "wordType": "verb",
+      "exampleSentence": "câu ví dụ tiếng Nhật",
+      "exampleFurigana": "cách đọc Hiragana của câu ví dụ",
+      "exampleTranslation": "dịch nghĩa tiếng Việt 100% của câu ví dụ"
     }
   ]
 }
 `;
 
-        const raw = await this.callGemini({ prompt, temperature: 0.1, isJson: true });
-        const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+    let rawResponse = null;
+
+    // 1. Thử phân tích bằng Gemini AI Key Pool
+    if (this.hasGeminiKeys()) {
+      try {
+        rawResponse = await this.callGemini({ prompt, temperature: 0.1, isJson: true, timeoutMs: 16000 });
+      } catch (err) {
+        console.warn("Lỗi gọi Gemini AI phân tích chuyên sâu từ vựng, thử Claude/OpenAI/Fallback:", err.message);
+      }
+    }
+
+    // 2. Thử phân tích bằng Anthropic Claude (Claude 3.5 Sonnet / Haiku)
+    if (!rawResponse && config.ai.anthropicApiKey) {
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": config.ai.anthropicApiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: config.ai.anthropicModel || "claude-3-5-sonnet-20241022",
+            max_tokens: 4000,
+            temperature: 0.1,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawResponse = data.content?.[0]?.text || "";
+        } else {
+          const errText = await response.text();
+          console.warn(`Lỗi gọi Claude (${response.status}):`, errText);
+        }
+      } catch (err) {
+        console.warn("Lỗi gọi Claude AI cho từ vựng, thử OpenAI/Fallback:", err.message);
+      }
+    }
+
+    // 3. Thử phân tích bằng OpenAI (GPT-4o)
+    if (!rawResponse && config.ai.openaiApiKey) {
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${config.ai.openaiApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: config.ai.openaiModel || "gpt-4o",
+            temperature: 0.1,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a master Japanese-Vietnamese linguist and JLPT professor for JTalk AI. Always return strictly valid JSON matching the requested schema. Translate English definitions 100% to natural Vietnamese.",
+              },
+              { role: "user", content: prompt },
+            ],
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          rawResponse = data.choices?.[0]?.message?.content || "";
+        } else {
+          const errText = await response.text();
+          console.warn(`Lỗi gọi OpenAI (${response.status}):`, errText);
+        }
+      } catch (err) {
+        console.warn("Lỗi gọi OpenAI cho từ vựng, chuyển sang Heuristic NLP Engine:", err.message);
+      }
+    }
+
+    // Parse kết quả từ LLM nếu có
+    if (rawResponse) {
+      try {
+        const cleaned = rawResponse.replace(/```json/g, "").replace(/```/g, "").trim();
         const parsed = JSON.parse(cleaned);
 
         if (parsed && Array.isArray(parsed.enrichedItems) && parsed.enrichedItems.length > 0) {
@@ -3035,86 +3135,233 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ theo cấu trúc sau (không
             const key = String(item.id || item._id);
             const enriched = map.get(key);
             if (enriched) {
+              let kanji = (enriched.kanji || item.kanji || item.word || "").trim();
+              let furigana = (enriched.furigana || item.furigana || "").trim();
+              let romaji = (enriched.romaji || item.romaji || "").trim();
+              let rawMeaning = (enriched.meaning || item.meaning || "").trim();
+              let sinoVietnamese = (enriched.sinoVietnamese || item.sinoVietnamese || "").trim();
+
+              // 1. Phân tách nếu kanji dính khoảng trắng dạng "よこ 横", "びん 瓶"
+              if (/[\s\t]+/.test(kanji)) {
+                const parts = kanji.split(/[\s\t]+/);
+                if (parts.length >= 2) {
+                  const p1 = parts[0].trim();
+                  const p2 = parts.slice(1).join(" ").trim();
+                  if (/[一-龯]/.test(p2) && !/[一-龯]/.test(p1)) {
+                    kanji = p2;
+                    if (!furigana) furigana = p1;
+                  } else if (/[一-龯]/.test(p1) && !/[一-龯]/.test(p2)) {
+                    kanji = p1;
+                    if (!furigana) furigana = p2;
+                  }
+                }
+              }
+
+              // 2. Bóc tách Âm Hán Việt in hoa ở cuối định nghĩa nếu có
+              const uppercaseSinoMatch = rawMeaning.match(
+                /^(.*?)\s+([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]{2,})$/
+              );
+              if (uppercaseSinoMatch) {
+                const mClean = uppercaseSinoMatch[1].trim();
+                const sClean = uppercaseSinoMatch[2].trim();
+                if (/^[A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]+$/.test(sClean)) {
+                  if (!sinoVietnamese) sinoVietnamese = sClean;
+                  if (mClean) rawMeaning = mClean;
+                }
+              }
+
+              // 3. Chuẩn hóa Hán Việt nếu từ có chữ Hán
+              if (!sinoVietnamese) {
+                sinoVietnamese = getSinoVietnamese(kanji);
+              }
+
+              // 4. Chuẩn hóa Romaji chuẩn Hepburn không có khoảng trắng
+              if (!romaji || /[぀-ヿ]/.test(romaji) || /^[a-z]\s+[a-z]/.test(romaji)) {
+                romaji = hiraganaToRomaji(furigana || kanji);
+              }
+
+              // 5. Chuẩn hóa Furigana nếu từ thuần Kana
+              if (!furigana && !/[一-龯]/.test(kanji)) {
+                furigana = kanji;
+              }
+
+              const cleanMeaning = translateToVietnamese(kanji, rawMeaning);
+
               return {
                 ...item,
-                kanji: enriched.kanji || item.kanji,
-                furigana: enriched.furigana || item.furigana,
-                romaji: enriched.romaji || item.romaji,
-                meaning: enriched.meaning || item.meaning,
+                kanji,
+                furigana,
+                romaji,
+                meaning: cleanMeaning,
+                sinoVietnamese,
                 wordType: ["noun", "verb", "adjective", "adverb", "phrase", "other"].includes(
                   enriched.wordType
                 )
                   ? enriched.wordType
                   : item.wordType || "noun",
+                exampleSentence: enriched.exampleSentence || item.exampleSentence || "",
+                exampleFurigana: enriched.exampleFurigana || item.exampleFurigana || "",
+                exampleTranslation: sanitizeExampleTranslation(
+                  kanji,
+                  cleanMeaning,
+                  enriched.exampleTranslation || item.exampleTranslation || ""
+                ),
               };
             }
             return item;
           });
         }
-      } catch (err) {
-        console.warn("Lỗi gọi Gemini AI phân loại từ vựng, chuyển sang Heuristic NLP:", err.message);
+      } catch (parseErr) {
+        console.warn("Lỗi parse JSON kết quả AI làm giàu từ vựng:", parseErr.message);
       }
     }
 
-    // 2. Fallback Heuristic NLP tiếng Nhật (Chạy offline siêu tốc và cực kỳ chuẩn xác)
+    // 4. Fallback Heuristic NLP & Sino-Vietnamese Dictionary Engine (Chạy offline cực nhanh, chuẩn 100% tiếng Việt)
     return items.map((item) => {
-      const kanji = (item.kanji || item.word || "").trim();
-      const meaning = (item.meaning || item.definition || "").toLowerCase().trim();
-      const furigana = (item.furigana || "").trim();
+      let kanji = (item.kanji || item.word || "").trim();
+      let furigana = (item.furigana || "").trim();
+      let romaji = (item.romaji || "").trim();
+      let rawMeaning = (item.meaning || item.definition || "").trim();
+      let sinoVietnamese = (item.sinoVietnamese || "").trim();
 
-      let detectedType = "noun";
+      // Bóc tách Kanji nếu có ngoặc dạng "ねる (寝る)" hoặc "寝る (ねる)"
+      const bracketMatch = kanji.match(/^(.+?)[\s\t]*[\(（\[](.+?)[\)）\]]/);
+      if (bracketMatch) {
+        const p1 = bracketMatch[1].trim();
+        const p2 = bracketMatch[2].trim();
+        if (/[一-龯]/.test(p2) && !/[一-龯]/.test(p1)) {
+          kanji = p2;
+          if (!furigana) furigana = p1;
+        } else if (/[一-龯]/.test(p1) && !/[一-龯]/.test(p2)) {
+          kanji = p1;
+          if (!furigana) furigana = p2;
+        }
+      } else if (/[\s\t]+/.test(kanji)) {
+        // Tách theo khoảng trắng: "よこ 横", "びん 瓶", "ばしょ 場所"
+        const spaceParts = kanji.split(/[\s\t]+/);
+        if (spaceParts.length >= 2) {
+          const part1 = spaceParts[0].trim();
+          const part2 = spaceParts.slice(1).join(" ").trim();
+          if (/[一-龯]/.test(part2) && !/[一-龯]/.test(part1)) {
+            kanji = part2;
+            if (!furigana) furigana = part1;
+          } else if (/[一-龯]/.test(part1) && !/[一-龯]/.test(part2)) {
+            kanji = part1;
+            if (!furigana) furigana = part2;
+          }
+        }
+      }
 
-      // A. Nhận diện Động từ (Verb)
-      const verbEndings = /[うくぐすつぬぶむる]$/;
-      const isSuruVerb = kanji.endsWith("する") || furigana.endsWith("する");
-      const hasVerbMeaning =
-        meaning.startsWith("to ") ||
-        /\b(ăn|uống|đi|ngủ|đến|nói|chạy|học|làm|mua|bán|xem|nhìn|đọc|viết|nghe|nghĩ|chờ|gọi|mặc|mở|đóng|bắt đầu|kết thúc)\b/.test(
-          meaning
-        );
+      // Bóc tách Âm Hán Việt in hoa ở cuối định nghĩa
+      const uppercaseSinoMatch = rawMeaning.match(
+        /^(.*?)\s+([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]{2,})$/
+      );
+      if (uppercaseSinoMatch) {
+        const mClean = uppercaseSinoMatch[1].trim();
+        const sClean = uppercaseSinoMatch[2].trim();
+        if (/^[A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]+$/.test(sClean)) {
+          if (!sinoVietnamese) sinoVietnamese = sClean;
+          if (mClean) rawMeaning = mClean;
+        }
+      }
 
-      if (isSuruVerb || (verbEndings.test(kanji) && (hasVerbMeaning || kanji.length <= 4))) {
-        detectedType = "verb";
+      // Đảm bảo nghĩa là 100% tiếng Việt
+      const vietnameseMeaning = translateToVietnamese(kanji, rawMeaning);
+      if (!sinoVietnamese) {
+        sinoVietnamese = getSinoVietnamese(kanji);
       }
-      // B. Nhận diện Tính từ (Adjective)
-      else if (
-        kanji.endsWith("い") &&
-        /[一-龯]/.test(kanji) &&
-        !verbEndings.test(kanji.slice(-1))
-      ) {
-        detectedType = "adjective";
-      } else if (
-        /\b(đẹp|sạch|yên tĩnh|nổi tiếng|khỏe mạnh|thân thiện|rảnh rỗi|thích|ghét|vất vả|tiện lợi|quan trọng)\b/.test(
-          meaning
-        ) ||
-        meaning.includes("(na-adj)") ||
-        meaning.includes("(adj)")
-      ) {
-        detectedType = "adjective";
+
+      if (!furigana && !/[一-龯]/.test(kanji)) {
+        furigana = kanji;
       }
-      // C. Nhận diện Phó từ (Adverb)
-      else if (
-        /^(とても|たいへん|すごく|ゆっくり|たくさん|もう|まだ|ちょっと|すこし|ぜんぜん|すぐ|だんだn|たぶん|かならず|ぜひ)$/.test(
-          furigana || kanji
-        ) ||
-        /\b(rất|lắm|nhiều|chậm rãi|chưa|đã|ngay lập tức|hoàn toàn|chắc chắn)\b/.test(meaning)
-      ) {
-        detectedType = "adverb";
+
+      if (!romaji || /[぀-ヿ]/.test(romaji) || /^[a-z]\s+[a-z]/.test(romaji)) {
+        romaji = hiraganaToRomaji(furigana || kanji);
       }
-      // D. Nhận diện Cụm từ (Phrase)
-      else if (
-        kanji.length > 6 ||
-        kanji.includes(" ") ||
-        /^(こんにちは|おはよう|こんばんは|さようなら|ありがとう|いただきます|ごちそうさま|お疲れ様|初めまして|よろしく)/.test(
-          furigana || kanji
-        )
-      ) {
-        detectedType = "phrase";
+
+      let detectedType = item.wordType || "noun";
+      const meaningLower = (vietnameseMeaning || rawMeaning).toLowerCase();
+
+      // Nhận diện loại từ nếu chưa có
+      if (!item.wordType || item.wordType === "phrase" || item.wordType === "other") {
+        const verbEndings = /[うくぐすつぬぶむる]$/;
+        const isSuruVerb = kanji.endsWith("する") || furigana.endsWith("する");
+        const hasVerbMeaning =
+          rawMeaning.toLowerCase().startsWith("to ") ||
+          /\b(ăn|uống|đi|ngủ|đến|nói|chạy|học|làm|mua|bán|xem|nhìn|đọc|viết|nghe|nghĩ|chờ|gọi|mặc|mở|đóng|bắt đầu|kết thúc)\b/.test(
+            meaningLower
+          );
+
+        if (isSuruVerb || (verbEndings.test(kanji) && (hasVerbMeaning || kanji.length <= 4))) {
+          detectedType = "verb";
+        } else if (
+          kanji.endsWith("い") &&
+          /[一-龯]/.test(kanji) &&
+          !verbEndings.test(kanji.slice(-1))
+        ) {
+          detectedType = "adjective";
+        } else if (
+          /\b(đẹp|sạch|yên tĩnh|nổi tiếng|khỏe mạnh|thân thiện|rảnh rỗi|thích|ghét|vất vả|tiện lợi|quan trọng)\b/.test(
+            meaningLower
+          ) ||
+          rawMeaning.includes("(na-adj)") ||
+          rawMeaning.includes("(adj)")
+        ) {
+          detectedType = "adjective";
+        } else if (
+          /^(とても|たいへん|すごく|ゆっくり|たくさん|もう|まだ|ちょっと|すこし|ぜんぜん|すぐ|だんだん|たぶん|かならず|ぜひ)$/.test(
+            furigana || kanji
+          ) ||
+          /\b(rất|lắm|nhiều|chậm rãi|chưa|đã|ngay lập tức|hoàn toàn|chắc chắn)\b/.test(meaningLower)
+        ) {
+          detectedType = "adverb";
+        } else if (
+          kanji.length > 6 ||
+          kanji.includes(" ") ||
+          /^(こんにちは|おはよう|こんばんは|さようなら|ありがとう|いただきます|ごちそうさま|お疲れ様|初めまして|よろしく)/.test(
+            furigana || kanji
+          )
+        ) {
+          detectedType = "phrase";
+        } else {
+          detectedType = "noun";
+        }
+      }
+
+      // Tạo câu ví dụ mặc định chất lượng nếu chưa có
+      let exampleSentence = (item.exampleSentence || "").trim();
+      let exampleFurigana = (item.exampleFurigana || "").trim();
+      let exampleTranslation = sanitizeExampleTranslation(
+        kanji,
+        vietnameseMeaning,
+        (item.exampleTranslation || "").trim()
+      );
+
+      if (!exampleSentence) {
+        const safeMeaning = isEnglishText(vietnameseMeaning) ? "" : vietnameseMeaning.toLowerCase();
+        if (detectedType === "verb") {
+          exampleSentence = `毎日、${kanji}。`;
+          exampleTranslation = safeMeaning ? `Mỗi ngày đều ${safeMeaning}.` : `Mỗi ngày tôi đều thực hiện hành động này.`;
+        } else if (detectedType === "adjective") {
+          exampleSentence = `これはとても${kanji}です。`;
+          exampleTranslation = safeMeaning ? `Cái này rất ${safeMeaning}.` : `Cái này rất đáng chú ý.`;
+        } else {
+          exampleSentence = `ここに${kanji}があります。`;
+          exampleTranslation = safeMeaning ? `Ở đây có ${safeMeaning}.` : `Ở đây có cái này.`;
+        }
       }
 
       return {
         ...item,
+        kanji,
+        furigana: furigana || (kanji && !/[一-龯]/.test(kanji) ? kanji : ""),
+        romaji,
+        meaning: vietnameseMeaning,
+        sinoVietnamese,
         wordType: detectedType,
+        exampleSentence,
+        exampleFurigana,
+        exampleTranslation,
       };
     });
   }
