@@ -1714,7 +1714,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
 
               {/* Message Bubble */}
               <div
-                className={`max-w-[85%] sm:max-w-[75%] rounded-3xl p-4 sm:p-5 shadow-2xs space-y-2 relative ${
+                className={`max-w-[90%] sm:max-w-[75%] rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xs space-y-2 relative ${
                   isAi
                     ? "bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 text-slate-900 dark:text-white rounded-tl-sm"
                     : "bg-gradient-to-br from-rose-600 via-rose-500 to-amber-500 text-white rounded-tr-sm"
@@ -1725,26 +1725,26 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                   <button
                     onClick={() => speakText(msg.japanese, msg.id)}
                     type="button"
-                    className={`absolute top-3.5 right-3.5 p-1.5 rounded-full transition-colors cursor-pointer ${
+                    className={`absolute top-3 right-3 sm:top-3.5 sm:right-3.5 p-1 sm:p-1.5 rounded-full transition-colors cursor-pointer ${
                       isPlaying
                         ? "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 animate-pulse"
                         : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60"
                     }`}
                     title="Nghe lại phát âm"
                   >
-                    <Volume2 className="w-4 h-4" />
+                    <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
                 )}
 
                 {/* Primary Japanese Text */}
-                <p className="text-base sm:text-lg md:text-xl font-bold font-sans tracking-wide pr-6 leading-relaxed">
+                <p className="text-sm sm:text-base md:text-lg font-bold font-sans tracking-wide pr-6 leading-relaxed break-words [overflow-wrap:anywhere]">
                   {msg.japanese}
                 </p>
 
                 {/* Hiragana / Furigana subtitle */}
                 {showFurigana && msg.furigana && (
                   <p
-                    className={`text-xs sm:text-sm font-semibold tracking-wider font-sans ${
+                    className={`text-2xs sm:text-sm font-semibold tracking-wider font-sans break-words [overflow-wrap:anywhere] ${
                       isAi ? "text-rose-700 dark:text-rose-400" : "text-rose-100"
                     }`}
                   >
@@ -1755,7 +1755,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                 {/* Romaji */}
                 {showRomaji && msg.romaji && (
                   <p
-                    className={`text-xs font-mono tracking-wide ${
+                    className={`text-3xs sm:text-xs font-mono tracking-wide break-words ${
                       isAi ? "text-slate-400 dark:text-slate-400" : "text-amber-100"
                     }`}
                   >
@@ -1766,7 +1766,7 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                 {/* Vietnamese Translation */}
                 {showTranslation && msg.translation && (
                   <p
-                    className={`text-xs sm:text-sm font-medium pt-1 border-t ${
+                    className={`text-xs sm:text-sm font-medium pt-1 border-t break-words ${
                       isAi
                         ? "border-slate-100 dark:border-slate-700/60 text-slate-600 dark:text-slate-300"
                         : "border-rose-400/40 text-rose-50"
@@ -1779,17 +1779,17 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
 
               {/* Feedback Accordion for User Messages */}
               {!isAi && msg.evaluation && (
-                <div className="max-w-[85%] sm:max-w-[75%] w-full">
+                <div className="max-w-[90%] sm:max-w-[75%] w-full">
                   <button
                     onClick={() => setExpandedFeedbackId(isFeedbackOpen ? null : msg.id)}
                     type="button"
                     className="flex items-center justify-between w-full px-3 py-1.5 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100/80 dark:hover:bg-rose-900/60 border border-rose-200/90 dark:border-rose-800 rounded-xl text-2xs font-bold text-rose-800 dark:text-rose-300 transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
-                      <span>Đánh giá phản xạ: {msg.evaluation.naturalnessScore ?? 85}/100</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin-slow shrink-0" />
+                      <span className="truncate">Đánh giá phản xạ: {msg.evaluation.naturalnessScore ?? 85}/100</span>
                     </div>
-                    {isFeedbackOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    {isFeedbackOpen ? <ChevronUp className="w-3.5 h-3.5 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 shrink-0" />}
                   </button>
 
                   {isFeedbackOpen && (
@@ -1797,23 +1797,23 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                       {msg.evaluation.grammarAdvice && (
                         <div>
                           <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                            <Lightbulb className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
+                            <Lightbulb className="w-3.5 h-3.5 text-amber-500 animate-spin-slow shrink-0" />
                             <span>Nhận xét của AI:</span>
                           </span>
-                          <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{msg.evaluation.grammarAdvice}</p>
+                          <p className="text-slate-600 dark:text-slate-300 leading-relaxed break-words">{msg.evaluation.grammarAdvice}</p>
                         </div>
                       )}
 
                       {msg.evaluation.betterExpression && (
                         <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700">
-                          <span className="font-bold text-rose-800 dark:text-rose-300 block">
+                          <span className="font-bold text-rose-800 dark:text-rose-300 block text-2xs sm:text-xs">
                             Cách nói tự nhiên hơn chuẩn bản xứ:
                           </span>
-                          <p className="font-bold text-rose-950 dark:text-rose-100 font-sans mt-0.5 text-sm">
+                          <p className="font-bold text-rose-950 dark:text-rose-100 font-sans mt-0.5 text-xs sm:text-sm break-words [overflow-wrap:anywhere]">
                             {msg.evaluation.betterExpression}
                           </p>
                           {showFurigana && msg.evaluation.betterExpressionFurigana && (
-                            <p className="text-2xs font-semibold text-rose-700 dark:text-rose-400 font-sans tracking-wide mt-0.5">
+                            <p className="text-3xs sm:text-2xs font-semibold text-rose-700 dark:text-rose-400 font-sans tracking-wide mt-0.5 break-words [overflow-wrap:anywhere]">
                               {msg.evaluation.betterExpressionFurigana}
                             </p>
                           )}
@@ -2007,43 +2007,43 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
             e.preventDefault();
             handleSendMessage();
           }}
-          className="flex items-center gap-2"
+          className="flex items-center gap-1.5 sm:gap-2"
         >
           {/* Big Mic Button */}
           <button
             onClick={isRecording ? stopRecording : startRecording}
             type="button"
-            className={`p-3 sm:p-3.5 rounded-2xl font-bold flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+            className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl font-bold flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0 ${
               isRecording
                 ? "bg-rose-500 hover:bg-rose-600 text-white animate-pulse"
                 : "bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 text-white hover:shadow-md"
             }`}
             title={isRecording ? "Bấm để dừng ghi âm" : "Bấm để nói tiếng Nhật với AI"}
           >
-            {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 animate-pulse" />}
+            {isRecording ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />}
           </button>
 
           {/* Text input with transcript preview */}
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <input
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               placeholder={
                 isRecording
-                  ? "Đang nhận diện giọng nói của bạn..."
-                  : "Bấm Micro để nói tiếng Nhật hoặc gõ câu trả lời..."
+                  ? "Đang nhận diện giọng nói..."
+                  : "Nói hoặc gõ câu trả lời..."
               }
-              className="w-full pl-4 pr-10 py-3 sm:py-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 focus:border-rose-500 dark:focus:border-rose-400 focus:bg-white dark:focus:bg-slate-800 rounded-2xl text-sm sm:text-base font-sans font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden transition-all"
+              className="w-full pl-3.5 sm:pl-4 pr-8 sm:pr-10 py-2.5 sm:py-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 focus:border-rose-500 dark:focus:border-rose-400 focus:bg-white dark:focus:bg-slate-800 rounded-xl sm:rounded-2xl text-xs sm:text-base font-sans font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden transition-all truncate"
             />
             {inputVal && (
               <button
                 type="button"
                 onClick={() => speakText(inputVal)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
                 title="Nghe phát âm câu này"
               >
-                <Volume2 className="w-4 h-4" />
+                <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             )}
           </div>
@@ -2052,10 +2052,10 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
           <button
             type="submit"
             disabled={!inputVal.trim() || isLoading}
-            className="p-3 sm:p-3.5 bg-gradient-to-r from-rose-600 to-rose-500 hover:brightness-105 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl font-bold transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs"
+            className="p-2.5 sm:p-3.5 bg-gradient-to-r from-rose-600 to-rose-500 hover:brightness-105 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl sm:rounded-2xl font-bold transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
             title="Gửi câu trả lời"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </form>
       </div>

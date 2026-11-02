@@ -11,6 +11,7 @@ export interface AdminStatsResponse {
     totalLessons: number;
     totalVideoLessons: number;
     totalPractices: number;
+    realPractices?: number;
     totalSystemVocabularies?: number;
   };
   recentUsers: User[];

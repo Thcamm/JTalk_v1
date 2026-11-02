@@ -122,7 +122,7 @@ export default function SpeakingPracticePage() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-8 py-6 h-screen flex flex-col">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-3 sm:py-6 h-screen flex flex-col">
         <ConversationHeader
           title="図書館での勉強相談"
           onEndChat={finishPracticeSession}

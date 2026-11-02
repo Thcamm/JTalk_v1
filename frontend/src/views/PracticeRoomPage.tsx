@@ -788,37 +788,37 @@ export const PracticeRoomPage = () => {
       <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-to-tr from-amber-500/5 via-rose-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
       {/* 1. Header Bar */}
-      <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between transition-colors">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between transition-colors">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={() => {
               session.stopAudio();
               navigate(-1);
             }}
             type="button"
-            className="p-2 -ml-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 -ml-1 sm:-ml-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer shrink-0"
             title="Quay lại"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-slate-900 dark:text-white line-clamp-1">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                 {session.currentLesson?.title || "Phòng luyện phản xạ AI"}
               </h1>
-              <Badge variant="primary" size="sm">
+              <Badge variant="primary" size="sm" className="shrink-0 text-3xs sm:text-xs">
                 {session.currentLesson?.level || "N5"}
               </Badge>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+            <p className="text-3xs sm:text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
               Hội thoại {session.currentDialogueIndex + 1} / {session.dialogues.length}
             </p>
           </div>
         </div>
 
         {/* Right stats & Quota badge */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Sound FX Toggle */}
           <button
             onClick={handleToggleSound}
@@ -844,21 +844,21 @@ export const PracticeRoomPage = () => {
           </button>
 
           {/* Streak indicator */}
-          <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 rounded-full text-xs font-bold">
+          <div className="flex items-center gap-1 px-2 sm:px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 rounded-full text-xs font-bold">
             <Flame className="w-3.5 h-3.5 fill-rose-500 text-rose-500 animate-bounce" />
-            <span>{streak} ngày</span>
+            <span>{streak}<span className="hidden xs:inline"> ngày</span></span>
           </div>
 
           {/* Quota status */}
           {isPremium ? (
             <Badge variant="premium" size="sm" icon={<Sparkles className="w-3 h-3 animate-spin-slow" />}>
-              Premium Vô Hạn
+              <span className="hidden xs:inline">Premium</span> Vô Hạn
             </Badge>
           ) : (
             <button
               onClick={() => setShowPremiumModal(true)}
               type="button"
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer border ${
+              className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer border ${
                 remainingFreePractices > 0
                   ? "bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
                   : "bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 font-bold animate-pulse"
@@ -866,8 +866,8 @@ export const PracticeRoomPage = () => {
             >
               <span>
                 {remainingFreePractices > 0
-                  ? `Còn ${remainingFreePractices}/${maxFreePractices} lượt`
-                  : `Hết lượt hôm nay (0/${maxFreePractices})`}
+                  ? `Còn ${remainingFreePractices}/${maxFreePractices}`
+                  : `0/${maxFreePractices}`}
               </span>
               <span
                 className="text-rose-600 dark:text-rose-400 font-bold underline ml-0.5"
@@ -921,7 +921,7 @@ export const PracticeRoomPage = () => {
       </div>
 
       {/* 2. Main Practice Workspace */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col gap-6 justify-between relative z-10">
+      <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6 md:p-8 flex flex-col gap-4 sm:gap-6 justify-between relative z-10">
         {practiceMode === "roleplay" ? (
           <FreeRoleplayChat
             lessonId={lessonId}
@@ -980,16 +980,16 @@ export const PracticeRoomPage = () => {
             </div>
 
             {/* Central Dialogue Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 transition-colors">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xs space-y-4 sm:space-y-6 transition-colors">
               {/* Speaker label & Audio TTS button */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span
-                    className={`w-3 h-3 rounded-full ${
+                    className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shrink-0 ${
                       currentDialogue?.speaker === "ai" ? "bg-blue-500" : "bg-rose-500"
                     }`}
                   />
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <span className="text-2xs sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                     {currentDialogue?.speaker === "ai" ? "GIA SƯ AI" : "BẠN HÃY PHẢN XẠ CÂU NÀY"}
                   </span>
                 </div>
@@ -1010,19 +1010,19 @@ export const PracticeRoomPage = () => {
               </div>
 
               {/* Target Japanese Sentence Display */}
-              <div className="text-center py-4 sm:py-6 space-y-3.5">
+              <div className="text-center py-2 sm:py-6 space-y-2.5 sm:space-y-3.5">
                 {/* 1. Kanji Primary Text */}
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-wide font-sans leading-relaxed">
+                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-wide font-sans leading-relaxed break-words [overflow-wrap:anywhere]">
                   {currentDialogue?.japanese}
                 </h2>
 
-                {/* 2. Hiragana / Katakana Phonetic Subtitle (Phiên âm Hiragana/Katakana cho chữ Hán) */}
+                {/* 2. Hiragana / Katakana Phonetic Subtitle */}
                 {showFurigana && currentDialogue && (currentDialogue.furigana || hasKanji(currentDialogue.japanese)) && (
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-rose-50/90 dark:bg-rose-950/60 border border-rose-200/90 dark:border-rose-800 rounded-2xl shadow-2xs">
-                    <span className="text-2xs font-extrabold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
+                  <div className="inline-flex max-w-full flex-wrap sm:flex-nowrap items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 bg-rose-50/90 dark:bg-rose-950/60 border border-rose-200/90 dark:border-rose-800 rounded-2xl shadow-2xs">
+                    <span className="text-3xs sm:text-2xs font-extrabold text-rose-700 dark:text-rose-400 uppercase tracking-wider shrink-0">
                       Hiragana:
                     </span>
-                    <p className="text-sm sm:text-base md:text-lg font-bold text-rose-900 dark:text-rose-200 tracking-wider font-sans">
+                    <p className="text-xs sm:text-base md:text-lg font-bold text-rose-900 dark:text-rose-200 tracking-wider font-sans break-words [overflow-wrap:anywhere]">
                       {currentDialogue.furigana || currentDialogue.japanese}
                     </p>
                   </div>
@@ -1030,25 +1030,25 @@ export const PracticeRoomPage = () => {
 
                 {/* 3. Romaji Latin line */}
                 {showRomaji && currentDialogue?.romaji && (
-                  <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 tracking-wide font-mono">
+                  <p className="text-2xs sm:text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400 tracking-wide font-mono break-words">
                     {currentDialogue.romaji}
                   </p>
                 )}
 
                 {/* 4. Vietnamese Meaning */}
                 {showTranslation && currentDialogue?.translation && (
-                  <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 font-medium">
+                  <p className="text-xs sm:text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium break-words">
                     {currentDialogue.translation}
                   </p>
                 )}
               </div>
 
               {/* Toggle buttons for Hiragana, Romaji and Translation */}
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                 <button
                   onClick={() => setShowFurigana(!showFurigana)}
                   type="button"
-                  className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full border transition-all cursor-pointer font-semibold text-2xs sm:text-xs ${
                     showFurigana
                       ? "bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300 shadow-2xs"
                       : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -1059,7 +1059,7 @@ export const PracticeRoomPage = () => {
                 <button
                   onClick={() => setShowRomaji(!showRomaji)}
                   type="button"
-                  className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full border transition-all cursor-pointer font-semibold text-2xs sm:text-xs ${
                     showRomaji
                       ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
                       : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -1070,7 +1070,7 @@ export const PracticeRoomPage = () => {
                 <button
                   onClick={() => setShowTranslation(!showTranslation)}
                   type="button"
-                  className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-semibold ${
+                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full border transition-all cursor-pointer font-semibold text-2xs sm:text-xs ${
                     showTranslation
                       ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
                       : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -1085,7 +1085,7 @@ export const PracticeRoomPage = () => {
                     setShowHint(!showHint);
                   }}
                   type="button"
-                  className={`px-3.5 py-1.5 rounded-full border transition-all cursor-pointer font-bold flex items-center gap-1.5 ${
+                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full border transition-all cursor-pointer font-bold flex items-center gap-1.5 text-2xs sm:text-xs ${
                     showHint
                       ? "bg-amber-500 text-slate-950 border-amber-400 shadow-sm"
                       : "border-amber-400/80 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50"
@@ -1136,40 +1136,40 @@ export const PracticeRoomPage = () => {
 
             {/* 3. Evaluation Result Display */}
             {session.currentEvaluation && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Audio Transcript & Target Sentence Verification Card */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate sm:whitespace-normal">
                         Đối chiếu câu luyện tập & Giọng đọc của bạn
                       </h4>
                     </div>
-                    <Badge variant="primary" size="sm">
+                    <Badge variant="primary" size="sm" className="self-start sm:self-auto shrink-0 text-3xs sm:text-xs">
                       Đã ghi âm thành công
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5">
                     {/* User spoken transcript */}
-                    <div className="p-4 bg-rose-50/70 dark:bg-rose-950/60 border border-rose-200/90 dark:border-rose-800 rounded-2xl space-y-1.5">
-                      <span className="text-2xs font-extrabold uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-1">
-                        <Mic className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
+                    <div className="p-3.5 sm:p-4 bg-rose-50/70 dark:bg-rose-950/60 border border-rose-200/90 dark:border-rose-800 rounded-xl sm:rounded-2xl space-y-1 sm:space-y-1.5">
+                      <span className="text-3xs sm:text-2xs font-extrabold uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-1">
+                        <Mic className="w-3.5 h-3.5 text-rose-600 animate-pulse shrink-0" />
                         <span>Bạn đã nói (Nhận diện thực tế):</span>
                       </span>
-                      <p className="text-base sm:text-lg font-bold text-rose-950 dark:text-rose-100 font-sans">
+                      <p className="text-sm sm:text-base md:text-lg font-bold text-rose-950 dark:text-rose-100 font-sans break-words [overflow-wrap:anywhere]">
                         {session.currentEvaluation.transcript || session.clientTranscript || "(Chưa nhận diện được giọng nói)"}
                       </p>
                     </div>
 
                     {/* Target Japanese sentence */}
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 rounded-2xl space-y-1.5">
-                      <span className="text-2xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <Target className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
+                    <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 rounded-xl sm:rounded-2xl space-y-1 sm:space-y-1.5">
+                      <span className="text-3xs sm:text-2xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Target className="w-3.5 h-3.5 text-amber-500 animate-spin-slow shrink-0" />
                         <span>Câu mẫu cần phản xạ:</span>
                       </span>
-                      <p className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-200 font-sans">
+                      <p className="text-sm sm:text-base md:text-lg font-bold text-slate-800 dark:text-slate-200 font-sans break-words [overflow-wrap:anywhere]">
                         {session.currentEvaluation.targetSentence || currentDialogue?.japanese}
                       </p>
                     </div>

@@ -67,8 +67,8 @@ export const RoleplaySummaryModal: React.FC<RoleplaySummaryModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
         {/* Decorative background glow */}
         <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-rose-500/15 via-amber-500/10 to-transparent pointer-events-none" />
 
@@ -76,105 +76,105 @@ export const RoleplaySummaryModal: React.FC<RoleplaySummaryModalProps> = ({
         <button
           onClick={onClose}
           type="button"
-          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer z-10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer z-10"
           title="Đóng xem lại hội thoại"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Content with Scroll */}
-        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto scrollbar-thin">
+        <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 overflow-y-auto scrollbar-thin">
           {/* Header Trophy & Title */}
-          <div className="text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 via-rose-500 to-amber-300 text-white shadow-lg shadow-rose-500/25 animate-bounce">
-              <Trophy className="w-9 h-9" />
+          <div className="text-center space-y-2.5 sm:space-y-3 pt-1 sm:pt-0">
+            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-amber-400 via-rose-500 to-amber-300 text-white shadow-lg shadow-rose-500/25 animate-bounce">
+              <Trophy className="w-6 h-6 sm:w-9 sm:h-9" />
             </div>
 
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-200/80 dark:border-rose-800 text-2xs font-bold text-rose-700 dark:text-rose-300">
-                <Sparkles className="w-3 h-3 text-amber-500" />
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-200/80 dark:border-rose-800 text-3xs sm:text-2xs font-bold text-rose-700 dark:text-rose-300">
+                <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
                 <span>Hoàn thành đàm thoại Kaiwa tự do</span>
-                <span className="w-1 h-1 rounded-full bg-rose-400" />
+                <span className="w-1 h-1 rounded-full bg-rose-400 shrink-0" />
                 <span>{level}</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight break-words">
                 {scenarioTitle}
               </h2>
             </div>
           </div>
 
           {/* Score & Badge Highlight Card */}
-          <div className="p-5 rounded-3xl bg-gradient-to-br from-slate-50 via-rose-50/40 to-amber-50/40 dark:from-slate-800/80 dark:via-rose-950/20 dark:to-amber-950/20 border border-rose-200/70 dark:border-rose-900/50 text-center space-y-3 shadow-xs">
-            <div className="flex items-center justify-center gap-3">
-              <div className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 bg-clip-text text-transparent">
+          <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-50 via-rose-50/40 to-amber-50/40 dark:from-slate-800/80 dark:via-rose-950/20 dark:to-amber-950/20 border border-rose-200/70 dark:border-rose-900/50 text-center space-y-2.5 sm:space-y-3 shadow-xs">
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
+              <div className="text-3xl sm:text-4xl md:text-5xl font-black bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 bg-clip-text text-transparent leading-none">
                 {overallScore}
               </div>
               <div className="text-left">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                <span className="text-3xs sm:text-xs font-bold uppercase tracking-wider text-slate-400 block">
                   Điểm phản xạ
                 </span>
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
                   / 100 Điểm Tự Nhiên
                 </span>
               </div>
             </div>
 
-            <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r ${badgeColor} text-white text-xs font-bold shadow-xs`}>
-              <Award className="w-4 h-4" />
-              <span>{badgeTitle}</span>
+            <div className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-gradient-to-r ${badgeColor} text-white text-2xs sm:text-xs font-bold shadow-xs max-w-full truncate`}>
+              <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="truncate">{badgeTitle}</span>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+            <p className="text-3xs sm:text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed break-words">
               {badgeDescription}
             </p>
           </div>
 
           {/* 4 Stats Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-0.5 sm:space-y-1">
               <div className="flex items-center justify-center text-rose-500">
-                <MessageSquare className="w-4 h-4" />
+                <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
-              <div className="text-lg font-black text-slate-900 dark:text-white font-mono">
+              <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono">
                 {userTurns}
               </div>
-              <div className="text-3xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <div className="text-4xs sm:text-3xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                 Lượt đối đáp
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
+            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-0.5 sm:space-y-1">
               <div className="flex items-center justify-center text-amber-500">
-                <Clock className="w-4 h-4" />
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
-              <div className="text-lg font-black text-slate-900 dark:text-white font-mono">
+              <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono">
                 {timeFormatted}
               </div>
-              <div className="text-3xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <div className="text-4xs sm:text-3xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                 Thời lượng
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
+            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-0.5 sm:space-y-1">
               <div className="flex items-center justify-center text-amber-500">
-                <Flame className="w-4 h-4" />
+                <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
-              <div className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono">
+              <div className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 font-mono">
                 +{xpEarned} XP
               </div>
-              <div className="text-3xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <div className="text-4xs sm:text-3xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                 Kinh nghiệm
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-1">
+            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-center space-y-0.5 sm:space-y-1">
               <div className="flex items-center justify-center text-emerald-500">
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
-              <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
+              <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
                 100%
               </div>
-              <div className="text-3xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <div className="text-4xs sm:text-3xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
                 Hoàn thành
               </div>
             </div>
@@ -182,15 +182,15 @@ export const RoleplaySummaryModal: React.FC<RoleplaySummaryModalProps> = ({
 
           {/* AI Sensei's Strengths & Feedback */}
           {strengths.length > 0 && (
-            <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 space-y-2">
+            <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 space-y-2">
               <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>Điểm mạnh ghi nhận từ Sensei AI:</span>
               </div>
               <ul className="space-y-1.5 pl-1">
                 {strengths.map((s, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-xs text-emerald-900 dark:text-emerald-200">
-                    <span className="text-emerald-500 font-bold">•</span>
+                  <li key={idx} className="flex items-start gap-2 text-xs text-emerald-900 dark:text-emerald-200 break-words">
+                    <span className="text-emerald-500 font-bold shrink-0">•</span>
                     <span>{s}</span>
                   </li>
                 ))}
@@ -200,9 +200,9 @@ export const RoleplaySummaryModal: React.FC<RoleplaySummaryModalProps> = ({
 
           {/* Better Expressions Section (if available) */}
           {betterExpressions.length > 0 && (
-            <div className="space-y-2.5">
+            <div className="space-y-2 sm:space-y-2.5">
               <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold text-xs">
-                <Lightbulb className="w-4 h-4 text-amber-500" />
+                <Lightbulb className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>Cách nói tự nhiên hơn học được trong buổi này:</span>
               </div>
 
@@ -210,19 +210,19 @@ export const RoleplaySummaryModal: React.FC<RoleplaySummaryModalProps> = ({
                 {betterExpressions.map((item, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 space-y-1 text-xs"
+                    className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 space-y-1 text-xs"
                   >
                     {item.original && (
-                      <div className="text-2xs text-slate-500 dark:text-slate-400">
+                      <div className="text-3xs sm:text-2xs text-slate-500 dark:text-slate-400 break-words">
                         <span className="font-semibold">Bạn nói:</span> {item.original}
                       </div>
                     )}
-                    <div className="text-rose-700 dark:text-rose-300 font-bold font-sans">
+                    <div className="text-rose-700 dark:text-rose-300 font-bold font-sans break-words">
                       <span className="font-semibold text-slate-700 dark:text-slate-300">Chuẩn hơn:</span>{" "}
                       {item.better}
                     </div>
                     {item.furigana && (
-                      <div className="text-2xs font-semibold text-rose-600/80 dark:text-rose-400/80 font-sans tracking-wide">
+                      <div className="text-3xs sm:text-2xs font-semibold text-rose-600/80 dark:text-rose-400/80 font-sans tracking-wide break-words">
                         {item.furigana}
                       </div>
                     )}
@@ -234,11 +234,11 @@ export const RoleplaySummaryModal: React.FC<RoleplaySummaryModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-3.5 sm:p-5 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200/80 dark:border-slate-800 flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5 sm:gap-3">
           <button
             onClick={onClose}
             type="button"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
           >
             <MessageSquare className="w-4 h-4" />
             <span>Xem lại cuộc trò chuyện</span>
@@ -247,7 +247,7 @@ export const RoleplaySummaryModal: React.FC<RoleplaySummaryModalProps> = ({
           <button
             onClick={onRestart}
             type="button"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 hover:brightness-105 text-white font-bold text-xs shadow-md shadow-rose-500/20 transition-all cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 hover:brightness-105 text-white font-bold text-xs shadow-md shadow-rose-500/20 transition-all cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Luyện tập lại từ đầu</span>

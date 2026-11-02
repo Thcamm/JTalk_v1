@@ -133,19 +133,19 @@ export const SmartHintCard: React.FC<SmartHintCardProps> = ({
   const clozeFrame = generateClozeFrame(targetText);
 
   return (
-    <div className="bg-gradient-to-br from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/40 dark:via-slate-900 dark:to-amber-950/30 border-2 border-amber-300 dark:border-amber-800/80 rounded-3xl p-5 sm:p-6 shadow-md space-y-4 animate-in fade-in zoom-in-95 duration-200">
+    <div className="bg-gradient-to-br from-amber-50 via-orange-50/50 to-amber-50 dark:from-amber-950/40 dark:via-slate-900 dark:to-amber-950/30 border-2 border-amber-300 dark:border-amber-800/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-md space-y-3 sm:space-y-4 animate-in fade-in zoom-in-95 duration-200">
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-amber-200/80 dark:border-amber-800/60">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
-            <Sparkles className="w-4 h-4 animate-spin-slow" />
+      <div className="flex items-start sm:items-center justify-between pb-2.5 sm:pb-3 border-b border-amber-200/80 dark:border-amber-800/60 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin-slow" />
           </div>
-          <div>
-            <h4 className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-100 uppercase tracking-wider">
-              Trợ Thủ Gợi Ý Thông Minh (AI Smart Hints)
+          <div className="min-w-0">
+            <h4 className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-100 uppercase tracking-wider truncate">
+              Trợ Thủ Gợi Ý Thông Minh
             </h4>
-            <p className="text-3xs sm:text-2xs text-amber-700 dark:text-amber-300/80 font-medium">
-              3 cấp độ gợi ý phản xạ linh hoạt mô phỏng phương pháp Speak.com
+            <p className="text-4xs sm:text-2xs text-amber-700 dark:text-amber-300/80 font-medium truncate sm:whitespace-normal">
+              3 cấp độ gợi ý phản xạ linh hoạt mô phỏng Speak.com
             </p>
           </div>
         </div>
@@ -153,7 +153,7 @@ export const SmartHintCard: React.FC<SmartHintCardProps> = ({
         <button
           onClick={onClose}
           type="button"
-          className="p-1.5 text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 rounded-full transition-colors cursor-pointer"
+          className="p-1 sm:p-1.5 text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 rounded-full transition-colors cursor-pointer shrink-0"
           title="Đóng bảng gợi ý"
         >
           <X className="w-4 h-4" />
@@ -161,58 +161,58 @@ export const SmartHintCard: React.FC<SmartHintCardProps> = ({
       </div>
 
       {/* 3-Tier Segmented Tabs */}
-      <div className="grid grid-cols-3 gap-2 p-1 bg-amber-100/60 dark:bg-slate-900/80 rounded-2xl border border-amber-200/80 dark:border-amber-900/50">
+      <div className="grid grid-cols-3 gap-1 sm:gap-2 p-1 bg-amber-100/60 dark:bg-slate-900/80 rounded-xl sm:rounded-2xl border border-amber-200/80 dark:border-amber-900/50">
         <button
           onClick={() => handleSelectLevel(1)}
           type="button"
-          className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-2xs sm:text-xs font-black transition-all cursor-pointer ${
+          className={`flex flex-col xs:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg sm:rounded-xl text-3xs sm:text-xs font-bold sm:font-black transition-all cursor-pointer text-center ${
             level === 1
-              ? "bg-white dark:bg-amber-500 text-amber-900 dark:text-slate-950 shadow-xs scale-100"
+              ? "bg-white dark:bg-amber-500 text-amber-900 dark:text-slate-950 shadow-xs"
               : "text-amber-800 dark:text-amber-300/70 hover:text-amber-950 dark:hover:text-amber-100"
           }`}
         >
-          <KeyRound className="w-3.5 h-3.5" />
-          <span>Cấp 1: Từ khóa</span>
+          <KeyRound className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="truncate">Cấp 1: Từ khóa</span>
         </button>
 
         <button
           onClick={() => handleSelectLevel(2)}
           type="button"
-          className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-2xs sm:text-xs font-black transition-all cursor-pointer ${
+          className={`flex flex-col xs:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg sm:rounded-xl text-3xs sm:text-xs font-bold sm:font-black transition-all cursor-pointer text-center ${
             level === 2
-              ? "bg-white dark:bg-amber-500 text-amber-900 dark:text-slate-950 shadow-xs scale-100"
+              ? "bg-white dark:bg-amber-500 text-amber-900 dark:text-slate-950 shadow-xs"
               : "text-amber-800 dark:text-amber-300/70 hover:text-amber-950 dark:hover:text-amber-100"
           }`}
         >
-          <FileQuestion className="w-3.5 h-3.5" />
-          <span>Cấp 2: Điền khuyết</span>
+          <FileQuestion className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="truncate">Cấp 2: Điền khuyết</span>
         </button>
 
         <button
           onClick={() => handleSelectLevel(3)}
           type="button"
-          className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-2xs sm:text-xs font-black transition-all cursor-pointer ${
+          className={`flex flex-col xs:flex-row items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1 sm:px-2 rounded-lg sm:rounded-xl text-3xs sm:text-xs font-bold sm:font-black transition-all cursor-pointer text-center ${
             level === 3
-              ? "bg-white dark:bg-amber-500 text-amber-900 dark:text-slate-950 shadow-xs scale-100"
+              ? "bg-white dark:bg-amber-500 text-amber-900 dark:text-slate-950 shadow-xs"
               : "text-amber-800 dark:text-amber-300/70 hover:text-amber-950 dark:hover:text-amber-100"
           }`}
         >
-          <BookOpenCheck className="w-3.5 h-3.5" />
-          <span>Cấp 3: Nguyên câu</span>
+          <BookOpenCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span className="truncate">Cấp 3: Nguyên câu</span>
         </button>
       </div>
 
       {/* Tier 1: Key Vocabulary Badges */}
       {level === 1 && (
-        <div className="space-y-3 bg-white/95 dark:bg-slate-900/95 p-4 rounded-2xl border border-amber-200/90 dark:border-amber-900/60 shadow-2xs animate-in fade-in duration-150">
-          <div className="flex items-center justify-between">
-            <span className="text-2xs font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+        <div className="space-y-2.5 sm:space-y-3 bg-white/95 dark:bg-slate-900/95 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-amber-200/90 dark:border-amber-900/60 shadow-2xs animate-in fade-in duration-150">
+          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1">
+            <span className="text-3xs sm:text-2xs font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
               💡 Từ vựng then chốt cần ghi nhớ:
             </span>
-            <span className="text-3xs text-slate-400 font-medium">Bấm vào từ để nghe phát âm</span>
+            <span className="text-4xs sm:text-3xs text-slate-400 font-medium">Bấm vào từ để nghe phát âm</span>
           </div>
 
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap gap-2 sm:gap-2.5">
             {keywords.map((kw, idx) => (
               <button
                 key={idx}
@@ -221,19 +221,19 @@ export const SmartHintCard: React.FC<SmartHintCardProps> = ({
                   soundEffects.playTap();
                   onPlayAudio(kw.jp);
                 }}
-                className="group p-2.5 bg-amber-50/80 hover:bg-amber-100/90 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-amber-200/80 dark:border-amber-800/80 rounded-xl flex items-center gap-2 transition-all cursor-pointer active:scale-97 text-left"
+                className="group p-2 sm:p-2.5 bg-amber-50/80 hover:bg-amber-100/90 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-amber-200/80 dark:border-amber-800/80 rounded-lg sm:rounded-xl flex items-center gap-2 transition-all cursor-pointer active:scale-97 text-left max-w-full"
                 title={`Bấm để nghe phát âm "${kw.jp}"`}
               >
-                <div>
-                  <div className="text-xs font-black text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors break-words">
                     {kw.jp}
                   </div>
                   {kw.furi && kw.furi !== kw.jp && (
-                    <div className="text-3xs font-semibold text-rose-600 dark:text-rose-400">
+                    <div className="text-4xs sm:text-3xs font-semibold text-rose-600 dark:text-rose-400 break-words">
                       {kw.furi}
                     </div>
                   )}
-                  <div className="text-3xs text-slate-500 dark:text-slate-400 font-medium">
+                  <div className="text-4xs sm:text-3xs text-slate-500 dark:text-slate-400 font-medium break-words">
                     {kw.vi}
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export const SmartHintCard: React.FC<SmartHintCardProps> = ({
             ))}
           </div>
 
-          <p className="text-2xs text-amber-800 dark:text-amber-300 font-medium italic pt-1">
+          <p className="text-3xs sm:text-2xs text-amber-800 dark:text-amber-300 font-medium italic pt-1 leading-relaxed">
             Gợi ý: Hãy ghép các từ khóa trên thành một câu trọn vẹn theo cấu trúc chủ ngữ + vị ngữ.
           </p>
         </div>
@@ -250,23 +250,23 @@ export const SmartHintCard: React.FC<SmartHintCardProps> = ({
 
       {/* Tier 2: Cloze Frame */}
       {level === 2 && (
-        <div className="space-y-3 bg-white/95 dark:bg-slate-900/95 p-4 rounded-2xl border border-amber-200/90 dark:border-amber-900/60 shadow-2xs animate-in fade-in duration-150">
-          <div className="flex items-center justify-between">
-            <span className="text-2xs font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+        <div className="space-y-2.5 sm:space-y-3 bg-white/95 dark:bg-slate-900/95 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-amber-200/90 dark:border-amber-900/60 shadow-2xs animate-in fade-in duration-150">
+          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1">
+            <span className="text-3xs sm:text-2xs font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
               ✏️ Khung sườn mẫu câu (Điền vào chỗ trống):
             </span>
-            <span className="text-3xs text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md">
+            <span className="self-start xs:self-auto text-4xs sm:text-3xs text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md">
               Chủ động phản xạ
             </span>
           </div>
 
-          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-sans">
-            <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-relaxed">
+          <div className="p-3 sm:p-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-sans">
+            <p className="text-xs sm:text-base font-bold text-slate-900 dark:text-white leading-relaxed break-words [overflow-wrap:anywhere]">
               {clozeFrame}
             </p>
           </div>
 
-          <p className="text-2xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+          <p className="text-3xs sm:text-2xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
             Thay thế các thông tin trong ngoặc vuông <code>[...]</code> bằng dữ liệu thực tế của bạn hoặc theo bài học để nói tự nhiên nhất.
           </p>
         </div>
@@ -274,27 +274,27 @@ export const SmartHintCard: React.FC<SmartHintCardProps> = ({
 
       {/* Tier 3: Complete Shadowing Model */}
       {level === 3 && (
-        <div className="space-y-3 bg-white/95 dark:bg-slate-900/95 p-4 rounded-2xl border border-amber-200/90 dark:border-amber-900/60 shadow-2xs animate-in fade-in duration-150">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1 min-w-0">
-              <span className="text-2xs font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+        <div className="space-y-2.5 sm:space-y-3 bg-white/95 dark:bg-slate-900/95 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-amber-200/90 dark:border-amber-900/60 shadow-2xs animate-in fade-in duration-150">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
+              <span className="text-3xs sm:text-2xs font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
                 🎙️ Mẫu câu hoàn chỉnh chuẩn Tokyo:
               </span>
-              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-sans leading-snug">
+              <p className="text-sm sm:text-lg font-black text-slate-900 dark:text-white font-sans leading-snug break-words [overflow-wrap:anywhere]">
                 {targetText}
               </p>
               {furigana && furigana !== targetText && (
-                <p className="text-xs font-bold text-rose-600 dark:text-rose-400 font-sans">
+                <p className="text-2xs sm:text-xs font-bold text-rose-600 dark:text-rose-400 font-sans break-words">
                   {furigana}
                 </p>
               )}
               {romaji && (
-                <p className="text-2xs text-slate-500 dark:text-slate-400 font-mono">
+                <p className="text-3xs sm:text-2xs text-slate-500 dark:text-slate-400 font-mono break-words">
                   {romaji}
                 </p>
               )}
               {translation && (
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium italic pt-0.5">
+                <p className="text-2xs sm:text-xs text-slate-600 dark:text-slate-300 font-medium italic pt-0.5 break-words">
                    Nghĩa: {translation}
                 </p>
               )}
@@ -303,21 +303,21 @@ export const SmartHintCard: React.FC<SmartHintCardProps> = ({
             <button
               type="button"
               onClick={() => onPlayAudio(targetText)}
-              className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-rose-500 hover:brightness-105 active:scale-95 text-white shadow-md transition-all shrink-0 cursor-pointer flex flex-col items-center justify-center gap-1"
+              className="self-start sm:self-center px-4 py-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 to-rose-500 hover:brightness-105 active:scale-95 text-white shadow-md transition-all shrink-0 cursor-pointer flex flex-row sm:flex-col items-center justify-center gap-1.5 sm:gap-1"
               title="Nghe phát âm chuẩn"
             >
-              <Volume2 className={`w-5 h-5 ${isPlayingAudio ? "animate-pulse" : ""}`} />
+              <Volume2 className={`w-4 h-4 sm:w-5 sm:h-5 ${isPlayingAudio ? "animate-pulse" : ""}`} />
               <span className="text-3xs font-extrabold uppercase tracking-wider">Nghe thử</span>
             </button>
           </div>
 
           {/* Practical Cultural Context Advice */}
-          <div className="text-2xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+          <div className="text-3xs sm:text-2xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
             <p className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
-              <Lightbulb className="w-3 h-3 text-amber-500" />
+              <Lightbulb className="w-3 h-3 text-amber-500 shrink-0" />
               <span>Mẹo phát âm bản xứ:</span>
             </p>
-            <p>
+            <p className="leading-relaxed">
               Hãy chú ý trường âm (nguyên âm kéo dài như <em>〜ます, 〜とう</em>) và ngữ điệu lên xuống nhẹ nhàng ở cuối câu để nghe tự nhiên như người Tokyo.
             </p>
           </div>

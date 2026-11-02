@@ -298,19 +298,19 @@ export function VocabularyQuizModal({
   const correctCount = userAnswers.filter((a) => a.isCorrect).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs font-sans text-slate-800 dark:text-slate-100">
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/70 backdrop-blur-xs font-sans text-slate-800 dark:text-slate-100">
+      <div className="relative w-full max-w-2xl rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
         {/* ================= HEADER ================= */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/60 dark:bg-slate-950/40">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-400/30 flex items-center justify-center">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/60 dark:bg-slate-950/40">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-400/30 flex items-center justify-center shrink-0">
               <Sparkles size={16} />
             </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight">
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-base font-black text-slate-900 dark:text-white leading-tight truncate">
                 {title}
               </h3>
-              <p className="text-3xs text-slate-500 dark:text-slate-400 font-medium">
+              <p className="text-4xs sm:text-3xs text-slate-500 dark:text-slate-400 font-medium truncate">
                 Kho {vocabList.length} từ vựng • Trắc nghiệm
               </p>
             </div>
@@ -319,29 +319,29 @@ export function VocabularyQuizModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* ================= NỘI DUNG CHÍNH THEO STAGE ================= */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-3.5 sm:p-6 overflow-y-auto flex-1 scrollbar-thin">
           {/* ========================================================================= */}
           {/* STAGE 1: CÀI ĐẶT BÀI KIỂM TRA (SETUP) */}
           {/* ========================================================================= */}
           {stage === "setup" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Giới thiệu */}
-              <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/40 flex items-start gap-3">
+              <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/40 flex items-start gap-2.5 sm:gap-3">
                 <div className="p-2 rounded-xl bg-indigo-600 text-white shrink-0">
-                  <BookOpen size={18} />
+                  <BookOpen size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
                     Thiết lập bài kiểm tra trắc nghiệm
                   </h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                  <p className="text-3xs sm:text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
                     Hệ thống sẽ tự động xáo trộn và tạo câu hỏi kèm 3 đáp án gây nhiễu chính xác từ kho từ vựng đã chọn.
                   </p>
                 </div>
@@ -357,7 +357,7 @@ export function VocabularyQuizModal({
                 </label>
 
                 {/* Chips chọn nhanh */}
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   {[5, 10, 15, 20, 30].map((count) => {
                     if (count > vocabList.length && count !== 5) return null;
                     return (
@@ -365,7 +365,7 @@ export function VocabularyQuizModal({
                         key={count}
                         type="button"
                         onClick={() => setQuestionCount(count)}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-3xs sm:text-xs font-black transition-all cursor-pointer ${
                           questionCount === count
                             ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                             : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
@@ -379,7 +379,7 @@ export function VocabularyQuizModal({
                   <button
                     type="button"
                     onClick={() => setQuestionCount(vocabList.length)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-3xs sm:text-xs font-black transition-all cursor-pointer ${
                       questionCount === vocabList.length
                         ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
@@ -405,7 +405,7 @@ export function VocabularyQuizModal({
                 <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 block">
                   2. Dạng câu hỏi trắc nghiệm:
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
                   {[
                     {
                       id: "jp_to_vi" as QuizQuestionType,
@@ -439,7 +439,7 @@ export function VocabularyQuizModal({
                             setSelectedTypes([...selectedTypes, t.id]);
                           }
                         }}
-                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                        className={`p-3 rounded-xl sm:rounded-2xl border text-left transition-all cursor-pointer ${
                           isSelected
                             ? "bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-400 dark:border-indigo-600 shadow-2xs"
                             : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300"
@@ -467,7 +467,7 @@ export function VocabularyQuizModal({
                 <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 block">
                   3. Thời gian trả lời mỗi câu:
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   {[
                     { value: 0, label: "Không giới hạn" },
                     { value: 10, label: "10 giây / câu" },
@@ -478,7 +478,7 @@ export function VocabularyQuizModal({
                       key={timer.value}
                       type="button"
                       onClick={() => setTimeLimitPerQuestion(timer.value)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-3xs sm:text-xs font-bold transition-all cursor-pointer ${
                         timeLimitPerQuestion === timer.value
                           ? "bg-indigo-600 text-white shadow-2xs"
                           : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
@@ -495,7 +495,7 @@ export function VocabularyQuizModal({
                 <button
                   type="button"
                   onClick={handleStartQuiz}
-                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-rose-600 hover:brightness-105 active:scale-98 text-white font-black text-xs sm:text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="w-full py-3 sm:py-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-indigo-600 to-rose-600 hover:brightness-105 active:scale-98 text-white font-black text-xs sm:text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <Play size={16} className="fill-white" />
                   <span>Bắt đầu làm bài kiểm tra ({questionCount} câu)</span>
@@ -508,14 +508,14 @@ export function VocabularyQuizModal({
           {/* STAGE 2: MÀN HÌNH LÀM BÀI TRẮC NGHIỆM (ACTIVE QUIZ) */}
           {/* ========================================================================= */}
           {stage === "quiz" && currentQuestion && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Header tiến độ & Hẹn giờ */}
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <span className="text-xs font-extrabold text-slate-900 dark:text-white shrink-0">
                     Câu {currentIndex + 1} / {questions.length}
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-3xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded-md text-4xs sm:text-3xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 truncate">
                     {currentQuestion.type === "jp_to_vi"
                       ? "Nhật ➔ Việt"
                       : currentQuestion.type === "vi_to_jp"
@@ -527,7 +527,7 @@ export function VocabularyQuizModal({
                 {/* Hẹn giờ đếm ngược */}
                 {timeLimitPerQuestion > 0 && (
                   <div
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full text-xs font-mono font-bold shrink-0 ${
                       timeLeft <= 5
                         ? "bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/40"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
@@ -550,17 +550,17 @@ export function VocabularyQuizModal({
               </div>
 
               {/* THẺ CÂU HỎI */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-rose-500/5 border-2 border-indigo-200/80 dark:border-indigo-900/50 text-center space-y-3 relative shadow-xs">
-                <div className="text-3xs uppercase tracking-widest font-black text-indigo-600 dark:text-indigo-400">
+              <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-rose-500/5 border-2 border-indigo-200/80 dark:border-indigo-900/50 text-center space-y-2 sm:space-y-3 relative shadow-xs">
+                <div className="text-4xs sm:text-3xs uppercase tracking-widest font-black text-indigo-600 dark:text-indigo-400">
                   Câu hỏi kiểm tra:
                 </div>
 
-                <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-wide">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-wide break-words [overflow-wrap:anywhere] px-1">
                   {currentQuestion.questionText}
                 </div>
 
                 {currentQuestion.questionSubText && (
-                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium break-words">
                     {currentQuestion.questionSubText}
                   </div>
                 )}
@@ -579,7 +579,7 @@ export function VocabularyQuizModal({
               </div>
 
               {/* 4 ĐÁP ÁN A, B, C, D */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                 {currentQuestion.options.map((option) => {
                   const isChosen = selectedKey === option.key;
                   const isCorrect = option.key === currentQuestion.correctKey;
@@ -606,11 +606,11 @@ export function VocabularyQuizModal({
                       type="button"
                       onClick={() => handleSelectOption(option.key)}
                       disabled={isAnswerSubmitted}
-                      className={`p-4 rounded-2xl text-left transition-all flex items-center justify-between gap-3 cursor-pointer select-none active:scale-98 ${style}`}
+                      className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl text-left transition-all flex items-center justify-between gap-2.5 sm:gap-3 cursor-pointer select-none active:scale-98 ${style}`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                         <span
-                          className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                          className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
                             isAnswerSubmitted && isCorrect
                               ? "bg-emerald-500 text-white"
                               : isAnswerSubmitted && isChosen && !isCorrect
@@ -621,12 +621,12 @@ export function VocabularyQuizModal({
                           {option.key}
                         </span>
 
-                        <div>
-                          <div className="text-xs sm:text-sm font-bold leading-tight">
+                        <div className="min-w-0">
+                          <div className="text-xs sm:text-sm font-bold leading-tight break-words">
                             {option.text}
                           </div>
                           {option.subText && (
-                            <div className="text-3xs text-slate-400 font-mono mt-0.5">
+                            <div className="text-4xs sm:text-3xs text-slate-400 font-mono mt-0.5 break-words">
                               {option.subText}
                             </div>
                           )}
@@ -653,14 +653,14 @@ export function VocabularyQuizModal({
 
                 return (
                   <div
-                    className={`p-4 sm:p-5 rounded-2xl border space-y-3.5 animate-fade-in shadow-xs ${
+                    className={`p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border space-y-2.5 sm:space-y-3.5 animate-fade-in shadow-xs ${
                       isCorrect
                         ? "bg-emerald-50/80 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-800/60"
                         : "bg-rose-50/80 dark:bg-rose-950/25 border-rose-300 dark:border-rose-800/60"
                     }`}
                   >
                     {/* Header thông báo kết quả */}
-                    <div className="flex items-center justify-between gap-2 border-b pb-2.5 border-slate-200/60 dark:border-slate-800/60">
+                    <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 border-b pb-2 border-slate-200/60 dark:border-slate-800/60">
                       <div className="flex items-center gap-2">
                         {isCorrect ? (
                           <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -675,12 +675,12 @@ export function VocabularyQuizModal({
                           }`}
                         >
                           {isCorrect
-                            ? "🎉 Chính xác! Bạn đã ghi nhớ từ này rất tốt"
-                            : "❌ Chưa chính xác! Cùng xem đối chiếu để nhớ từ này nhé"}
+                            ? "🎉 Chính xác! Bạn ghi nhớ rất tốt"
+                            : "❌ Chưa chính xác! Cùng đối chiếu nhé"}
                         </span>
                       </div>
 
-                      <span className="text-3xs font-extrabold px-2 py-0.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 uppercase tracking-wider shrink-0">
+                      <span className="self-start xs:self-auto text-4xs sm:text-3xs font-extrabold px-2 py-0.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 uppercase tracking-wider shrink-0">
                         Đáp án đúng: {currentQuestion.correctKey}
                       </span>
                     </div>
@@ -689,12 +689,12 @@ export function VocabularyQuizModal({
                     {!isCorrect && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         {/* Lựa chọn của bạn */}
-                        <div className="p-3 rounded-xl bg-rose-100/60 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 space-y-1">
-                          <div className="text-3xs font-black uppercase text-rose-700 dark:text-rose-300 flex items-center gap-1">
-                            <XCircle size={12} />
+                        <div className="p-2.5 sm:p-3 rounded-xl bg-rose-100/60 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 space-y-1">
+                          <div className="text-4xs sm:text-3xs font-black uppercase text-rose-700 dark:text-rose-300 flex items-center gap-1">
+                            <XCircle size={12} className="shrink-0" />
                             <span>Bạn đã chọn: ({selectedKey || "Hết giờ"})</span>
                           </div>
-                          <div className="font-bold text-slate-900 dark:text-white">
+                          <div className="font-bold text-slate-900 dark:text-white break-words">
                             {selectedOption
                               ? (currentQuestion.type === "jp_to_vi"
                                   ? translateToVietnamese(selectedOption.detailKanji, selectedOption.text)
@@ -702,8 +702,8 @@ export function VocabularyQuizModal({
                               : "Chưa chọn kịp (Hết giờ)"}
                           </div>
                           {selectedOption && (
-                            <div className="text-3xs text-rose-800 dark:text-rose-200 font-medium">
-                              💡 Nghĩa của từ này:{" "}
+                            <div className="text-4xs sm:text-3xs text-rose-800 dark:text-rose-200 font-medium break-words">
+                              💡 Nghĩa:{" "}
                               <span className="font-bold underline">
                                 {translateToVietnamese(
                                   selectedOption.detailKanji,
@@ -718,15 +718,15 @@ export function VocabularyQuizModal({
                         </div>
 
                         {/* Đáp án chính xác */}
-                        <div className="p-3 rounded-xl bg-emerald-100/60 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50 space-y-1">
-                          <div className="text-3xs font-black uppercase text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                            <CheckCircle2 size={12} />
+                        <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-100/60 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50 space-y-1">
+                          <div className="text-4xs sm:text-3xs font-black uppercase text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                            <CheckCircle2 size={12} className="shrink-0" />
                             <span>Đáp án đúng: ({currentQuestion.correctKey})</span>
                           </div>
-                          <div className="font-bold text-slate-900 dark:text-white">
+                          <div className="font-bold text-slate-900 dark:text-white break-words">
                             {correctOption?.text}
                           </div>
-                          <div className="text-3xs text-emerald-800 dark:text-emerald-200 font-medium">
+                          <div className="text-4xs sm:text-3xs text-emerald-800 dark:text-emerald-200 font-medium break-words">
                             💡 Nghĩa chuẩn: <span className="font-bold underline">{currentQuestion.explanation.meaning}</span>
                           </div>
                         </div>
@@ -734,18 +734,18 @@ export function VocabularyQuizModal({
                     )}
 
                     {/* Chi tiết từ vựng và câu ví dụ */}
-                    <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 space-y-2 text-xs">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-baseline gap-2 flex-wrap">
-                          <span className="font-black text-slate-900 dark:text-white text-sm sm:text-base">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 space-y-1.5 sm:space-y-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                          <span className="font-black text-slate-900 dark:text-white text-sm sm:text-base break-words">
                             {currentQuestion.explanation.kanji}
                           </span>
                           {currentQuestion.explanation.furigana && (
-                            <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold font-mono">
+                            <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold font-mono break-words">
                               【{currentQuestion.explanation.furigana}】
                             </span>
                           )}
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">
+                          <span className="text-slate-700 dark:text-slate-300 font-medium break-words">
                             : {currentQuestion.explanation.meaning}
                           </span>
                         </div>
@@ -762,12 +762,12 @@ export function VocabularyQuizModal({
 
                       {/* Câu ví dụ ngữ cảnh */}
                       {currentQuestion.explanation.exampleSentence && (
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-start justify-between gap-2">
-                          <div className="space-y-0.5">
-                            <div className="text-slate-900 dark:text-slate-100 font-medium text-xs">
+                        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-start justify-between gap-2">
+                          <div className="space-y-0.5 min-w-0">
+                            <div className="text-slate-900 dark:text-slate-100 font-medium text-xs break-words">
                               {currentQuestion.explanation.exampleSentence}
                             </div>
-                            <div className="text-3xs text-slate-500 dark:text-slate-400 italic">
+                            <div className="text-3xs text-slate-500 dark:text-slate-400 italic break-words">
                               {currentQuestion.explanation.exampleTranslation}
                             </div>
                           </div>
@@ -789,7 +789,7 @@ export function VocabularyQuizModal({
                       <button
                         type="button"
                         onClick={handleNextQuestion}
-                        className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black text-xs inline-flex items-center gap-2 shadow-md shadow-indigo-600/30 cursor-pointer transition-all"
+                        className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black text-xs inline-flex items-center justify-center gap-2 shadow-md shadow-indigo-600/30 cursor-pointer transition-all"
                       >
                         <span>
                           {currentIndex < questions.length - 1
@@ -809,18 +809,18 @@ export function VocabularyQuizModal({
           {/* STAGE 3: MÀN HÌNH KẾT QUẢ & TỔNG KẾT (RESULT SUMMARY) */}
           {/* ========================================================================= */}
           {stage === "result" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Card Tổng kết điểm */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-rose-500/10 border-2 border-indigo-200/80 dark:border-indigo-900/50 text-center space-y-3 shadow-xs">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-400/30 flex items-center justify-center mx-auto shadow-md">
-                  <Trophy size={28} />
+              <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-rose-500/10 border-2 border-indigo-200/80 dark:border-indigo-900/50 text-center space-y-2.5 sm:space-y-3 shadow-xs">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-400/30 flex items-center justify-center mx-auto shadow-md">
+                  <Trophy size={24} className="sm:w-7 sm:h-7" />
                 </div>
 
                 <div>
-                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                  <h3 className="text-base sm:text-xl font-black text-slate-900 dark:text-white">
                     Kết Quả Bài Kiểm Tra
                   </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                  <p className="text-3xs sm:text-xs text-slate-600 dark:text-slate-300 mt-0.5 break-words">
                     {correctCount >= questions.length * 0.9
                       ? "🏆 Xuất sắc! Bạn đã ghi nhớ từ vựng rất vững vàng!"
                       : correctCount >= questions.length * 0.7
@@ -830,35 +830,35 @@ export function VocabularyQuizModal({
                 </div>
 
                 {/* Điểm số */}
-                <div className="flex items-center justify-center gap-6 py-2">
+                <div className="flex items-center justify-around sm:justify-center gap-2 sm:gap-6 py-2">
                   <div>
-                    <span className="text-3xs text-slate-400 font-bold uppercase tracking-wider block">
+                    <span className="text-4xs sm:text-3xs text-slate-400 font-bold uppercase tracking-wider block">
                       Đúng
                     </span>
-                    <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                    <span className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
                       {correctCount} / {questions.length}
                     </span>
                   </div>
 
-                  <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
+                  <div className="w-px h-6 sm:h-8 bg-slate-200 dark:bg-slate-800" />
 
                   <div>
-                    <span className="text-3xs text-slate-400 font-bold uppercase tracking-wider block">
+                    <span className="text-4xs sm:text-3xs text-slate-400 font-bold uppercase tracking-wider block">
                       Tỷ lệ
                     </span>
-                    <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                    <span className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400">
                       {Math.round((correctCount / questions.length) * 100)}%
                     </span>
                   </div>
 
-                  <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
+                  <div className="w-px h-6 sm:h-8 bg-slate-200 dark:bg-slate-800" />
 
                   <div>
-                    <span className="text-3xs text-slate-400 font-bold uppercase tracking-wider block">
+                    <span className="text-4xs sm:text-3xs text-slate-400 font-bold uppercase tracking-wider block">
                       Thưởng XP
                     </span>
-                    <span className="text-2xl font-black text-amber-500 flex items-center gap-1 justify-center">
-                      <Zap size={18} className="fill-amber-500" />
+                    <span className="text-lg sm:text-2xl font-black text-amber-500 flex items-center gap-1 justify-center">
+                      <Zap size={16} className="fill-amber-500" />
                       +{Math.max(10, correctCount * 5)}
                     </span>
                   </div>
@@ -871,7 +871,7 @@ export function VocabularyQuizModal({
                       type="button"
                       onClick={handleSaveWrongWords}
                       disabled={isSavingWrongWords || savedWrongSuccess}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-3xs sm:text-xs font-black transition-all cursor-pointer ${
                         savedWrongSuccess
                           ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-300 cursor-default"
                           : "bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30"
@@ -885,7 +885,7 @@ export function VocabularyQuizModal({
                       ) : (
                         <>
                           <BookmarkPlus size={14} />
-                          <span>
+                          <span className="truncate">
                             {isSavingWrongWords
                               ? "Đang lưu..."
                               : `Lưu ${wrongQuestions.length} từ làm sai vào Sổ tay để ôn`}
@@ -898,15 +898,15 @@ export function VocabularyQuizModal({
               </div>
 
               {/* Danh sách review câu hỏi */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-black text-slate-800 dark:text-slate-200 px-1">
+              <div className="space-y-2">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between text-xs font-black text-slate-800 dark:text-slate-200 px-1 gap-1">
                   <span>Chi tiết từng câu hỏi ({questions.length} câu):</span>
-                  <span className="text-3xs font-semibold text-slate-400">
-                    Bấm vào câu bất kỳ để xem đối chiếu & giải thích
+                  <span className="text-4xs sm:text-3xs font-semibold text-slate-400">
+                    Bấm vào câu để xem giải thích
                   </span>
                 </div>
 
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-60 sm:max-h-72 overflow-y-auto pr-1 scrollbar-thin">
                   {questions.map((q, idx) => {
                     const ans = userAnswers.find((a) => a.questionId === q.id);
                     const isRight = ans?.isCorrect;
@@ -917,7 +917,7 @@ export function VocabularyQuizModal({
                     return (
                       <div
                         key={q.id}
-                        className={`rounded-2xl border text-xs overflow-hidden transition-all ${
+                        className={`rounded-xl sm:rounded-2xl border text-xs overflow-hidden transition-all ${
                           isRight
                             ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40"
                             : "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40"
@@ -926,9 +926,9 @@ export function VocabularyQuizModal({
                         {/* Header của từng câu */}
                         <div
                           onClick={() => setExpandedResultQuestionId(isExpanded ? null : q.id)}
-                          className="p-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                          className="p-2.5 sm:p-3 flex items-center justify-between gap-2.5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                         >
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-2 min-w-0">
                             <span
                               className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold text-3xs shrink-0 ${
                                 isRight
@@ -938,14 +938,14 @@ export function VocabularyQuizModal({
                             >
                               {idx + 1}
                             </span>
-                            <div>
+                            <div className="min-w-0">
                               <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                                <span>{q.questionText}</span>
+                                <span className="break-words">{q.questionText}</span>
                                 {q.questionSubText && (
-                                  <span className="text-3xs font-normal text-slate-500">({q.questionSubText})</span>
+                                  <span className="text-3xs font-normal text-slate-500 break-words">({q.questionSubText})</span>
                                 )}
                               </div>
-                              <div className="text-3xs text-slate-500 flex items-center gap-2 mt-0.5 flex-wrap">
+                              <div className="text-4xs sm:text-3xs text-slate-500 flex items-center gap-1.5 mt-0.5 flex-wrap">
                                 <span>
                                   Đáp án: <strong className="text-emerald-600 dark:text-emerald-400">({q.correctKey}) {q.explanation.meaning}</strong>
                                 </span>
@@ -958,7 +958,7 @@ export function VocabularyQuizModal({
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1 shrink-0">
                             <button
                               type="button"
                               onClick={(e) => speakJapanese(q.audioText, e)}
@@ -978,12 +978,12 @@ export function VocabularyQuizModal({
 
                         {/* Nội dung giải thích chi tiết khi click mở rộng */}
                         {isExpanded && (
-                          <div className="px-3.5 pb-3.5 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 space-y-2.5 bg-white/50 dark:bg-slate-900/40 animate-fade-in">
+                          <div className="px-3 pb-3 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 space-y-2 bg-white/50 dark:bg-slate-900/40 animate-fade-in">
                             {/* Phân tích đáp án đã chọn vs đáp án đúng */}
                             {!isRight && (
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-2xs pt-1">
-                                <div className="p-2.5 rounded-xl bg-rose-100/60 dark:bg-rose-900/30 border border-rose-200/80 dark:border-rose-800/40">
-                                  <div className="font-bold text-rose-700 dark:text-rose-300">
+                                <div className="p-2 sm:p-2.5 rounded-xl bg-rose-100/60 dark:bg-rose-900/30 border border-rose-200/80 dark:border-rose-800/40">
+                                  <div className="font-bold text-rose-700 dark:text-rose-300 break-words">
                                     ❌ Bạn đã chọn: ({ans?.selectedKey || "Không chọn"}){" "}
                                     {selectedOpt
                                       ? (q.type === "jp_to_vi"
@@ -992,7 +992,7 @@ export function VocabularyQuizModal({
                                       : "Chưa chọn"}
                                   </div>
                                   {selectedOpt && (
-                                    <div className="text-3xs text-rose-800 dark:text-rose-200 mt-0.5">
+                                    <div className="text-3xs text-rose-800 dark:text-rose-200 mt-0.5 break-words">
                                       Nghĩa của từ này:{" "}
                                       <span className="font-bold underline">
                                         {translateToVietnamese(
@@ -1007,11 +1007,11 @@ export function VocabularyQuizModal({
                                   )}
                                 </div>
 
-                                <div className="p-2.5 rounded-xl bg-emerald-100/60 dark:bg-emerald-900/30 border border-emerald-200/80 dark:border-emerald-800/40">
-                                  <div className="font-bold text-emerald-700 dark:text-emerald-300">
+                                <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-100/60 dark:bg-emerald-900/30 border border-emerald-200/80 dark:border-emerald-800/40">
+                                  <div className="font-bold text-emerald-700 dark:text-emerald-300 break-words">
                                     ✅ Đáp án đúng: ({q.correctKey}) {correctOpt?.text}
                                   </div>
-                                  <div className="text-3xs text-emerald-800 dark:text-emerald-200 mt-0.5">
+                                  <div className="text-3xs text-emerald-800 dark:text-emerald-200 mt-0.5 break-words">
                                     Nghĩa chuẩn: <span className="font-bold underline">{q.explanation.meaning}</span>
                                   </div>
                                 </div>
@@ -1019,18 +1019,18 @@ export function VocabularyQuizModal({
                             )}
 
                             {/* Chi tiết từ vựng và câu ví dụ */}
-                            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5 text-2xs">
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5 text-2xs">
                               <div className="flex items-center justify-between">
-                                <div className="flex items-baseline gap-1.5 flex-wrap">
-                                  <span className="font-black text-slate-900 dark:text-white text-xs">
+                                <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+                                  <span className="font-black text-slate-900 dark:text-white text-xs break-words">
                                     {q.explanation.kanji}
                                   </span>
                                   {q.explanation.furigana && (
-                                    <span className="text-indigo-600 dark:text-indigo-400 font-bold font-mono">
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-bold font-mono break-words">
                                       【{q.explanation.furigana}】
                                     </span>
                                   )}
-                                  <span className="text-slate-600 dark:text-slate-300">
+                                  <span className="text-slate-600 dark:text-slate-300 break-words">
                                     : {q.explanation.meaning}
                                   </span>
                                 </div>
@@ -1038,7 +1038,7 @@ export function VocabularyQuizModal({
 
                               {q.explanation.exampleSentence && (
                                 <div className="text-3xs text-slate-500 dark:text-slate-400 italic pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                                  <span>
+                                  <span className="break-words">
                                     Ví dụ: {q.explanation.exampleSentence} ({q.explanation.exampleTranslation})
                                   </span>
                                   <button
@@ -1061,11 +1061,11 @@ export function VocabularyQuizModal({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer transition-colors"
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer transition-colors text-center"
                 >
                   Đóng bài thi
                 </button>
@@ -1073,7 +1073,7 @@ export function VocabularyQuizModal({
                 <button
                   type="button"
                   onClick={() => setStage("setup")}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 cursor-pointer transition-all"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 cursor-pointer transition-all"
                 >
                   <RotateCcw size={14} />
                   <span>Làm lại bài kiểm tra</span>
