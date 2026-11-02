@@ -28,6 +28,11 @@ const vocabularySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    sinoVietnamese: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     level: {
       type: String,
       enum: ["N5", "N4", "N3", "N2", "N1"],
@@ -39,6 +44,10 @@ const vocabularySchema = new mongoose.Schema(
       default: "phrase",
     },
     exampleSentence: {
+      type: String,
+      default: "",
+    },
+    exampleFurigana: {
       type: String,
       default: "",
     },

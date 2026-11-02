@@ -333,6 +333,7 @@ function getOrGenerateExample(item?: {
   meaning?: string;
   wordType?: string;
   exampleSentence?: string;
+  exampleFurigana?: string;
   exampleTranslation?: string;
 }): { sentence: string; furigana: string; translation: string } {
   if (!item || !item.kanji) {
@@ -354,7 +355,7 @@ function getOrGenerateExample(item?: {
   if (item.exampleSentence && item.exampleSentence.trim().length > 0) {
     return {
       sentence: item.exampleSentence.trim(),
-      furigana: item.furigana?.trim() || "",
+      furigana: item.exampleFurigana?.trim() || item.furigana?.trim() || "",
       translation: sanitizeExampleTranslation(
         cleanKanji,
         vMeaning,
@@ -481,6 +482,7 @@ function matchesSearch(
     furigana?: string;
     romaji?: string;
     meaning: string;
+    sinoVietnamese?: string;
   },
   searchTerm: string
 ): boolean {
@@ -494,18 +496,24 @@ function matchesSearch(
   // 2. Khớp Furigana / Hiragana
   if (item.furigana && item.furigana.toLowerCase().includes(qRaw)) return true;
 
-  // 3. Khớp Romaji
+  // 3. Khớp Âm Hán Việt
+  if (item.sinoVietnamese) {
+    const sinoLower = item.sinoVietnamese.toLowerCase();
+    if (sinoLower.includes(qRaw) || removeVietnameseTones(sinoLower).includes(qNorm)) return true;
+  }
+
+  // 4. Khớp Romaji
   if (item.romaji && item.romaji.toLowerCase().includes(qRaw)) return true;
 
-  // 4. Khớp Nghĩa tiếng Anh / gốc trong database
+  // 5. Khớp Nghĩa tiếng Anh / gốc trong database
   if (item.meaning && item.meaning.toLowerCase().includes(qRaw)) return true;
   if (item.meaning && removeVietnameseTones(item.meaning).includes(qNorm)) return true;
 
-  // 5. Khớp Nghĩa tiếng Việt đã dịch (có dấu)
+  // 6. Khớp Nghĩa tiếng Việt đã dịch (có dấu)
   const viMeaning = translateToVietnamese(item.kanji, item.meaning).toLowerCase();
   if (viMeaning.includes(qRaw)) return true;
 
-  // 6. Khớp Nghĩa tiếng Việt không dấu (vd: "com" -> "cơm trưa")
+  // 7. Khớp Nghĩa tiếng Việt không dấu (vd: "com" -> "cơm trưa")
   const viNorm = removeVietnameseTones(viMeaning);
   if (viNorm.includes(qNorm)) return true;
 
@@ -1425,6 +1433,12 @@ export default function VocabularyNotebookPage() {
                               {WORD_TYPE_LABELS[currentSystemCard.wordType]?.label ||
                                 "Từ vựng"}
                             </span>
+
+                            {currentSystemCard.sinoVietnamese && (
+                              <span className="px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                Hán Việt: {currentSystemCard.sinoVietnamese}
+                              </span>
+                            )}
                           </div>
 
                           {/* Loa phát âm */}
@@ -1449,6 +1463,12 @@ export default function VocabularyNotebookPage() {
                           <div className="text-5xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-wide drop-shadow-xs">
                             {currentSystemCard.kanji}
                           </div>
+
+                          {currentSystemCard.sinoVietnamese && (
+                            <div className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                              〔 {currentSystemCard.sinoVietnamese} 〕
+                            </div>
+                          )}
 
                           {currentSystemCard.romaji && (
                             <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono">
@@ -1513,10 +1533,17 @@ export default function VocabularyNotebookPage() {
 
                         {/* Center Back: Nghĩa tiếng Việt + Câu ví dụ có Furigana */}
                         <div className="space-y-4 my-auto">
-                          {/* Nghĩa tiếng Việt */}
+                          {/* Nghĩa tiếng Việt & Hán Việt */}
                           <div>
-                            <div className="text-3xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-1">
-                              Nghĩa tiếng Việt:
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-3xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                                Nghĩa tiếng Việt:
+                              </span>
+                              {currentSystemCard.sinoVietnamese && (
+                                <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                  Âm Hán Việt: {currentSystemCard.sinoVietnamese}
+                                </span>
+                              )}
                             </div>
                             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-snug">
                               {translateToVietnamese(currentSystemCard.kanji, currentSystemCard.meaning)}
@@ -1671,9 +1698,10 @@ export default function VocabularyNotebookPage() {
                     <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-bold uppercase text-3xs sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800">
                       <tr>
                         <th className="p-3.5 w-12 text-center">STT</th>
-                        <th className="p-3.5 min-w-[160px]">Từ tiếng Nhật</th>
-                        <th className="p-3.5 min-w-[140px]">Romaji</th>
-                        <th className="p-3.5 min-w-[220px]">Nghĩa tiếng Việt</th>
+                        <th className="p-3.5 min-w-[150px]">Từ tiếng Nhật</th>
+                        <th className="p-3.5 min-w-[120px]">Âm Hán Việt</th>
+                        <th className="p-3.5 min-w-[120px]">Romaji</th>
+                        <th className="p-3.5 min-w-[200px]">Nghĩa tiếng Việt</th>
                         <th className="p-3.5 w-28">Loại từ</th>
                         <th className="p-3.5 w-20">Cấp độ</th>
                         <th className="p-3.5 w-32 text-center">Sổ tay cá nhân</th>
@@ -1710,6 +1738,15 @@ export default function VocabularyNotebookPage() {
                                 <div className="text-2xs text-indigo-600 dark:text-indigo-400 font-mono mt-0.5">
                                   {item.furigana}
                                 </div>
+                              )}
+                            </td>
+                            <td className="p-3.5">
+                              {item.sinoVietnamese ? (
+                                <span className="inline-block px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                  {item.sinoVietnamese}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-3xs font-mono">—</span>
                               )}
                             </td>
                             <td className="p-3.5 text-slate-500 dark:text-slate-400 font-mono text-xs">
@@ -2004,6 +2041,12 @@ export default function VocabularyNotebookPage() {
                               {currentNotebookCard.level}
                             </span>
 
+                            {currentNotebookCard.sinoVietnamese && (
+                              <span className="px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                Hán Việt: {currentNotebookCard.sinoVietnamese}
+                              </span>
+                            )}
+
                             <button
                               type="button"
                               onClick={(e) => handleToggleMastered(currentNotebookCard, e)}
@@ -2049,6 +2092,12 @@ export default function VocabularyNotebookPage() {
                             {currentNotebookCard.kanji}
                           </div>
 
+                          {currentNotebookCard.sinoVietnamese && (
+                            <div className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                              〔 {currentNotebookCard.sinoVietnamese} 〕
+                            </div>
+                          )}
+
                           {currentNotebookCard.romaji && (
                             <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono">
                               {currentNotebookCard.romaji}
@@ -2093,10 +2142,17 @@ export default function VocabularyNotebookPage() {
                         </div>
 
                         <div className="space-y-4 my-auto">
-                          {/* Nghĩa tiếng Việt */}
+                          {/* Nghĩa tiếng Việt & Hán Việt */}
                           <div>
-                            <div className="text-3xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-1">
-                              Nghĩa tiếng Việt:
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-3xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                                Nghĩa tiếng Việt:
+                              </span>
+                              {currentNotebookCard.sinoVietnamese && (
+                                <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                  Âm Hán Việt: {currentNotebookCard.sinoVietnamese}
+                                </span>
+                              )}
                             </div>
                             <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-snug">
                               {translateToVietnamese(currentNotebookCard.kanji, currentNotebookCard.meaning)}
@@ -2289,9 +2345,10 @@ export default function VocabularyNotebookPage() {
                     <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 font-bold uppercase text-3xs sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800">
                       <tr>
                         <th className="p-3.5 w-12 text-center">STT</th>
-                        <th className="p-3.5 min-w-[160px]">Từ vựng / Kanji</th>
-                        <th className="p-3.5 min-w-[140px]">Romaji</th>
-                        <th className="p-3.5 min-w-[220px]">Nghĩa tiếng Việt</th>
+                        <th className="p-3.5 min-w-[150px]">Từ vựng / Kanji</th>
+                        <th className="p-3.5 min-w-[120px]">Âm Hán Việt</th>
+                        <th className="p-3.5 min-w-[120px]">Romaji</th>
+                        <th className="p-3.5 min-w-[200px]">Nghĩa tiếng Việt</th>
                         <th className="p-3.5 w-24">Cấp độ</th>
                         <th className="p-3.5 w-28 text-center">Trạng thái</th>
                         <th className="p-3.5 w-20 text-center">Xóa</th>
@@ -2326,6 +2383,15 @@ export default function VocabularyNotebookPage() {
                               <div className="text-2xs text-rose-600 dark:text-rose-400 font-mono mt-0.5">
                                 {item.furigana}
                               </div>
+                            )}
+                          </td>
+                          <td className="p-3.5">
+                            {item.sinoVietnamese ? (
+                              <span className="inline-block px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                {item.sinoVietnamese}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 text-3xs font-mono">—</span>
                             )}
                           </td>
                           <td className="p-3.5 text-slate-500 dark:text-slate-400 font-mono text-xs">

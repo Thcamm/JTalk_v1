@@ -25,6 +25,7 @@ import {
   deleteAdminVocabulary,
   deleteAdminVocabularyBulk,
   enrichVocabularyWithAiHandler,
+  resetAllSystemVocabularies,
 } from "../controllers/admin.vocabulary.controller.js";
 import {
   createLesson,
@@ -69,6 +70,8 @@ router.post("/topics", createAdminTopic);
 // 6. Vocabulary & Master Bank Bulk Management
 router.get("/vocabulary", getAdminVocabularies);
 router.post("/vocabulary", createAdminVocabulary);
+router.post("/vocabulary/reset-all", resetAllSystemVocabularies);
+router.delete("/vocabulary/reset-all", resetAllSystemVocabularies);
 router.post("/vocabulary/ai-enrich", enrichVocabularyWithAiHandler);
 router.post("/vocabulary/import", importVocabulary);
 router.post("/vocabulary/import-to-lesson", importVocabularyToLesson);

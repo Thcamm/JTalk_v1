@@ -7,6 +7,7 @@ import { successResponse } from "../utils/apiResponse.js";
 import {
   translateToVietnamese,
   sanitizeExampleTranslation,
+  getSinoVietnamese,
 } from "../utils/japaneseMeaningTranslator.js";
 
 /**
@@ -107,18 +108,31 @@ export const getSystemVocabularies = async (req, res, next) => {
         vMeaning,
         item.exampleTranslation
       );
+      const sino = item.sinoVietnamese || getSinoVietnamese(item.kanji) || "";
 
-      // Nếu trong DB đang lưu tiếng Anh, cập nhật nền sang tiếng Việt
-      if (vMeaning !== item.meaning || vExTrans !== item.exampleTranslation) {
+      // Nếu trong DB đang lưu tiếng Anh hoặc thiếu Hán Việt, cập nhật nền
+      const needUpdate =
+        vMeaning !== item.meaning ||
+        vExTrans !== item.exampleTranslation ||
+        (!item.sinoVietnamese && sino);
+
+      if (needUpdate) {
         SystemVocabulary.updateOne(
           { _id: item._id },
-          { $set: { meaning: vMeaning, exampleTranslation: vExTrans } }
+          {
+            $set: {
+              meaning: vMeaning,
+              exampleTranslation: vExTrans,
+              ...(sino && !item.sinoVietnamese ? { sinoVietnamese: sino } : {}),
+            },
+          }
         ).catch(() => {});
       }
 
       return {
         ...item,
         meaning: vMeaning,
+        sinoVietnamese: sino,
         exampleTranslation: vExTrans,
         isSaved: savedKanjiSet.has(item.kanji),
       };
@@ -156,9 +170,11 @@ export const saveSystemVocabToNotebook = async (req, res, next) => {
       furigana,
       romaji,
       meaning,
+      sinoVietnamese,
       level,
       wordType,
       exampleSentence,
+      exampleFurigana,
       exampleTranslation,
     } = req.body;
 
@@ -167,9 +183,11 @@ export const saveSystemVocabToNotebook = async (req, res, next) => {
       furigana,
       romaji,
       meaning,
+      sinoVietnamese,
       level,
       wordType,
       exampleSentence,
+      exampleFurigana,
       exampleTranslation,
     };
 
@@ -181,9 +199,11 @@ export const saveSystemVocabToNotebook = async (req, res, next) => {
           furigana: systemItem.furigana,
           romaji: systemItem.romaji,
           meaning: systemItem.meaning,
+          sinoVietnamese: systemItem.sinoVietnamese,
           level: systemItem.level,
           wordType: systemItem.wordType,
           exampleSentence: systemItem.exampleSentence,
+          exampleFurigana: systemItem.exampleFurigana,
           exampleTranslation: systemItem.exampleTranslation,
         };
       }
@@ -196,6 +216,9 @@ export const saveSystemVocabToNotebook = async (req, res, next) => {
       wordData.meaning,
       wordData.exampleTranslation
     );
+    if (!wordData.sinoVietnamese) {
+      wordData.sinoVietnamese = getSinoVietnamese(wordData.kanji) || "";
+    }
 
     if (!wordData.kanji || !wordData.meaning) {
       const error = new Error("Dữ liệu từ vựng không đầy đủ.");
@@ -219,9 +242,11 @@ export const saveSystemVocabToNotebook = async (req, res, next) => {
       furigana: (wordData.furigana || "").trim(),
       romaji: (wordData.romaji || "").trim(),
       meaning: wordData.meaning.trim(),
+      sinoVietnamese: (wordData.sinoVietnamese || "").trim(),
       level: wordData.level || "N5",
       wordType: wordData.wordType || "phrase",
       exampleSentence: (wordData.exampleSentence || "").trim(),
+      exampleFurigana: (wordData.exampleFurigana || "").trim(),
       exampleTranslation: (wordData.exampleTranslation || "").trim(),
       isMastered: false,
       reviewCount: 0,
@@ -298,9 +323,11 @@ export const createVocabulary = async (req, res, next) => {
       furigana,
       romaji,
       meaning,
+      sinoVietnamese,
       level,
       wordType,
       exampleSentence,
+      exampleFurigana,
       exampleTranslation,
       sourceLessonId,
       tags,
@@ -312,6 +339,9 @@ export const createVocabulary = async (req, res, next) => {
       throw error;
     }
 
+    const finalMeaning = translateToVietnamese(kanji, meaning);
+    const finalSino = (sinoVietnamese || getSinoVietnamese(kanji) || "").trim();
+
     // Check if word already exists for this user
     const existing = await Vocabulary.findOne({
       userId,
@@ -320,8 +350,10 @@ export const createVocabulary = async (req, res, next) => {
 
     if (existing) {
       existing.furigana = furigana || existing.furigana;
-      existing.meaning = meaning || existing.meaning;
+      existing.meaning = finalMeaning || existing.meaning;
+      existing.sinoVietnamese = finalSino || existing.sinoVietnamese;
       existing.exampleSentence = exampleSentence || existing.exampleSentence;
+      existing.exampleFurigana = exampleFurigana || existing.exampleFurigana;
       existing.exampleTranslation = exampleTranslation || existing.exampleTranslation;
       if (level) existing.level = level;
       await existing.save();
@@ -334,10 +366,12 @@ export const createVocabulary = async (req, res, next) => {
       kanji: kanji.trim(),
       furigana: furigana?.trim() || "",
       romaji: romaji?.trim() || "",
-      meaning: meaning.trim(),
+      meaning: finalMeaning.trim(),
+      sinoVietnamese: finalSino,
       level: level || "N5",
       wordType: wordType || "phrase",
       exampleSentence: exampleSentence?.trim() || "",
+      exampleFurigana: exampleFurigana?.trim() || "",
       exampleTranslation: exampleTranslation?.trim() || "",
       sourceLessonId: sourceLessonId || null,
       tags: tags || [],

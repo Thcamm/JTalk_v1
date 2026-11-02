@@ -39,8 +39,15 @@ import {
   parseQuizletContent,
   readUploadedFile,
   exportToCsv,
+  containsKanji,
+  hiraganaToRomaji,
   type ParsedVocabItem,
 } from "@/utils/quizletParser";
+import {
+  isEnglishText,
+  translateToVietnamese,
+  getSinoVietnamese,
+} from "@/utils/japaneseMeaningTranslator";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { VocabularyQuizModal } from "@/components/vocabulary/VocabularyQuizModal";
 import type { Course, Lesson } from "@/types";
@@ -86,7 +93,44 @@ export default function AdminVocabularyPage() {
   const [previewFilter, setPreviewFilter] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [isAiEnriching, setIsAiEnriching] = useState(false);
+  const [aiProgress, setAiProgress] = useState<{ current: number; total: number; percent: number } | null>(null);
   const [isSubmittingImport, setIsSubmittingImport] = useState(false);
+
+  // Số lượng từ có định nghĩa tiếng Anh từ Quizlet cần dịch sang tiếng Việt
+  const englishItemCount = useMemo(() => {
+    return parsedItems.filter((i) => isEnglishText(i.meaning)).length;
+  }, [parsedItems]);
+
+  // Danh sách các từ còn ô bị thiếu (Furigana, Romaji, Hán Việt, từ dính khoảng trắng, hoặc nghĩa tiếng Anh)
+  const incompleteItems = useMemo(() => {
+    return parsedItems.filter((i) => {
+      const hasKanji = containsKanji(i.kanji);
+      const isSpaceSeparated = /[\s\t]+/.test(i.kanji.trim());
+      const hasMissingFurigana = !i.furigana?.trim() && hasKanji;
+      const hasMissingRomaji =
+        !i.romaji?.trim() ||
+        /[぀-ヿ]/.test(i.romaji) ||
+        /^[a-z]\s+[a-z]/.test(i.romaji.trim());
+      const hasMissingSino = hasKanji && !i.sinoVietnamese?.trim();
+      const isEnglish = isEnglishText(i.meaning);
+      const hasTrailingSino = /^(.*?)\s+([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]{2,})$/.test(
+        i.meaning
+      );
+      const hasMissingExample = !i.exampleSentence?.trim();
+
+      return (
+        isSpaceSeparated ||
+        hasMissingFurigana ||
+        hasMissingRomaji ||
+        hasMissingSino ||
+        isEnglish ||
+        hasTrailingSino ||
+        hasMissingExample
+      );
+    });
+  }, [parsedItems]);
+
+  const incompleteItemCount = incompleteItems.length;
 
   // State cho Preview Quiz từ danh sách CSV
   const [isQuizPreviewOpen, setIsQuizPreviewOpen] = useState(false);
@@ -101,6 +145,10 @@ export default function AdminVocabularyPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>("all");
   const [isLoadingList, setIsLoadingList] = useState(false);
+
+  // Modal Xác nhận Reset toàn bộ kho từ vựng
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Modal Sửa/Thêm từ đơn lẻ
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -167,11 +215,17 @@ export default function AdminVocabularyPage() {
     }
   };
 
+  // Tải danh sách & thống kê ngay khi mở trang (đảm bảo KPI cards luôn hiển thị đúng số liệu)
+  useEffect(() => {
+    loadVocabList(1);
+  }, [selectedLevelFilter]);
+
+  // Làm mới danh sách khi chuyển qua tab List
   useEffect(() => {
     if (activeTab === "list") {
       loadVocabList(1);
     }
-  }, [activeTab, selectedLevelFilter]);
+  }, [activeTab]);
 
   // Xử lý chọn file
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,27 +282,197 @@ export default function AdminVocabularyPage() {
     }
   };
 
-  // Kích hoạt AI Phân tích & Tối ưu Từ loại
-  const handleAiEnrich = async () => {
-    if (parsedItems.length === 0) return;
+  // Chuẩn hóa và làm sạch tức thì trên Client (Tách Kana/Kanji, sinh Romaji, bóc Hán Việt, dịch tức thì)
+  const handleInstantNormalize = (showToast = true): ParsedVocabItem[] => {
+    if (parsedItems.length === 0) return [];
+
+    let fixedCount = 0;
+    const normalized = parsedItems.map((item) => {
+      let kanji = item.kanji.trim();
+      let furigana = item.furigana?.trim() || "";
+      let romaji = item.romaji?.trim() || "";
+      let meaning = item.meaning?.trim() || "";
+      let sino = item.sinoVietnamese?.trim() || "";
+      let changed = false;
+
+      // 1. Tách nếu kanji chứa cả Kana và Kanji có khoảng trắng dạng "よこ 横", "びん 瓶"
+      if (/[\s\t]+/.test(kanji)) {
+        const parts = kanji.split(/[\s\t]+/);
+        if (parts.length >= 2) {
+          const p1 = parts[0].trim();
+          const p2 = parts.slice(1).join(" ").trim();
+          if (containsKanji(p2) && !containsKanji(p1)) {
+            kanji = p2;
+            if (!furigana) furigana = p1;
+            changed = true;
+          } else if (containsKanji(p1) && !containsKanji(p2)) {
+            kanji = p1;
+            if (!furigana) furigana = p2;
+            changed = true;
+          }
+        }
+      }
+
+      // 2. Bóc tách Âm Hán Việt in hoa dính ở cuối meaning dạng "Bên cạnh HOÀNH"
+      const uppercaseSinoMatch = meaning.match(
+        /^(.*?)\s+([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]{2,})$/
+      );
+      if (uppercaseSinoMatch) {
+        const rawMean = uppercaseSinoMatch[1].trim();
+        const rawSino = uppercaseSinoMatch[2].trim();
+        if (/^[A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]+$/.test(rawSino)) {
+          if (!sino) sino = rawSino;
+          if (rawMean) meaning = rawMean;
+          changed = true;
+        }
+      }
+
+      // 3. Tra cứu Âm Hán Việt nếu từ có Kanji mà chưa có
+      if (!sino && containsKanji(kanji)) {
+        const autoSino = getSinoVietnamese(kanji);
+        if (autoSino) {
+          sino = autoSino;
+          changed = true;
+        }
+      }
+
+      // 4. Nếu Furigana trống và từ không có Kanji thì Furigana = Kanji
+      if (!furigana && !containsKanji(kanji)) {
+        furigana = kanji;
+        changed = true;
+      }
+
+      // 5. Chuẩn hóa Romaji (nếu trống, còn là Katakana hoặc bị ngắt khoảng trắng như "zu i bu n")
+      if (!romaji || /[぀-ヿ]/.test(romaji) || /^[a-z]\s+[a-z]/.test(romaji)) {
+        const autoRomaji = hiraganaToRomaji(furigana || kanji);
+        if (autoRomaji) {
+          romaji = autoRomaji;
+          changed = true;
+        }
+      }
+
+      // 6. Dịch nếu là tiếng Anh và có trong từ điển
+      const translatedMeaning = translateToVietnamese(kanji, meaning);
+      if (translatedMeaning && translatedMeaning !== meaning) {
+        meaning = translatedMeaning;
+        changed = true;
+      }
+
+      // 7. Tạo câu ví dụ chuẩn nếu câu ví dụ đang dính chữ Hán Việt in hoa hoặc khoảng trắng
+      let exampleSentence = item.exampleSentence || "";
+      let exampleTranslation = item.exampleTranslation || "";
+      if (!exampleSentence || (sino && exampleTranslation.toLowerCase().includes(sino.toLowerCase()))) {
+        const safeMeaning = meaning.toLowerCase();
+        if (item.wordType === "verb") {
+          exampleSentence = `毎日、${kanji}。`;
+          exampleTranslation = `Mỗi ngày đều ${safeMeaning}.`;
+        } else if (item.wordType === "adjective") {
+          exampleSentence = `これはとても${kanji}です。`;
+          exampleTranslation = `Cái này rất ${safeMeaning}.`;
+        } else {
+          exampleSentence = `ここに${kanji}があります。`;
+          exampleTranslation = `Ở đây có ${safeMeaning}.`;
+        }
+        changed = true;
+      }
+
+      if (changed) fixedCount++;
+
+      return {
+        ...item,
+        kanji,
+        furigana,
+        romaji,
+        meaning,
+        sinoVietnamese: sino,
+        exampleSentence,
+        exampleTranslation,
+      };
+    });
+
+    setParsedItems(normalized);
+    if (showToast) {
+      if (fixedCount > 0) {
+        toast.success(`✨ Đã chuẩn hóa nhanh & điền tự động cho ${fixedCount} từ vựng!`);
+      } else {
+        toast.info("Dữ liệu từ vựng hiện tại đã ở trạng thái chuẩn hóa!");
+      }
+    }
+    return normalized;
+  };
+
+  // Kích hoạt AI Phân tích sâu: Dịch 100% nghĩa tiếng Việt, Chuẩn hóa Kanji, Âm Hán Việt, Furigana & Ví dụ
+  const handleAiEnrich = async (mode: "all" | "english" | "incomplete" | boolean = "all") => {
+    const isEnglishOnly = mode === true || mode === "english";
+    const isIncompleteOnly = mode === "incomplete";
+
+    // Chạy chuẩn hóa nhanh trên client trước để tối ưu dữ liệu thô
+    const baseItems = handleInstantNormalize(false) || parsedItems;
+
+    let targetItems: ParsedVocabItem[] = [];
+    if (isEnglishOnly) {
+      targetItems = baseItems.filter((i) => isEnglishText(i.meaning));
+    } else if (isIncompleteOnly) {
+      targetItems = baseItems.filter((i) => {
+        const hasKanji = containsKanji(i.kanji);
+        const isSpaceSeparated = /[\s\t]+/.test(i.kanji.trim());
+        const hasMissingFurigana = !i.furigana?.trim() && hasKanji;
+        const hasMissingRomaji =
+          !i.romaji?.trim() ||
+          /[぀-ヿ]/.test(i.romaji) ||
+          /^[a-z]\s+[a-z]/.test(i.romaji.trim());
+        const hasMissingSino = hasKanji && !i.sinoVietnamese?.trim();
+        const isEnglish = isEnglishText(i.meaning);
+        const hasTrailingSino = /^(.*?)\s+([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]{2,})$/.test(
+          i.meaning
+        );
+        return (
+          isSpaceSeparated ||
+          hasMissingFurigana ||
+          hasMissingRomaji ||
+          hasMissingSino ||
+          isEnglish ||
+          hasTrailingSino ||
+          !i.exampleSentence?.trim()
+        );
+      });
+    } else {
+      targetItems = baseItems;
+    }
+
+    if (targetItems.length === 0) {
+      if (isEnglishOnly) {
+        toast.info("Tất cả các từ trong danh sách đã có định nghĩa tiếng Việt chuẩn xác!");
+      } else if (isIncompleteOnly) {
+        toast.success("Tuyệt vời! Tất cả các ô từ vựng (Furigana, Romaji, Hán Việt, Ví dụ) đã hoàn thiện 100%!");
+      }
+      return;
+    }
 
     try {
       setIsAiEnriching(true);
-      toast.info("🤖 AI đang phân tích và chuẩn hóa từ loại, Furigana & Romaji...");
+      setAiProgress({ current: 0, total: targetItems.length, percent: 0 });
+      toast.info(
+        isEnglishOnly
+          ? `🤖 AI đang dịch và chuẩn hóa ${targetItems.length} từ có định nghĩa tiếng Anh sang tiếng Việt...`
+          : isIncompleteOnly
+          ? `🤖 AI đang phân tích và hoàn thiện nốt ${targetItems.length} ô còn thiếu (Furigana, Romaji, Hán Việt, Ví dụ)...`
+          : `🤖 AI đang phân tích sâu nghĩa tiếng Việt, Hán tự, Âm Hán Việt & Ví dụ cho ${targetItems.length} từ vựng...`
+      );
 
-      // Xử lý chia batch 50 từ để gọi API mượt mà
-      const BATCH_SIZE = 50;
+      const BATCH_SIZE = 25;
       let updatedItems = [...parsedItems];
 
-      for (let i = 0; i < updatedItems.length; i += BATCH_SIZE) {
-        const slice = updatedItems.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < targetItems.length; i += BATCH_SIZE) {
+        const slice = targetItems.slice(i, i + BATCH_SIZE);
         const res = await adminService.enrichVocabularyWithAi(
           slice.map((item) => ({
             id: item.id,
             kanji: item.kanji,
             furigana: item.furigana,
             meaning: item.meaning,
-          }))
+          })),
+          defaultLevel
         );
 
         if (Array.isArray(res)) {
@@ -258,23 +482,42 @@ export default function AdminVocabularyPage() {
             if (found) {
               return {
                 ...orig,
-                wordType: found.wordType || orig.wordType,
+                kanji: found.kanji || orig.kanji,
                 furigana: found.furigana || orig.furigana,
                 romaji: found.romaji || orig.romaji,
                 meaning: found.meaning || orig.meaning,
+                sinoVietnamese: found.sinoVietnamese || orig.sinoVietnamese || "",
+                wordType: found.wordType || orig.wordType,
+                exampleSentence: found.exampleSentence || orig.exampleSentence || "",
+                exampleFurigana: found.exampleFurigana || orig.exampleFurigana || "",
+                exampleTranslation: found.exampleTranslation || orig.exampleTranslation || "",
               };
             }
             return orig;
           });
         }
+
+        const currentDone = Math.min(i + BATCH_SIZE, targetItems.length);
+        setAiProgress({
+          current: currentDone,
+          total: targetItems.length,
+          percent: Math.round((currentDone / targetItems.length) * 100),
+        });
       }
 
       setParsedItems(updatedItems);
-      toast.success(`✨ AI đã phân loại và tối ưu xong toàn bộ ${parsedItems.length} từ vựng!`);
+      toast.success(
+        isEnglishOnly
+          ? `✨ AI đã dịch hoàn tất ${targetItems.length} từ tiếng Anh sang 100% tiếng Việt!`
+          : isIncompleteOnly
+          ? `✨ AI đã bổ sung & hoàn thiện xuất sắc ${targetItems.length} từ vựng còn thiếu!`
+          : `✨ AI đã phân tích chi tiết & làm giàu thông tin cho toàn bộ ${targetItems.length} từ vựng!`
+      );
     } catch (err: any) {
       toast.error("Lỗi khi phân tích AI: " + (err?.response?.data?.message || err?.message));
     } finally {
       setIsAiEnriching(false);
+      setAiProgress(null);
     }
   };
 
@@ -321,8 +564,12 @@ export default function AdminVocabularyPage() {
             furigana: item.furigana,
             romaji: item.romaji,
             meaning: item.meaning,
+            sinoVietnamese: item.sinoVietnamese || "",
             level: item.level,
             wordType: item.wordType,
+            exampleSentence: item.exampleSentence || "",
+            exampleFurigana: item.exampleFurigana || "",
+            exampleTranslation: item.exampleTranslation || "",
             source: "JTalk Master Bank",
             tags: ["jtalk", item.level.toLowerCase()],
           })),
@@ -415,6 +662,25 @@ export default function AdminVocabularyPage() {
     }
   };
 
+  // Reset toàn bộ kho từ vựng hệ thống
+  const handleResetAllVocabularies = async () => {
+    try {
+      setIsResetting(true);
+      const res = await adminService.resetAllVocabularies();
+      toast.success(
+        res?.deletedCount !== undefined
+          ? `Đã xóa sạch toàn bộ ${res.deletedCount} từ vựng trong kho hệ thống!`
+          : "Đã dọn sạch toàn bộ từ vựng trong kho!"
+      );
+      setIsResetConfirmOpen(false);
+      await loadVocabList(1);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Lỗi khi reset kho từ vựng.");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   // Xuất file CSV
   const handleExportCsv = () => {
     if (vocabList.length === 0) {
@@ -435,8 +701,12 @@ export default function AdminVocabularyPage() {
         furigana: "",
         romaji: "",
         meaning: "",
+        sinoVietnamese: "",
         level: "N5",
         wordType: "noun",
+        exampleSentence: "",
+        exampleFurigana: "",
+        exampleTranslation: "",
         source: "JTalk Master Bank",
       });
     }
@@ -480,7 +750,8 @@ export default function AdminVocabularyPage() {
         i.kanji.toLowerCase().includes(q) ||
         i.furigana.toLowerCase().includes(q) ||
         i.meaning.toLowerCase().includes(q) ||
-        i.romaji.toLowerCase().includes(q)
+        i.romaji.toLowerCase().includes(q) ||
+        (i.sinoVietnamese && i.sinoVietnamese.toLowerCase().includes(q))
     );
   }, [parsedItems, previewFilter]);
 
@@ -504,34 +775,46 @@ export default function AdminVocabularyPage() {
           </div>
         </div>
 
-        {/* Nút Tab chuyển đổi */}
-        <div className="flex items-center gap-2 p-1 bg-slate-900 border border-slate-800 rounded-xl">
+        {/* Nút Tab chuyển đổi & Reset */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-xl">
+            <button
+              onClick={() => setActiveTab("import")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "import"
+                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Upload size={14} />
+              <span>Nhập từ vựng mới</span>
+              {parsedItems.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-white/20 text-3xs font-mono">
+                  {parsedItems.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("list")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "list"
+                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Layers size={14} />
+              <span>Kho Từ vựng Chung ({vocabStats.total || 0})</span>
+            </button>
+          </div>
+
           <button
-            onClick={() => setActiveTab("import")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "import"
-                ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20"
-                : "text-slate-400 hover:text-white"
-            }`}
+            type="button"
+            onClick={() => setIsResetConfirmOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold transition-all cursor-pointer shadow-sm shadow-rose-950/40"
+            title="Reset toàn bộ từ vựng trong kho để nạp mới từ đầu"
           >
-            <Upload size={14} />
-            <span>Nhập từ vựng mới</span>
-            {parsedItems.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-white/20 text-3xs font-mono">
-                {parsedItems.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("list")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === "list"
-                ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            <Layers size={14} />
-            <span>Kho Từ vựng Chung ({vocabStats.total || 0})</span>
+            <Trash2 size={13} />
+            <span>Reset kho từ</span>
           </button>
         </div>
       </div>
@@ -687,7 +970,7 @@ export default function AdminVocabularyPage() {
                       onChange={(e) => setDefaultLevel(e.target.value as any)}
                       className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs font-bold text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
                     >
-                      <option value="N5">JLPT N5 (829 từ chuẩn)</option>
+                      <option value="N5">JLPT N5</option>
                       <option value="N4">JLPT N4 (Sơ cấp)</option>
                       <option value="N3">JLPT N3 (Trung cấp)</option>
                       <option value="N2">JLPT N2 (Thượng cấp)</option>
@@ -837,7 +1120,7 @@ export default function AdminVocabularyPage() {
                     Bước 2: Bảng xem trước & Tinh chỉnh dữ liệu ({parsedItems.length} từ vựng)
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Kiểm tra, sửa trực tiếp hoặc sử dụng AI để chuẩn hóa từ loại trước khi nạp vào hệ thống
+                    Kiểm tra, sửa trực tiếp hoặc sử dụng AI để dịch định nghĩa tiếng Anh từ Quizlet sang tiếng Việt chuẩn và làm giàu câu ví dụ
                   </p>
                 </div>
 
@@ -863,16 +1146,55 @@ export default function AdminVocabularyPage() {
                     </span>
                   </button>
 
-                  {/* Nút AI Phân loại Từ loại nổi bật */}
+                  {/* Nút Chuẩn hóa nhanh tức thì (Tách từ Kana/Kanji, sinh Romaji, bóc Hán Việt) */}
                   <button
                     type="button"
-                    onClick={handleAiEnrich}
+                    onClick={() => handleInstantNormalize(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-2xs font-bold border border-slate-700/70 transition-all cursor-pointer active:scale-97"
+                    title="Tách Kana/Kanji dính khoảng trắng, sinh Romaji viết liền, bóc tách Âm Hán Việt tức thì trên máy"
+                  >
+                    <RefreshCw size={12} className="text-teal-400" />
+                    <span>⚡ Chuẩn hóa nhanh</span>
+                  </button>
+
+                  {/* Nút AI Hoàn thiện các ô còn thiếu */}
+                  {incompleteItemCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleAiEnrich("incomplete")}
+                      disabled={isAiEnriching}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white text-xs font-bold shadow-md shadow-teal-600/20 transition-all cursor-pointer disabled:opacity-50 active:scale-97"
+                      title="AI tập trung điền nốt các ô còn thiếu (Furigana, Romaji, Hán Việt, câu ví dụ JLPT)"
+                    >
+                      {isAiEnriching ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                      <span>✨ AI Hoàn thiện {incompleteItemCount} ô thiếu</span>
+                    </button>
+                  )}
+
+                  {/* Nút AI Dịch riêng các từ tiếng Anh (Nếu có) */}
+                  {englishItemCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleAiEnrich(true)}
+                      disabled={isAiEnriching}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-600/20 transition-all cursor-pointer disabled:opacity-50"
+                      title="AI tập trung dịch toàn bộ các từ vựng có định nghĩa tiếng Anh sang tiếng Việt"
+                    >
+                      {isAiEnriching ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                      <span>Dịch {englishItemCount} từ tiếng Anh</span>
+                    </button>
+                  )}
+
+                  {/* Nút AI Phân tích & Làm giàu toàn bộ */}
+                  <button
+                    type="button"
+                    onClick={() => handleAiEnrich(false)}
                     disabled={isAiEnriching}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-600/20 transition-all cursor-pointer disabled:opacity-50"
-                    title="Dùng AI phân tích chính xác Động từ, Danh từ, Tính từ và Furigana"
+                    title="Dùng AI phân tích sâu nghĩa tiếng Việt, bóc tách Kanji, Furigana, Hán Việt và tạo ví dụ cho toàn bộ danh sách"
                   >
                     {isAiEnriching ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
-                    <span>AI Phân loại & Tối ưu Từ loại</span>
+                    <span>AI Phân loại & Tối ưu Toàn bộ</span>
                   </button>
 
                   <button
@@ -891,6 +1213,102 @@ export default function AdminVocabularyPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Banner Phát hiện từ còn ô bị thiếu (Furigana, Romaji, Hán Việt, hoặc dính khoảng trắng) */}
+              {incompleteItemCount > 0 && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-teal-500/15 via-emerald-500/10 to-teal-500/5 border border-teal-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-teal-500/5">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
+                      <Sparkles size={18} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-teal-300 flex items-center gap-2">
+                        <span>Phát hiện {incompleteItemCount} từ còn ô bị thiếu (Furigana, Romaji, Hán Việt, hoặc từ dính khoảng trắng)</span>
+                        <span className="px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 text-3xs font-black">
+                          Cần hoàn thiện
+                        </span>
+                      </div>
+                      <p className="text-2xs text-slate-300 mt-0.5">
+                        Bạn có thể bấm <strong>"Chuẩn hóa nhanh"</strong> để phân tách Kanji/Kana và điền Hán Việt ngay lập tức, hoặc bấm <strong>"AI Hoàn thiện"</strong> để AI bổ sung toàn diện câu ví dụ và phiên âm.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleInstantNormalize(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer active:scale-97 border border-slate-700"
+                      title="Chuẩn hóa ngay lập tức trên máy trong tích tắc"
+                    >
+                      <RefreshCw size={13} className="text-teal-400" />
+                      <span>⚡ Chuẩn hóa nhanh</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAiEnrich("incomplete")}
+                      disabled={isAiEnriching}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white text-xs font-black shadow-md shadow-teal-500/20 transition-all cursor-pointer disabled:opacity-50 active:scale-97"
+                    >
+                      {isAiEnriching ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                      <span>✨ AI Hoàn thiện {incompleteItemCount} ô còn thiếu</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Banner Phát hiện từ tiếng Anh từ nguồn Quizlet */}
+              {englishItemCount > 0 && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-amber-500/5">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                      <Sparkles size={18} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-amber-300 flex items-center gap-2">
+                        <span>Phát hiện {englishItemCount} từ vựng có định nghĩa tiếng Anh từ Quizlet</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-3xs font-black">
+                          Cần dịch tiếng Việt
+                        </span>
+                      </div>
+                      <p className="text-2xs text-slate-300 mt-0.5">
+                        AI có thể phân tích cả từ tiếng Nhật lẫn định nghĩa tiếng Anh để dịch 100% sang tiếng Việt chuẩn xác, chuẩn hóa chữ Hán, bổ sung âm Hán Việt và tạo câu ví dụ JLPT.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleAiEnrich(true)}
+                      disabled={isAiEnriching}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-xs font-black shadow-md shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50 active:scale-97"
+                    >
+                      {isAiEnriching ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                      <span>AI Dịch {englishItemCount} từ tiếng Anh</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Thanh tiến độ AI (Batch Progress) */}
+              {isAiEnriching && aiProgress && (
+                <div className="p-4 rounded-xl bg-indigo-950/60 border border-indigo-500/30 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-indigo-300 font-bold flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin text-indigo-400" />
+                      Đang xử lý phân tích AI & Dịch thuật: {aiProgress.current} / {aiProgress.total} từ vựng
+                    </span>
+                    <span className="text-indigo-400 font-mono font-black">{aiProgress.percent}%</span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-teal-400 transition-all duration-300"
+                      style={{ width: `${aiProgress.percent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Thanh lọc & tìm kiếm trong bảng xem trước */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -924,10 +1342,12 @@ export default function AdminVocabularyPage() {
                         />
                       </th>
                       <th className="p-3 w-12 text-center">STT</th>
-                      <th className="p-3 min-w-[140px]">Từ / Kanji</th>
-                      <th className="p-3 min-w-[140px]">Furigana (Cách đọc)</th>
-                      <th className="p-3 min-w-[120px]">Romaji</th>
-                      <th className="p-3 min-w-[220px]">Định nghĩa / Ý nghĩa</th>
+                      <th className="p-3 min-w-[130px]">Từ / Kanji</th>
+                      <th className="p-3 min-w-[120px]">Furigana</th>
+                      <th className="p-3 min-w-[110px]">Âm Hán Việt</th>
+                      <th className="p-3 min-w-[110px]">Romaji</th>
+                      <th className="p-3 min-w-[200px]">Định nghĩa / Ý nghĩa</th>
+                      <th className="p-3 min-w-[240px]">Câu ví dụ & Dịch</th>
                       <th className="p-3 w-28">Loại từ</th>
                       <th className="p-3 w-20">Cấp độ</th>
                       <th className="p-3 w-12 text-center">Xóa</th>
@@ -961,7 +1381,16 @@ export default function AdminVocabularyPage() {
                               onChange={(e) =>
                                 handleUpdateParsedItem(item.id, "kanji", e.target.value)
                               }
-                              className="w-full bg-slate-950/80 border border-slate-800 rounded px-2 py-1 text-xs text-white font-bold focus:border-indigo-500 focus:outline-none"
+                              title={
+                                /[\s\t]+/.test(item.kanji.trim())
+                                  ? "Từ dính cả Kana và Kanji - Hãy bấm 'Chuẩn hóa nhanh' hoặc 'AI Hoàn thiện' để tách riêng"
+                                  : undefined
+                              }
+                              className={`w-full bg-slate-950/80 border rounded px-2 py-1 text-xs text-white font-bold focus:border-indigo-500 focus:outline-none ${
+                                /[\s\t]+/.test(item.kanji.trim())
+                                  ? "border-amber-500/70 bg-amber-950/20 text-amber-200"
+                                  : "border-slate-800"
+                              }`}
                             />
                           </td>
                           <td className="p-2">
@@ -971,7 +1400,35 @@ export default function AdminVocabularyPage() {
                               onChange={(e) =>
                                 handleUpdateParsedItem(item.id, "furigana", e.target.value)
                               }
-                              className="w-full bg-slate-950/80 border border-slate-800 rounded px-2 py-1 text-xs text-slate-300 focus:border-indigo-500 focus:outline-none"
+                              placeholder={
+                                containsKanji(item.kanji) && !item.furigana?.trim()
+                                  ? "Cần Furigana"
+                                  : "Furigana"
+                              }
+                              className={`w-full bg-slate-950/80 border rounded px-2 py-1 text-xs text-slate-300 focus:border-indigo-500 focus:outline-none ${
+                                containsKanji(item.kanji) && !item.furigana?.trim()
+                                  ? "border-rose-500/60 bg-rose-950/20 placeholder:text-rose-400/70"
+                                  : "border-slate-800"
+                              }`}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              type="text"
+                              value={item.sinoVietnamese || ""}
+                              onChange={(e) =>
+                                handleUpdateParsedItem(item.id, "sinoVietnamese", e.target.value)
+                              }
+                              placeholder={
+                                containsKanji(item.kanji) && !item.sinoVietnamese?.trim()
+                                  ? "Cần Hán Việt"
+                                  : "Âm Hán Việt"
+                              }
+                              className={`w-full bg-slate-950/80 border rounded px-2 py-1 text-2xs text-amber-300 font-bold focus:border-indigo-500 focus:outline-none ${
+                                containsKanji(item.kanji) && !item.sinoVietnamese?.trim()
+                                  ? "border-amber-500/60 bg-amber-950/20 placeholder:text-amber-400/70"
+                                  : "border-slate-800"
+                              }`}
                             />
                           </td>
                           <td className="p-2">
@@ -981,17 +1438,58 @@ export default function AdminVocabularyPage() {
                               onChange={(e) =>
                                 handleUpdateParsedItem(item.id, "romaji", e.target.value)
                               }
-                              className="w-full bg-slate-950/80 border border-slate-800 rounded px-2 py-1 text-2xs text-slate-400 focus:border-indigo-500 focus:outline-none"
+                              placeholder={!item.romaji?.trim() ? "Cần Romaji" : "Romaji"}
+                              className={`w-full bg-slate-950/80 border rounded px-2 py-1 text-2xs text-slate-400 focus:border-indigo-500 focus:outline-none ${
+                                !item.romaji?.trim() ||
+                                /[぀-ヿ]/.test(item.romaji) ||
+                                /^[a-z]\s+[a-z]/.test(item.romaji.trim())
+                                  ? "border-orange-500/60 bg-orange-950/20 text-orange-200 placeholder:text-orange-400/70"
+                                  : "border-slate-800"
+                              }`}
                             />
                           </td>
                           <td className="p-2 font-sans">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={item.meaning}
+                                onChange={(e) =>
+                                  handleUpdateParsedItem(item.id, "meaning", e.target.value)
+                                }
+                                className={`w-full bg-slate-950/80 border rounded px-2 py-1 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none ${
+                                  isEnglishText(item.meaning)
+                                    ? "border-amber-500/50 bg-amber-950/20 text-amber-200"
+                                    : "border-slate-800"
+                                }`}
+                              />
+                              {isEnglishText(item.meaning) && (
+                                <span
+                                  className="shrink-0 px-1.5 py-0.5 rounded text-3xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                  title="Định nghĩa tiếng Anh từ Quizlet - Nhấn 'Dịch từ tiếng Anh' để chuyển sang tiếng Việt"
+                                >
+                                  EN
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-2 space-y-1">
                             <input
                               type="text"
-                              value={item.meaning}
+                              value={item.exampleSentence || ""}
                               onChange={(e) =>
-                                handleUpdateParsedItem(item.id, "meaning", e.target.value)
+                                handleUpdateParsedItem(item.id, "exampleSentence", e.target.value)
                               }
-                              className="w-full bg-slate-950/80 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none"
+                              placeholder="Câu ví dụ tiếng Nhật"
+                              className="w-full bg-slate-950/80 border border-slate-800 rounded px-2 py-1 text-2xs text-slate-200 focus:border-indigo-500 focus:outline-none font-sans"
+                            />
+                            <input
+                              type="text"
+                              value={item.exampleTranslation || ""}
+                              onChange={(e) =>
+                                handleUpdateParsedItem(item.id, "exampleTranslation", e.target.value)
+                              }
+                              placeholder="Dịch nghĩa câu ví dụ"
+                              className="w-full bg-slate-950/80 border border-slate-800 rounded px-2 py-1 text-2xs text-emerald-400 focus:border-indigo-500 focus:outline-none font-sans"
                             />
                           </td>
                           <td className="p-2">
@@ -1163,6 +1661,17 @@ export default function AdminVocabularyPage() {
                   <span>Xóa hết {selectedLevelFilter}</span>
                 </button>
               )}
+
+              {/* Nút Reset toàn bộ kho */}
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-950/70 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                title="Xóa toàn bộ từ vựng trong kho để nạp mới lại từ đầu"
+              >
+                <Trash2 size={13} />
+                <span>Reset kho từ</span>
+              </button>
             </div>
           </div>
 
@@ -1194,9 +1703,11 @@ export default function AdminVocabularyPage() {
                   <thead className="bg-slate-950 text-slate-400 font-bold uppercase text-3xs border-b border-slate-800">
                     <tr>
                       <th className="p-3.5 w-14 text-center">STT</th>
-                      <th className="p-3.5 min-w-[160px]">Từ tiếng Nhật / Kanji</th>
-                      <th className="p-3.5 min-w-[140px]">Romaji</th>
-                      <th className="p-3.5 min-w-[240px]">Nghĩa tiếng Việt / Tiếng Anh</th>
+                      <th className="p-3.5 min-w-[150px]">Từ tiếng Nhật / Kanji</th>
+                      <th className="p-3.5 min-w-[120px]">Âm Hán Việt</th>
+                      <th className="p-3.5 min-w-[110px]">Romaji</th>
+                      <th className="p-3.5 min-w-[200px]">Nghĩa tiếng Việt</th>
+                      <th className="p-3.5 min-w-[240px]">Ví dụ & Dịch</th>
                       <th className="p-3.5 w-28">Loại từ</th>
                       <th className="p-3.5 w-24">Cấp độ</th>
                       <th className="p-3.5 w-20 text-center">Thao tác</th>
@@ -1221,10 +1732,35 @@ export default function AdminVocabularyPage() {
                               </div>
                             )}
                           </td>
+                          <td className="p-3.5">
+                            {item.sinoVietnamese ? (
+                              <span className="inline-block px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-400 border border-amber-500/25">
+                                {item.sinoVietnamese}
+                              </span>
+                            ) : (
+                              <span className="text-slate-600 text-3xs font-mono">—</span>
+                            )}
+                          </td>
                           <td className="p-3.5 text-slate-400 font-mono text-xs">
                             {item.romaji || "—"}
                           </td>
                           <td className="p-3.5 text-slate-200 font-medium">{item.meaning}</td>
+                          <td className="p-3.5">
+                            {item.exampleSentence ? (
+                              <div className="space-y-1">
+                                <div className="text-xs text-slate-200 font-medium">
+                                  {item.exampleSentence}
+                                </div>
+                                {item.exampleTranslation && (
+                                  <div className="text-2xs text-emerald-400/90 font-medium">
+                                    {item.exampleTranslation}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-600 text-3xs italic">Chưa có ví dụ</span>
+                            )}
+                          </td>
                           <td className="p-3.5">
                             <span
                               className={`inline-block px-2.5 py-0.5 rounded-md text-3xs font-bold border ${typeConfig.color}`}
@@ -1347,6 +1883,21 @@ export default function AdminVocabularyPage() {
                   />
                 </div>
                 <div>
+                  <label className="block text-2xs font-semibold text-slate-400 mb-1">
+                    Âm Hán Việt
+                  </label>
+                  <input
+                    type="text"
+                    value={editingWord.sinoVietnamese || ""}
+                    onChange={(e) => setEditingWord({ ...editingWord, sinoVietnamese: e.target.value })}
+                    placeholder="VD: THỰC (cho 食べる)"
+                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-amber-300 font-bold focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-2xs font-semibold text-slate-400 mb-1">Romaji</label>
                   <input
                     type="text"
@@ -1355,6 +1906,21 @@ export default function AdminVocabularyPage() {
                     placeholder="VD: taberu"
                     className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-slate-300 focus:border-indigo-500 focus:outline-none"
                   />
+                </div>
+                <div>
+                  <label className="block text-2xs font-semibold text-slate-400 mb-1">Loại từ</label>
+                  <select
+                    value={editingWord.wordType || "noun"}
+                    onChange={(e) => setEditingWord({ ...editingWord, wordType: e.target.value as any })}
+                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="verb">Động từ (Verb)</option>
+                    <option value="noun">Danh từ (Noun)</option>
+                    <option value="adjective">Tính từ (Adj)</option>
+                    <option value="adverb">Phó từ (Adv)</option>
+                    <option value="phrase">Cụm từ (Phrase)</option>
+                    <option value="other">Khác</option>
+                  </select>
                 </div>
               </div>
 
@@ -1371,35 +1937,58 @@ export default function AdminVocabularyPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-2xs font-semibold text-slate-400 mb-1">Cấp độ</label>
+                <select
+                  value={editingWord.level || "N5"}
+                  onChange={(e) => setEditingWord({ ...editingWord, level: e.target.value as any })}
+                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs font-bold text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
+                >
+                  <option value="N5">N5</option>
+                  <option value="N4">N4</option>
+                  <option value="N3">N3</option>
+                  <option value="N2">N2</option>
+                  <option value="N1">N1</option>
+                </select>
+              </div>
+
+              {/* Ví dụ & dịch nghĩa */}
+              <div className="space-y-2 pt-2 border-t border-slate-800/80">
                 <div>
-                  <label className="block text-2xs font-semibold text-slate-400 mb-1">Cấp độ</label>
-                  <select
-                    value={editingWord.level || "N5"}
-                    onChange={(e) => setEditingWord({ ...editingWord, level: e.target.value as any })}
-                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs font-bold text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
-                  >
-                    <option value="N5">N5</option>
-                    <option value="N4">N4</option>
-                    <option value="N3">N3</option>
-                    <option value="N2">N2</option>
-                    <option value="N1">N1</option>
-                  </select>
+                  <label className="block text-2xs font-semibold text-slate-400 mb-1">
+                    Câu ví dụ tiếng Nhật (JLPT)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingWord.exampleSentence || ""}
+                    onChange={(e) => setEditingWord({ ...editingWord, exampleSentence: e.target.value })}
+                    placeholder="VD: 毎朝パンを食べます。"
+                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  />
                 </div>
                 <div>
-                  <label className="block text-2xs font-semibold text-slate-400 mb-1">Loại từ</label>
-                  <select
-                    value={editingWord.wordType || "noun"}
-                    onChange={(e) => setEditingWord({ ...editingWord, wordType: e.target.value as any })}
-                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none cursor-pointer"
-                  >
-                    <option value="verb">Động từ (Verb)</option>
-                    <option value="noun">Danh từ (Noun)</option>
-                    <option value="adjective">Tính từ (Adj)</option>
-                    <option value="adverb">Phó từ (Adv)</option>
-                    <option value="phrase">Cụm từ (Phrase)</option>
-                    <option value="other">Khác</option>
-                  </select>
+                  <label className="block text-2xs font-semibold text-slate-400 mb-1">
+                    Furigana câu ví dụ (Hiragana)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingWord.exampleFurigana || ""}
+                    onChange={(e) => setEditingWord({ ...editingWord, exampleFurigana: e.target.value })}
+                    placeholder="VD: まいあさパンをたべます。"
+                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-slate-300 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-2xs font-semibold text-slate-400 mb-1">
+                    Dịch nghĩa câu ví dụ (Tiếng Việt)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingWord.exampleTranslation || ""}
+                    onChange={(e) => setEditingWord({ ...editingWord, exampleTranslation: e.target.value })}
+                    placeholder="VD: Mỗi sáng tôi đều ăn bánh mì."
+                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-emerald-400 focus:border-indigo-500 focus:outline-none"
+                  />
                 </div>
               </div>
             </div>
@@ -1420,6 +2009,48 @@ export default function AdminVocabularyPage() {
               >
                 {isSavingWord && <Loader2 size={13} className="animate-spin" />}
                 <span>Lưu vào kho</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL XÁC NHẬN RESET TOÀN BỘ KHO TỪ VỰNG */}
+      {/* ========================================================================= */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-rose-500/40 p-6 shadow-2xl space-y-4 animate-in fade-in-50 zoom-in-95">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-500 mx-auto">
+              <Trash2 size={24} />
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-base font-black text-white">
+                Xác nhận Reset toàn bộ kho từ vựng?
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Hành động này sẽ <strong className="text-rose-400">xóa sạch vĩnh viễn toàn bộ từ vựng</strong> trong kho từ vựng chung của hệ thống (hiện có <strong className="text-white">{vocabStats.total}</strong> từ). Sau khi xóa, bạn có thể nạp lại file từ vựng mới với dữ liệu chuẩn.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(false)}
+                disabled={isResetting}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleResetAllVocabularies}
+                disabled={isResetting}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isResetting && <Loader2 size={14} className="animate-spin" />}
+                <span>Xóa sạch ngay</span>
               </button>
             </div>
           </div>

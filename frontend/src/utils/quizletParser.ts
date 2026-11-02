@@ -3,7 +3,7 @@
  * Handles CSV, TSV, pasted text, Kanji/Furigana extraction, and Romaji conversion.
  */
 
-import { translateToVietnamese } from "./japaneseMeaningTranslator";
+import { translateToVietnamese, getSinoVietnamese } from "./japaneseMeaningTranslator";
 
 export interface ParsedVocabItem {
   id: string; // Tạm thời để quản lý trong React state
@@ -11,8 +11,12 @@ export interface ParsedVocabItem {
   furigana: string;
   romaji: string;
   meaning: string;
+  sinoVietnamese?: string;
   level: "N5" | "N4" | "N3" | "N2" | "N1";
   wordType: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
+  exampleSentence?: string;
+  exampleFurigana?: string;
+  exampleTranslation?: string;
   notes?: string;
   selected?: boolean;
 }
@@ -25,7 +29,7 @@ const HIRAGANA_TO_ROMAJI: Record<string, string> = {
   た: "ta", ち: "chi", つ: "tsu", て: "te", と: "to",
   な: "na", に: "ni", ぬ: "nu", ね: "ne", の: "no",
   は: "ha", ひ: "hi", ふ: "fu", へ: "he", ほ: "ho",
-  ま: "ma", み: "mi", mu: "mu", め: "me", も: "mo",
+  ま: "ma", み: "mi", む: "mu", め: "me", も: "mo",
   や: "ya", ゆ: "yu", よ: "yo",
   ら: "ra", り: "ri", る: "ru", れ: "re", ろ: "ro",
   わ: "wa", を: "wo", ん: "n",
@@ -48,20 +52,44 @@ const HIRAGANA_TO_ROMAJI: Record<string, string> = {
 };
 
 /**
- * Tự động chuyển đổi Hiragana cơ bản sang Romaji
+ * Chuyển đổi Katakana sang Hiragana
+ */
+export function kataToHira(str: string): string {
+  if (!str) return "";
+  return str.replace(/[ァ-ヶ]/g, (match) =>
+    String.fromCharCode(match.charCodeAt(0) - 0x60)
+  );
+}
+
+/**
+ * Tự động chuyển đổi Kana (Hiragana & Katakana) sang Romaji chuẩn viết liền
  */
 export function hiraganaToRomaji(kana: string): string {
   if (!kana) return "";
   let result = "";
   let i = 0;
-  const str = kana.trim();
+  // Chuẩn hóa toàn bộ Katakana sang Hiragana trước khi phiên âm
+  const str = kataToHira(kana.trim());
 
   while (i < str.length) {
+    // Ký tự trường âm Katakana ー
+    if (str[i] === "ー") {
+      i++;
+      continue;
+    }
+
+    // Dấu cách hoặc dấu ngã, gạch ngang
+    if (/[\s\t〜~-]/.test(str[i])) {
+      result += str[i];
+      i++;
+      continue;
+    }
+
     // Kiểm tra âm đôi 2 ký tự (きゃ, しゃ, ちゃ...)
     if (i + 1 < str.length) {
       const pair = str.slice(i, i + 2);
       if (HIRAGANA_TO_ROMAJI[pair]) {
-        result += HIRAGANA_TO_ROMAJI[pair] + " ";
+        result += HIRAGANA_TO_ROMAJI[pair];
         i += 2;
         continue;
       }
@@ -72,7 +100,7 @@ export function hiraganaToRomaji(kana: string): string {
       const nextChar = str[i + 1];
       const nextRomaji = HIRAGANA_TO_ROMAJI[nextChar] || "";
       if (nextRomaji) {
-        result += nextRomaji[0];
+        result += nextRomaji[0] === "c" ? "t" : nextRomaji[0];
       }
       i++;
       continue;
@@ -81,7 +109,7 @@ export function hiraganaToRomaji(kana: string): string {
     // Ký tự đơn
     const single = HIRAGANA_TO_ROMAJI[str[i]];
     if (single) {
-      result += single + " ";
+      result += single;
     } else {
       result += str[i];
     }
@@ -235,8 +263,30 @@ export function parseJapaneseTerm(
       furigana = partB;
     }
   } else {
-    // Không có ngoặc: ví dụ "食べる" hoặc "ありがとう"
-    if (containsKanji(term)) {
+    // 3. Phân tách theo khoảng trắng: dạng "よこ 横", "びん 瓶", "ばしょ 場所", "うんどうかい 運動会"
+    const spaceParts = term.split(/[\s\t　]+/);
+    if (spaceParts.length >= 2) {
+      const part1 = spaceParts[0].trim();
+      const part2 = spaceParts.slice(1).join(" ").trim();
+      const p1Has = containsKanji(part1);
+      const p2Has = containsKanji(part2);
+
+      if (p2Has && !p1Has) {
+        // Dạng: "よこ 横" -> part1 là Kana, part2 là Kanji
+        kanji = part2;
+        furigana = part1;
+      } else if (p1Has && !p2Has) {
+        // Dạng: "横 よこ" -> part1 là Kanji, part2 là Kana
+        kanji = part1;
+        furigana = part2;
+      } else if (p1Has && p2Has) {
+        kanji = part2;
+        furigana = part1;
+      } else {
+        kanji = term;
+        furigana = term;
+      }
+    } else if (containsKanji(term)) {
       kanji = term;
       furigana = ""; // Có thể bổ sung bằng tay hoặc AI
     } else {
@@ -245,8 +295,12 @@ export function parseJapaneseTerm(
     }
   }
 
-  // Tự động sinh Romaji nếu có Furigana
-  const romaji = furigana ? hiraganaToRomaji(furigana) : "";
+  // Tự động sinh Romaji nếu có Furigana hoặc từ thuần Kana
+  const romaji = furigana
+    ? hiraganaToRomaji(furigana)
+    : !containsKanji(kanji)
+    ? hiraganaToRomaji(kanji)
+    : "";
   const wordType = detectWordType(kanji, meaning, notes);
 
   return {
@@ -346,16 +400,53 @@ export function parseQuizletContent(
     const parsed = parseJapaneseTerm(term, definition, defaultLevel);
 
     const parsedKanji = parsed.kanji || term;
-    const cleanMeaning = translateToVietnamese(parsedKanji, definition) || definition || "Chưa có nghĩa";
+    let cleanMeaning = translateToVietnamese(parsedKanji, definition) || definition || "Chưa có nghĩa";
+    let sino = getSinoVietnamese(parsedKanji) || "";
+
+    // Bóc tách Âm Hán Việt in hoa ở cuối định nghĩa nếu có (ví dụ: "Bên cạnh HOÀNH", "Chai BÌNH", "Địa điểm TRƯỜNG SỞ")
+    const uppercaseSinoMatch = cleanMeaning.match(
+      /^(.*?)\s+([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]{2,})$/
+    );
+    if (uppercaseSinoMatch) {
+      const rawMean = uppercaseSinoMatch[1].trim();
+      const rawSino = uppercaseSinoMatch[2].trim();
+      if (/^[A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ\s/]+$/.test(rawSino)) {
+        if (!sino) sino = rawSino;
+        if (rawMean) cleanMeaning = rawMean;
+      }
+    }
+
+    // Tạo câu ví dụ khởi tạo chuẩn, không dùng từ dính khoảng trắng
+    let exampleSentence = "";
+    let exampleTranslation = "";
+    if (parsedKanji) {
+      const safeMeaning = cleanMeaning.toLowerCase();
+      if (parsed.wordType === "verb") {
+        exampleSentence = `毎日、${parsedKanji}。`;
+        exampleTranslation = `Mỗi ngày đều ${safeMeaning}.`;
+      } else if (parsed.wordType === "adjective") {
+        exampleSentence = `これはとても${parsedKanji}です。`;
+        exampleTranslation = `Cái này rất ${safeMeaning}.`;
+      } else {
+        exampleSentence = `ここに${parsedKanji}があります。`;
+        exampleTranslation = `Ở đây có ${safeMeaning}.`;
+      }
+    }
+
+    const finalFurigana = parsed.furigana || (!containsKanji(parsedKanji) ? parsedKanji : "");
+    const finalRomaji = parsed.romaji || hiraganaToRomaji(finalFurigana || parsedKanji);
 
     items.push({
       id: `parsed-${index + 1}-${Date.now()}`,
       kanji: parsedKanji,
-      furigana: parsed.furigana,
-      romaji: parsed.romaji,
+      furigana: finalFurigana,
+      romaji: finalRomaji,
       meaning: cleanMeaning,
+      sinoVietnamese: sino,
       level: parsed.level,
       wordType: parsed.wordType,
+      exampleSentence,
+      exampleTranslation,
       notes: parsed.notes,
       selected: true,
     });

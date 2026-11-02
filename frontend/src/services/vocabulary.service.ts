@@ -95,9 +95,11 @@ export interface SystemVocabLearnerItem {
   furigana: string;
   romaji: string;
   meaning: string;
+  sinoVietnamese?: string;
   level: "N5" | "N4" | "N3" | "N2" | "N1";
   wordType: "noun" | "verb" | "adjective" | "adverb" | "phrase" | "other";
   exampleSentence?: string;
+  exampleFurigana?: string;
   exampleTranslation?: string;
   source?: string;
   tags?: string[];
@@ -167,9 +169,11 @@ export const vocabularyService = {
     furigana?: string;
     romaji?: string;
     meaning: string;
+    sinoVietnamese?: string;
     level?: string;
     wordType?: string;
     exampleSentence?: string;
+    exampleFurigana?: string;
     exampleTranslation?: string;
   }): Promise<VocabularyItem> => {
     const res = await api.post("/vocabularies/save-from-system", payload);

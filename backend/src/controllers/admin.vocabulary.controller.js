@@ -7,24 +7,26 @@ import mongoose from "mongoose";
 import {
   translateToVietnamese,
   sanitizeExampleTranslation,
+  getSinoVietnamese,
 } from "../utils/japaneseMeaningTranslator.js";
 
 /**
  * POST /api/v1/admin/vocabulary/ai-enrich
- * Use AI to classify wordType and enrich Furigana / Romaji
+ * Use AI to deeply analyze vocabulary: Kanji, Furigana, Romaji, 100% Vietnamese meaning,
+ * Sino-Vietnamese (Hán Việt), wordType, and JLPT example sentences with Furigana & translation.
  */
 export const enrichVocabularyWithAiHandler = async (req, res, next) => {
   try {
-    const { items } = req.body;
+    const { items, targetLevel = "N5" } = req.body;
     if (!Array.isArray(items) || items.length === 0) {
       return errorResponse(res, "Danh sách từ vựng để phân tích AI đang trống.", 400);
     }
 
     // Giới hạn xử lý tối đa 60 từ mỗi lần gọi để tránh timeout
     const batch = items.slice(0, 60);
-    const enriched = await AiService.enrichVocabularyBatchWithAi(batch);
+    const enriched = await AiService.enrichVocabularyBatchWithAi(batch, targetLevel);
 
-    return successResponse(res, enriched, "AI đã phân tích và chuẩn hóa từ loại thành công!");
+    return successResponse(res, enriched, "AI đã phân tích chuyên sâu Kanji, Hán Việt và nghĩa tiếng Việt thành công!");
   } catch (error) {
     next(error);
   }
@@ -64,15 +66,19 @@ export const importVocabulary = async (req, res, next) => {
           meaning,
           (item.exampleTranslation || "").trim()
         );
+        const sinoVietnamese = (item.sinoVietnamese || "").trim() || getSinoVietnamese(kanji);
+        const exampleFurigana = (item.exampleFurigana || "").trim();
 
         return {
           kanji,
           furigana: furigana || (kanji && !/[一-龯]/.test(kanji) ? kanji : ""),
           romaji,
           meaning,
+          sinoVietnamese,
           level,
           wordType,
           exampleSentence: (item.exampleSentence || "").trim(),
+          exampleFurigana,
           exampleTranslation,
           source: (item.source || source).trim(),
           tags: Array.isArray(item.tags) && item.tags.length > 0 ? item.tags : tags,
@@ -116,8 +122,10 @@ export const importVocabulary = async (req, res, next) => {
                     furigana: item.furigana,
                     romaji: item.romaji,
                     meaning: item.meaning,
+                    sinoVietnamese: item.sinoVietnamese,
                     wordType: item.wordType,
                     exampleSentence: item.exampleSentence,
+                    exampleFurigana: item.exampleFurigana,
                     exampleTranslation: item.exampleTranslation,
                     source: item.source,
                     tags: item.tags,
@@ -307,7 +315,20 @@ export const getAdminVocabularies = async (req, res, next) => {
  */
 export const createAdminVocabulary = async (req, res, next) => {
   try {
-    const { kanji, furigana, romaji, meaning, level, wordType, exampleSentence, exampleTranslation, tags, source } = req.body;
+    const {
+      kanji,
+      furigana,
+      romaji,
+      meaning,
+      sinoVietnamese,
+      level,
+      wordType,
+      exampleSentence,
+      exampleFurigana,
+      exampleTranslation,
+      tags,
+      source,
+    } = req.body;
 
     if (!kanji || !meaning) {
       return errorResponse(res, "Vui lòng nhập từ tiếng Nhật và nghĩa.", 400);
@@ -318,9 +339,11 @@ export const createAdminVocabulary = async (req, res, next) => {
       furigana: (furigana || "").trim(),
       romaji: (romaji || "").trim(),
       meaning: meaning.trim(),
+      sinoVietnamese: (sinoVietnamese || "").trim(),
       level: level || "N5",
       wordType: wordType || "phrase",
       exampleSentence: (exampleSentence || "").trim(),
+      exampleFurigana: (exampleFurigana || "").trim(),
       exampleTranslation: (exampleTranslation || "").trim(),
       tags: tags || ["jtalk"],
       source: (source || "JTalk Master Bank").trim(),
@@ -414,3 +437,22 @@ export const deleteAdminVocabularyBulk = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/v1/admin/vocabulary/reset-all
+ * DELETE /api/v1/admin/vocabulary/reset-all
+ * Reset and clear ALL system vocabularies completely
+ */
+export const resetAllSystemVocabularies = async (req, res, next) => {
+  try {
+    const result = await SystemVocabulary.deleteMany({});
+    return successResponse(
+      res,
+      { deletedCount: result.deletedCount },
+      `Đã xóa sạch toàn bộ ${result.deletedCount} từ vựng trong kho hệ thống!`
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
