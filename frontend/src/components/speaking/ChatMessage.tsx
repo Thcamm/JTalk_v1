@@ -46,10 +46,14 @@ export default function ChatMessage({
       {/* Message */}
       <div
         className={`
-          max-w-[75%]
-          rounded-3xl
-          px-5
-          py-4
+          max-w-[85%]
+          sm:max-w-[75%]
+          rounded-2xl
+          sm:rounded-3xl
+          px-3.5
+          sm:px-5
+          py-2.5
+          sm:py-4
           shadow-bubble
           ${isAI
             ? "chat-bubble-received"
@@ -61,7 +65,7 @@ export default function ChatMessage({
           {isAI ? "Aki" : "You"}
         </div>
 
-        <p className="leading-relaxed">
+        <p className="leading-relaxed text-sm sm:text-base break-words [overflow-wrap:anywhere]">
           {message.text}
         </p>
       </div>

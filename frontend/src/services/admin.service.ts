@@ -11,7 +11,10 @@ export interface AdminStatsResponse {
     totalLessons: number;
     totalVideoLessons: number;
     totalPractices: number;
+    realPractices?: number;
     totalSystemVocabularies?: number;
+    totalRevenue?: number;
+    totalOrders?: number;
   };
   recentUsers: User[];
   recentLessons: Array<{
@@ -40,6 +43,48 @@ export interface AdminUsersQuery {
 
 export interface AdminUsersResponse {
   users: User[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface AdminOrder {
+  _id: string;
+  orderCode: string;
+  amount: number;
+  paymentMethod: string;
+  status: string;
+  transactionId?: string;
+  paidAt?: string;
+  createdAt: string;
+  userId?: {
+    _id: string;
+    displayName: string;
+    email: string;
+    username: string;
+    phone?: string;
+    profile?: {
+      targetLevel?: string;
+    };
+  };
+  callbackData?: {
+    gateway?: string;
+    transferContent?: string;
+    bankCode?: string;
+    accountReceiver?: string;
+  };
+}
+
+export interface AdminOrdersResponse {
+  orders: AdminOrder[];
+  stats: {
+    totalOrders: number;
+    completedOrders: number;
+    totalRevenue: number;
+  };
   pagination: {
     total: number;
     page: number;
@@ -168,6 +213,15 @@ export const adminService = {
   // 1. Overview KPIs
   getStats: async (): Promise<AdminStatsResponse> => {
     const res = await api.get<{ data: AdminStatsResponse }>("/admin/stats");
+    return res.data.data;
+  },
+
+  getOrders: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }): Promise<AdminOrdersResponse> => {
+    const res = await api.get<{ data: AdminOrdersResponse }>("/admin/orders", { params });
     return res.data.data;
   },
 

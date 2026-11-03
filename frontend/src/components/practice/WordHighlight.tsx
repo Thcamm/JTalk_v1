@@ -18,8 +18,8 @@ export const WordHighlight: React.FC<WordHighlightProps> = ({
   if (!wordFeedback || wordFeedback.length === 0) {
     if (!fallbackText) return null;
     return (
-      <div className={`p-4 bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/80 rounded-2xl ${className}`}>
-        <p className="text-base text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+      <div className={`p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/80 rounded-xl sm:rounded-2xl ${className}`}>
+        <p className="text-sm sm:text-base text-slate-800 dark:text-slate-200 font-medium leading-relaxed break-words">
           {fallbackText}
         </p>
       </div>
@@ -30,26 +30,26 @@ export const WordHighlight: React.FC<WordHighlightProps> = ({
   const accuracyPercent = Math.round((correctCount / wordFeedback.length) * 100);
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-2.5 sm:space-y-3 ${className}`}>
       {/* Legend & Stats */}
-      <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 pb-1">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 pb-1">
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-            <span className="font-medium text-emerald-700 dark:text-emerald-300">Phát âm chuẩn</span>
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500 inline-block shrink-0" />
+            <span className="font-medium text-emerald-700 dark:text-emerald-300 text-xs sm:text-sm">Phát âm chuẩn</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-            <span className="font-medium text-rose-700 dark:text-rose-300">Cần chỉnh sửa</span>
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-rose-500 inline-block shrink-0" />
+            <span className="font-medium text-rose-700 dark:text-rose-300 text-xs sm:text-sm">Cần chỉnh sửa</span>
           </span>
         </div>
-        <div className="font-semibold text-slate-600 dark:text-slate-400">
+        <div className="font-semibold text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
           Chính xác: <span className="text-emerald-600 dark:text-emerald-400">{accuracyPercent}%</span> ({correctCount}/{wordFeedback.length})
         </div>
       </div>
 
       {/* Words Grid / Flow */}
-      <div className="flex flex-wrap gap-2 p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs transition-colors">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 p-3 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl sm:rounded-2xl shadow-xs transition-colors">
         {wordFeedback.map((item, index) => {
           const isSelected = selectedWord === item;
 
@@ -58,17 +58,17 @@ export const WordHighlight: React.FC<WordHighlightProps> = ({
               key={`${item.word}-${index}`}
               onClick={() => setSelectedWord(isSelected ? null : item)}
               type="button"
-              className={`group relative inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-base font-semibold border transition-all duration-150 cursor-pointer ${
+              className={`group relative inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold border transition-all duration-150 cursor-pointer ${
                 item.isCorrect
                   ? "bg-emerald-50/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60"
                   : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60 animate-pulse-subtle"
               } ${isSelected ? "ring-2 ring-offset-1 ring-blue-400" : ""}`}
             >
-              <span>{item.word}</span>
+              <span className="break-words">{item.word}</span>
               {item.isCorrect ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 opacity-60 group-hover:opacity-100 shrink-0" />
+                <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-500 opacity-60 group-hover:opacity-100 shrink-0" />
               ) : (
-                <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <AlertCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-500 shrink-0" />
               )}
             </button>
           );
@@ -78,15 +78,15 @@ export const WordHighlight: React.FC<WordHighlightProps> = ({
       {/* Popover / Detail for selected word */}
       {selectedWord && (
         <div
-          className={`p-3.5 rounded-xl border text-sm animate-in fade-in slide-in-from-top-1 duration-150 ${
+          className={`p-3 sm:p-3.5 rounded-xl border text-xs sm:text-sm animate-in fade-in slide-in-from-top-1 duration-150 ${
             selectedWord.isCorrect
               ? "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100"
               : "bg-rose-50 dark:bg-rose-950/70 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-100"
           }`}
         >
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-base">Từ: 「{selectedWord.word}」</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-white/70 dark:bg-slate-900/70 inline-flex items-center gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-bold text-sm sm:text-base break-words">Từ: 「{selectedWord.word}」</span>
+            <span className="text-2xs sm:text-xs font-semibold px-2 py-0.5 rounded-md bg-white/70 dark:bg-slate-900/70 inline-flex items-center gap-1 shrink-0">
               {selectedWord.isCorrect ? (
                 <>
                   <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" />
@@ -99,12 +99,12 @@ export const WordHighlight: React.FC<WordHighlightProps> = ({
           </div>
 
           {selectedWord.suggestion && (
-            <p className="mt-1.5 text-sm leading-relaxed">
+            <p className="mt-1.5 text-xs sm:text-sm leading-relaxed break-words">
               <strong className="font-semibold">Gợi ý AI:</strong> {selectedWord.suggestion}
             </p>
           )}
           {selectedWord.accuracyScore !== undefined && (
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+            <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
               Điểm tương đồng âm: <strong className="font-semibold">{selectedWord.accuracyScore}/100</strong>
             </p>
           )}

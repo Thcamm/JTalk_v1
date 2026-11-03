@@ -1395,20 +1395,20 @@ export default function VocabularyNotebookPage() {
                   {/* KHUNG THẺ FLASHCARD 3D KHO CHUNG */}
                   <div
                     onClick={() => setIsSystemCardFlipped(!isSystemCardFlipped)}
-                    className="relative h-[430px] w-full cursor-pointer select-none perspective-1000 group"
+                    className="relative min-h-[390px] sm:h-[430px] w-full cursor-pointer select-none perspective-1000 group"
                   >
                     <div
-                      className={`relative w-full h-full duration-500 preserve-3d transition-transform rounded-3xl shadow-xl border-2 ${
+                      className={`relative w-full h-full duration-500 preserve-3d transition-transform rounded-2xl sm:rounded-3xl shadow-xl border-2 ${
                         isSystemCardFlipped
                           ? "rotate-y-180 border-indigo-300 dark:border-indigo-800/80 bg-gradient-to-br from-white via-indigo-50/30 to-white dark:from-slate-900 dark:via-indigo-950/40 dark:to-slate-900"
                           : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-slate-700"
                       }`}
                     >
                       {/* ================= MẶT TRƯỚC (FRONT) ================= */}
-                      <div className="absolute inset-0 backface-hidden p-8 flex flex-col justify-between rounded-3xl">
+                      <div className="absolute inset-0 backface-hidden p-4 sm:p-6 md:p-8 flex flex-col justify-between rounded-2xl sm:rounded-3xl overflow-y-auto scrollbar-none">
                         {/* Top Info */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                             <span
                               className={`px-2.5 py-0.5 rounded-md text-3xs font-extrabold border ${
                                 LEVEL_COLORS[currentSystemCard.level]?.bg ||
@@ -1435,7 +1435,7 @@ export default function VocabularyNotebookPage() {
                             </span>
 
                             {currentSystemCard.sinoVietnamese && (
-                              <span className="px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                              <span className="px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 truncate">
                                 Hán Việt: {currentSystemCard.sinoVietnamese}
                               </span>
                             )}
@@ -1445,43 +1445,43 @@ export default function VocabularyNotebookPage() {
                           <button
                             type="button"
                             onClick={(e) => speakJapanese(currentSystemCard.kanji, e)}
-                            className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
+                            className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer shrink-0"
                             title="Nghe phát âm chuẩn tiếng Nhật"
                           >
-                            <Volume2 size={20} />
+                            <Volume2 size={18} className="sm:w-5 sm:h-5" />
                           </button>
                         </div>
 
                         {/* Center: Kanji, Furigana & Romaji */}
-                        <div className="text-center space-y-3 my-auto">
+                        <div className="text-center space-y-2 sm:space-y-3 my-auto py-2">
                           {showFuriganaOnFront && currentSystemCard.furigana && (
-                            <div className="text-base font-bold text-indigo-600 dark:text-indigo-400 font-mono tracking-widest animate-fade-in">
+                            <div className="text-xs sm:text-base font-bold text-indigo-600 dark:text-indigo-400 font-mono tracking-widest animate-fade-in break-words">
                               {currentSystemCard.furigana}
                             </div>
                           )}
 
-                          <div className="text-5xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-wide drop-shadow-xs">
+                          <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-wide drop-shadow-xs break-words [overflow-wrap:anywhere] max-w-full px-2">
                             {currentSystemCard.kanji}
                           </div>
 
                           {currentSystemCard.sinoVietnamese && (
-                            <div className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                            <div className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest break-words">
                               〔 {currentSystemCard.sinoVietnamese} 〕
                             </div>
                           )}
 
                           {currentSystemCard.romaji && (
-                            <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono">
+                            <div className="text-3xs sm:text-xs md:text-sm text-slate-500 dark:text-slate-400 font-mono break-words">
                               {currentSystemCard.romaji}
                             </div>
                           )}
                         </div>
 
                         {/* Bottom Action */}
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-200/80 dark:border-slate-800">
-                          <span className="text-3xs text-slate-500 font-semibold flex items-center gap-1">
+                        <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-slate-200/80 dark:border-slate-800 gap-2">
+                          <span className="text-4xs sm:text-3xs text-slate-500 font-semibold flex items-center gap-1 truncate">
                             <span>Bấm vào thẻ để xem nghĩa & ví dụ</span>
-                            <RotateCw size={11} />
+                            <RotateCw size={11} className="shrink-0" />
                           </span>
 
                           <button
@@ -1491,7 +1491,7 @@ export default function VocabularyNotebookPage() {
                               currentSystemCard.isSaved ||
                               savingWordId === currentSystemCard._id
                             }
-                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-3xs sm:text-xs font-black transition-all cursor-pointer shrink-0 ${
                               currentSystemCard.isSaved
                                 ? "bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-300 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 cursor-default"
                                 : "bg-gradient-to-r from-rose-600 to-amber-600 hover:brightness-105 active:scale-95 text-white shadow-md shadow-rose-600/20"
@@ -1513,18 +1513,18 @@ export default function VocabularyNotebookPage() {
                       </div>
 
                       {/* ================= MẶT SAU (BACK - GIẢI THÍCH & VÍ DỤ CÓ FURIGANA) ================= */}
-                      <div className="absolute inset-0 backface-hidden rotate-y-180 p-8 flex flex-col justify-between rounded-3xl">
+                      <div className="absolute inset-0 backface-hidden rotate-y-180 p-4 sm:p-6 md:p-8 flex flex-col justify-between rounded-2xl sm:rounded-3xl overflow-y-auto scrollbar-none">
                         {/* Top Back */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-2xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <Sparkles size={13} className="text-amber-500 fill-amber-500" />
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-3xs sm:text-2xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                            <Sparkles size={13} className="text-amber-500 fill-amber-500 shrink-0" />
                             <span>Ý nghĩa & Ví dụ minh họa</span>
                           </span>
 
                           <button
                             type="button"
                             onClick={(e) => speakJapanese(currentSystemCard.kanji, e)}
-                            className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
+                            className="p-2 sm:p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 shrink-0"
                             title="Nghe lại phát âm từ"
                           >
                             <Volume2 size={16} />
@@ -1532,29 +1532,29 @@ export default function VocabularyNotebookPage() {
                         </div>
 
                         {/* Center Back: Nghĩa tiếng Việt + Câu ví dụ có Furigana */}
-                        <div className="space-y-4 my-auto">
+                        <div className="space-y-3 sm:space-y-4 my-auto py-2">
                           {/* Nghĩa tiếng Việt & Hán Việt */}
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-3xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-4xs sm:text-3xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                                 Nghĩa tiếng Việt:
                               </span>
                               {currentSystemCard.sinoVietnamese && (
-                                <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                <span className="px-2 py-0.5 rounded-full text-4xs sm:text-3xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                                   Âm Hán Việt: {currentSystemCard.sinoVietnamese}
                                 </span>
                               )}
                             </div>
-                            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-snug">
+                            <div className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-snug break-words">
                               {translateToVietnamese(currentSystemCard.kanji, currentSystemCard.meaning)}
                             </div>
                           </div>
 
                           {/* Khung Câu ví dụ có Furigana Ruby */}
-                          <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-slate-950/80 border border-indigo-200/80 dark:border-slate-800 text-left space-y-2 shadow-2xs">
-                            <div className="flex items-center justify-between">
-                              <span className="text-3xs font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                                <GraduationCap size={12} />
+                          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-indigo-50/60 dark:bg-slate-950/80 border border-indigo-200/80 dark:border-slate-800 text-left space-y-1.5 sm:space-y-2 shadow-2xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-4xs sm:text-3xs font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                <GraduationCap size={12} className="shrink-0" />
                                 <span>Ví dụ tiếng Nhật có Furigana:</span>
                               </span>
 
@@ -1564,7 +1564,7 @@ export default function VocabularyNotebookPage() {
                                 onClick={(e) =>
                                   speakJapanese(systemExample.sentence, e)
                                 }
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 transition-colors shrink-0"
                                 title="Nghe phát âm câu ví dụ"
                               >
                                 <Volume2 size={14} />
@@ -1572,7 +1572,7 @@ export default function VocabularyNotebookPage() {
                             </div>
 
                             {/* Câu tiếng Nhật có Furigana Ruby */}
-                            <div className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-loose">
+                            <div className="text-xs sm:text-base font-bold text-slate-900 dark:text-white leading-loose break-words [overflow-wrap:anywhere]">
                               <JapaneseRubyText
                                 sentence={systemExample.sentence}
                                 furigana={systemExample.furigana}
@@ -1580,15 +1580,15 @@ export default function VocabularyNotebookPage() {
                             </div>
 
                             {/* Dịch nghĩa câu ví dụ */}
-                            <div className="text-xs text-slate-600 dark:text-slate-300 font-medium italic border-t border-indigo-200/40 dark:border-slate-800/80 pt-1.5">
+                            <div className="text-3xs sm:text-xs text-slate-600 dark:text-slate-300 font-medium italic border-t border-indigo-200/40 dark:border-slate-800/80 pt-1.5 break-words">
                               {systemExample.translation}
                             </div>
                           </div>
                         </div>
 
                         {/* Bottom Back Action */}
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-200/80 dark:border-slate-800">
-                          <span className="text-3xs text-slate-500 font-semibold">
+                        <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-slate-200/80 dark:border-slate-800 gap-2">
+                          <span className="text-4xs sm:text-3xs text-slate-500 font-semibold truncate">
                             Bấm để quay lại mặt trước
                           </span>
 
@@ -1599,7 +1599,7 @@ export default function VocabularyNotebookPage() {
                               currentSystemCard.isSaved ||
                               savingWordId === currentSystemCard._id
                             }
-                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                            className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-3xs sm:text-xs font-black transition-all cursor-pointer shrink-0 ${
                               currentSystemCard.isSaved
                                 ? "bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-300 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 cursor-default"
                                 : "bg-gradient-to-r from-rose-600 to-amber-600 hover:brightness-105 active:scale-95 text-white"
@@ -2013,19 +2013,19 @@ export default function VocabularyNotebookPage() {
                   {/* KHUNG THẺ FLASHCARD 3D SỔ TAY */}
                   <div
                     onClick={() => setIsNotebookCardFlipped(!isNotebookCardFlipped)}
-                    className="relative h-[430px] w-full cursor-pointer select-none perspective-1000 group"
+                    className="relative min-h-[390px] sm:h-[430px] w-full cursor-pointer select-none perspective-1000 group"
                   >
                     <div
-                      className={`relative w-full h-full duration-500 preserve-3d transition-transform rounded-3xl shadow-xl border-2 ${
+                      className={`relative w-full h-full duration-500 preserve-3d transition-transform rounded-2xl sm:rounded-3xl shadow-xl border-2 ${
                         isNotebookCardFlipped
                           ? "rotate-y-180 border-rose-300 dark:border-rose-800/80 bg-gradient-to-br from-white via-rose-50/30 to-white dark:from-slate-900 dark:via-rose-950/40 dark:to-slate-900"
                           : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-rose-300 dark:hover:border-slate-700"
                       }`}
                     >
                       {/* ================= MẶT TRƯỚC (FRONT) ================= */}
-                      <div className="absolute inset-0 backface-hidden p-8 flex flex-col justify-between rounded-3xl">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                      <div className="absolute inset-0 backface-hidden p-4 sm:p-6 md:p-8 flex flex-col justify-between rounded-2xl sm:rounded-3xl overflow-y-auto scrollbar-none">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                             <span
                               className={`px-2.5 py-0.5 rounded-md text-3xs font-extrabold border ${
                                 LEVEL_COLORS[currentNotebookCard.level]?.bg ||
@@ -2042,7 +2042,7 @@ export default function VocabularyNotebookPage() {
                             </span>
 
                             {currentNotebookCard.sinoVietnamese && (
-                              <span className="px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                              <span className="px-2 py-0.5 rounded-md text-3xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 truncate">
                                 Hán Việt: {currentNotebookCard.sinoVietnamese}
                               </span>
                             )}
@@ -2059,13 +2059,13 @@ export default function VocabularyNotebookPage() {
                             >
                               {currentNotebookCard.isMastered ? (
                                 <>
-                                  <CheckCircle2 size={12} className="fill-white text-emerald-500" />
-                                  <span>Đã thành thạo</span>
+                                  <CheckCircle2 size={12} className="fill-white text-emerald-500 shrink-0" />
+                                  <span>Đã thuộc</span>
                                 </>
                               ) : (
                                 <>
-                                  <Circle size={12} />
-                                  <span>Cần ôn tập (Bấm để tích thuộc)</span>
+                                  <Circle size={12} className="shrink-0" />
+                                  <span>Cần ôn</span>
                                 </>
                               )}
                             </button>
@@ -2074,47 +2074,47 @@ export default function VocabularyNotebookPage() {
                           <button
                             type="button"
                             onClick={(e) => speakJapanese(currentNotebookCard.kanji, e)}
-                            className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                            className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer shrink-0"
                             title="Nghe phát âm chuẩn"
                           >
-                            <Volume2 size={20} />
+                            <Volume2 size={18} className="sm:w-5 sm:h-5" />
                           </button>
                         </div>
 
-                        <div className="text-center space-y-3 my-auto">
+                        <div className="text-center space-y-2 sm:space-y-3 my-auto py-2">
                           {showFuriganaOnFront && currentNotebookCard.furigana && (
-                            <div className="text-base font-bold text-rose-600 dark:text-rose-400 font-mono tracking-widest">
+                            <div className="text-xs sm:text-base font-bold text-rose-600 dark:text-rose-400 font-mono tracking-widest break-words">
                               {currentNotebookCard.furigana}
                             </div>
                           )}
 
-                          <div className="text-5xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-wide drop-shadow-xs">
+                          <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-wide drop-shadow-xs break-words [overflow-wrap:anywhere] max-w-full px-2">
                             {currentNotebookCard.kanji}
                           </div>
 
                           {currentNotebookCard.sinoVietnamese && (
-                            <div className="text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                            <div className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest break-words">
                               〔 {currentNotebookCard.sinoVietnamese} 〕
                             </div>
                           )}
 
                           {currentNotebookCard.romaji && (
-                            <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono">
+                            <div className="text-3xs sm:text-xs md:text-sm text-slate-500 dark:text-slate-400 font-mono break-words">
                               {currentNotebookCard.romaji}
                             </div>
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-200/80 dark:border-slate-800">
-                          <span className="text-3xs text-slate-500 font-semibold flex items-center gap-1">
+                        <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-slate-200/80 dark:border-slate-800 gap-2">
+                          <span className="text-4xs sm:text-3xs text-slate-500 font-semibold flex items-center gap-1 truncate">
                             <span>Bấm để xem nghĩa & đánh giá SRS</span>
-                            <RotateCw size={11} />
+                            <RotateCw size={11} className="shrink-0" />
                           </span>
 
                           <button
                             type="button"
                             onClick={(e) => handleToggleMastered(currentNotebookCard, e)}
-                            className="text-2xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 font-bold"
+                            className="text-4xs sm:text-2xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 font-bold shrink-0"
                           >
                             {currentNotebookCard.isMastered
                               ? "Chuyển sang cần ôn"
@@ -2124,46 +2124,46 @@ export default function VocabularyNotebookPage() {
                       </div>
 
                       {/* ================= MẶT SAU (BACK - GIẢI THÍCH & VÍ DỤ CÓ FURIGANA) ================= */}
-                      <div className="absolute inset-0 backface-hidden rotate-y-180 p-8 flex flex-col justify-between rounded-3xl">
-                        <div className="flex items-center justify-between">
-                          <span className="text-2xs font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <Sparkles size={13} className="text-amber-500 fill-amber-500" />
+                      <div className="absolute inset-0 backface-hidden rotate-y-180 p-4 sm:p-6 md:p-8 flex flex-col justify-between rounded-2xl sm:rounded-3xl overflow-y-auto scrollbar-none">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-3xs sm:text-2xs font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                            <Sparkles size={13} className="text-amber-500 fill-amber-500 shrink-0" />
                             <span>Ý nghĩa & Đánh giá ghi nhớ</span>
                           </span>
 
                           <button
                             type="button"
                             onClick={(e) => speakJapanese(currentNotebookCard.kanji, e)}
-                            className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20"
+                            className="p-2 sm:p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 shrink-0"
                             title="Nghe lại phát âm từ"
                           >
                             <Volume2 size={16} />
                           </button>
                         </div>
 
-                        <div className="space-y-4 my-auto">
+                        <div className="space-y-3 sm:space-y-4 my-auto py-2">
                           {/* Nghĩa tiếng Việt & Hán Việt */}
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-3xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-4xs sm:text-3xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                                 Nghĩa tiếng Việt:
                               </span>
                               {currentNotebookCard.sinoVietnamese && (
-                                <span className="px-2 py-0.5 rounded-full text-3xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                <span className="px-2 py-0.5 rounded-full text-4xs sm:text-3xs font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                                   Âm Hán Việt: {currentNotebookCard.sinoVietnamese}
                                 </span>
                               )}
                             </div>
-                            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-snug">
+                            <div className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-snug break-words">
                               {translateToVietnamese(currentNotebookCard.kanji, currentNotebookCard.meaning)}
                             </div>
                           </div>
 
                           {/* Khung ví dụ có Furigana Ruby */}
-                          <div className="p-4 rounded-2xl bg-rose-50/60 dark:bg-slate-950/80 border border-rose-200/80 dark:border-slate-800 text-left space-y-2 shadow-2xs">
-                            <div className="flex items-center justify-between">
-                              <span className="text-3xs font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                                <GraduationCap size={12} />
+                          <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-rose-50/60 dark:bg-slate-950/80 border border-rose-200/80 dark:border-slate-800 text-left space-y-1.5 sm:space-y-2 shadow-2xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-4xs sm:text-3xs font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                                <GraduationCap size={12} className="shrink-0" />
                                 <span>Ví dụ tiếng Nhật có Furigana:</span>
                               </span>
 
@@ -2172,28 +2172,28 @@ export default function VocabularyNotebookPage() {
                                 onClick={(e) =>
                                   speakJapanese(notebookExample.sentence, e)
                                 }
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-800 transition-colors shrink-0"
                                 title="Nghe phát âm câu ví dụ"
                               >
                                 <Volume2 size={14} />
                               </button>
                             </div>
 
-                            <div className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-loose">
+                            <div className="text-xs sm:text-base font-bold text-slate-900 dark:text-white leading-loose break-words [overflow-wrap:anywhere]">
                               <JapaneseRubyText
                                 sentence={notebookExample.sentence}
                                 furigana={notebookExample.furigana}
                               />
                             </div>
 
-                            <div className="text-xs text-slate-600 dark:text-slate-300 font-medium italic border-t border-rose-200/40 dark:border-slate-800/80 pt-1.5">
+                            <div className="text-3xs sm:text-xs text-slate-600 dark:text-slate-300 font-medium italic border-t border-rose-200/40 dark:border-slate-800/80 pt-1.5 break-words">
                               {notebookExample.translation}
                             </div>
                           </div>
                         </div>
 
                         <div className="text-center pt-2 border-t border-slate-200/80 dark:border-slate-800">
-                          <span className="text-3xs text-slate-500 dark:text-slate-400 font-bold block">
+                          <span className="text-4xs sm:text-3xs text-slate-500 dark:text-slate-400 font-bold block truncate">
                             Chọn 1 mức độ nhớ để Spaced Repetition lên lịch ôn tập:
                           </span>
                         </div>
@@ -2202,18 +2202,18 @@ export default function VocabularyNotebookPage() {
                   </div>
 
                   {/* 4 NÚT ĐÁNH GIÁ SRS (SUPERMEMO SM-2) - ĐỒNG BỘ THEME */}
-                  <div className="grid grid-cols-4 gap-2.5 pt-1">
+                  <div className="grid grid-cols-2 xs:grid-cols-4 gap-2 sm:gap-2.5 pt-1">
                     <button
                       type="button"
                       onClick={(e) =>
                         handleReviewSRS(currentNotebookCard, "again", e)
                       }
-                      className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 font-bold text-xs flex flex-col items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                      className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 font-bold text-3xs sm:text-xs flex flex-col items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-2xs"
                       title="Quên hoàn toàn, cần học lại vào ngày mai"
                     >
-                      <RotateCw size={15} />
+                      <RotateCw size={14} className="sm:w-[15px] sm:h-[15px]" />
                       <span>Chưa thuộc</span>
-                      <span className="text-3xs text-rose-500">1 ngày</span>
+                      <span className="text-4xs sm:text-3xs text-rose-500">1 ngày</span>
                     </button>
 
                     <button
@@ -2221,12 +2221,12 @@ export default function VocabularyNotebookPage() {
                       onClick={(e) =>
                         handleReviewSRS(currentNotebookCard, "hard", e)
                       }
-                      className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 font-bold text-xs flex flex-col items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                      className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 font-bold text-3xs sm:text-xs flex flex-col items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-2xs"
                       title="Khá khó nhớ, lặp lại sớm"
                     >
-                      <Clock size={15} />
+                      <Clock size={14} className="sm:w-[15px] sm:h-[15px]" />
                       <span>Hơi khó</span>
-                      <span className="text-3xs text-amber-500">2 ngày</span>
+                      <span className="text-4xs sm:text-3xs text-amber-500">2 ngày</span>
                     </button>
 
                     <button
@@ -2234,12 +2234,12 @@ export default function VocabularyNotebookPage() {
                       onClick={(e) =>
                         handleReviewSRS(currentNotebookCard, "good", e)
                       }
-                      className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex flex-col items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                      className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold text-3xs sm:text-xs flex flex-col items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-2xs"
                       title="Nhớ tốt, cộng +5 XP"
                     >
-                      <CheckCircle2 size={15} />
+                      <CheckCircle2 size={14} className="sm:w-[15px] sm:h-[15px]" />
                       <span>Nhớ tốt</span>
-                      <span className="text-3xs text-emerald-600">+5 XP</span>
+                      <span className="text-4xs sm:text-3xs text-emerald-600">+5 XP</span>
                     </button>
 
                     <button
@@ -2247,12 +2247,12 @@ export default function VocabularyNotebookPage() {
                       onClick={(e) =>
                         handleReviewSRS(currentNotebookCard, "easy", e)
                       }
-                      className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-bold text-xs flex flex-col items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                      className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-700 dark:text-sky-300 font-bold text-3xs sm:text-xs flex flex-col items-center gap-1 active:scale-95 transition-all cursor-pointer shadow-2xs"
                       title="Rất dễ, tăng chu kỳ lặp lại dài và cộng +5 XP"
                     >
-                      <Zap size={15} />
+                      <Zap size={14} className="sm:w-[15px] sm:h-[15px]" />
                       <span>Rất dễ</span>
-                      <span className="text-3xs text-sky-600">+5 XP</span>
+                      <span className="text-4xs sm:text-3xs text-sky-600">+5 XP</span>
                     </button>
                   </div>
 

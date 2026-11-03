@@ -138,41 +138,45 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
 
   return (
     <div
-      className={`bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-md space-y-6 animate-in fade-in zoom-in-95 duration-200 transition-colors ${className}`}
+      className={`bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-md space-y-4 sm:space-y-6 animate-in fade-in zoom-in-95 duration-200 transition-colors ${className}`}
     >
       {/* Header with Overall Score Gauge */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
           <div
-            className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${theme.bg} text-white flex flex-col items-center justify-center shadow-md`}
+            className={`w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-2xl bg-gradient-to-br ${theme.bg} text-white flex flex-col items-center justify-center shadow-md`}
           >
-            <span className="text-3xl font-black leading-none">{overallScore}</span>
-            <span className="text-2xs font-bold uppercase tracking-wider opacity-90">/ 100</span>
+            <span className="text-2xl sm:text-3xl font-black leading-none">{overallScore}</span>
+            <span className="text-3xs sm:text-2xs font-bold uppercase tracking-wider opacity-90">/ 100</span>
           </div>
 
-          <div>
-            <div className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border mb-1 ${theme.badgeBg}`}>
-              {theme.label}
+          <div className="min-w-0 flex-1">
+            <div className={`inline-flex max-w-full items-center px-2 sm:px-2.5 py-0.5 rounded-full text-2xs sm:text-xs font-bold border mb-1 truncate ${theme.badgeBg}`}>
+              <span className="truncate">{theme.label}</span>
             </div>
-            <h4 className="text-lg font-bold text-slate-800 dark:text-white">Kết quả đánh giá phản xạ</h4>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Chấm điểm tự động bằng mô hình AI chuẩn Nhật</p>
+            <h4 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight truncate sm:whitespace-normal">
+              Kết quả đánh giá phản xạ
+            </h4>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-normal line-clamp-2 sm:line-clamp-none">
+              Chấm điểm tự động bằng mô hình AI chuẩn Nhật
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={onRetry}
             type="button"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Luyện lại
+            <span>Luyện lại</span>
           </button>
           {hasNext && onNext && (
             <button
               onClick={onNext}
               type="button"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
+              className="flex-1 sm:flex-none justify-center inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
             >
               <span>Câu kế tiếp</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -183,30 +187,30 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
 
       {/* Celebratory High Score Banner (>= 80) */}
       {overallScore >= 80 && (
-        <div className="p-3.5 bg-gradient-to-r from-rose-500/10 via-amber-500/15 to-emerald-500/10 border border-rose-300/80 dark:border-rose-800/80 rounded-2xl flex items-center justify-between gap-3 shadow-2xs animate-in fade-in zoom-in-98 duration-200">
-          <div className="flex items-center gap-2.5">
+        <div className="p-3 sm:p-3.5 bg-gradient-to-r from-rose-500/10 via-amber-500/15 to-emerald-500/10 border border-rose-300/80 dark:border-rose-800/80 rounded-2xl flex items-center justify-between gap-3 shadow-2xs animate-in fade-in zoom-in-98 duration-200">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
               <Sparkles className="w-4 h-4 animate-spin-slow" />
             </div>
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-white">
+            <div className="min-w-0">
+              <p className="text-xs font-black text-slate-900 dark:text-white truncate sm:whitespace-normal">
                 Xuất sắc! Bạn đã đạt trên 80 điểm phản xạ! 🎉
               </p>
-              <p className="text-3xs text-rose-700 dark:text-rose-300 font-medium">
+              <p className="text-3xs sm:text-2xs text-rose-700 dark:text-rose-300 font-medium line-clamp-2 sm:line-clamp-none">
                 Ngữ điệu tự nhiên, từ vựng chuẩn xác. Giữ vững phong độ này nhé!
               </p>
             </div>
           </div>
-          <span className="hidden sm:inline-block px-2.5 py-1 rounded-full text-3xs font-black uppercase tracking-wider bg-rose-500 text-white shadow-xs">
+          <span className="hidden sm:inline-block px-2.5 py-1 rounded-full text-3xs font-black uppercase tracking-wider bg-rose-500 text-white shadow-xs shrink-0">
             +50 XP Thưởng
           </span>
         </div>
       )}
 
       {/* 4 Criteria Progress Bars */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
         {criteria.map((item, idx) => (
-          <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl space-y-1.5">
+          <div key={idx} className="p-3 sm:p-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl space-y-1.5">
             <div className="flex items-center justify-between text-xs font-medium">
               <span className="text-slate-600 dark:text-slate-300 font-semibold">{item.title}</span>
               <span className="font-bold text-slate-800 dark:text-white">{item.score}%</span>
@@ -222,21 +226,21 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
       </div>
 
       {/* AUDIO COMPARISON: Nghe lại giọng thu âm & Đối chiếu giọng mẫu */}
-      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-50 via-rose-50/40 to-slate-50 dark:from-slate-800/60 dark:via-rose-950/20 dark:to-slate-800/60 border border-slate-200 dark:border-slate-700/70 rounded-2xl space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="p-3.5 sm:p-5 bg-gradient-to-r from-slate-50 via-rose-50/40 to-slate-50 dark:from-slate-800/60 dark:via-rose-950/20 dark:to-slate-800/60 border border-slate-200 dark:border-slate-700/70 rounded-2xl space-y-3">
+        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1">
           <div className="flex items-center gap-2">
-            <Headphones className="w-4 h-4 text-rose-500" />
+            <Headphones className="w-4 h-4 text-rose-500 shrink-0" />
             <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Đối chiếu âm thanh phát âm
             </h5>
           </div>
-          <span className="text-[11px] text-slate-400">So sánh ngữ điệu & trường âm</span>
+          <span className="text-3xs sm:text-[11px] text-slate-400">So sánh ngữ điệu & trường âm</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-1">
           {/* 1. User Recorded Audio Playback */}
-          <div className="p-3 bg-white dark:bg-slate-900 border border-rose-200/80 dark:border-rose-900/50 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2.5 sm:p-3 bg-white dark:bg-slate-900 border border-rose-200/80 dark:border-rose-900/50 rounded-xl flex items-center justify-between gap-2.5 sm:gap-3 shadow-2xs">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center shrink-0">
                 <Mic className="w-4 h-4" />
               </div>
@@ -244,19 +248,19 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
                   Giọng thu âm của bạn
                 </span>
-                <span className="text-[11px] text-slate-400 block">
+                <span className="text-3xs sm:text-[11px] text-slate-400 block truncate">
                   {userAudioUrl ? (isPlayingUserAudio ? "Đang phát..." : "Bấm để nghe lại") : "Ghi âm trực tiếp"}
                 </span>
               </div>
             </div>
 
             {userAudioUrl ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <audio ref={userAudioRef} src={userAudioUrl} preload="auto" className="hidden" />
                 <button
                   type="button"
                   onClick={toggleUserAudio}
-                  className="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all shrink-0 cursor-pointer"
                 >
                   {isPlayingUserAudio ? (
                     <>
@@ -270,13 +274,13 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                 </button>
               </div>
             ) : (
-              <span className="text-[11px] text-slate-400 italic">Đã xử lý âm</span>
+              <span className="text-3xs sm:text-[11px] text-slate-400 italic shrink-0">Đã xử lý âm</span>
             )}
           </div>
 
           {/* 2. Native Model Audio Playback */}
-          <div className="p-3 bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-900/50 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2.5 sm:p-3 bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-900/50 rounded-xl flex items-center justify-between gap-2.5 sm:gap-3 shadow-2xs">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center shrink-0">
                 <Volume2 className="w-4 h-4" />
               </div>
@@ -284,14 +288,14 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
                   Giọng mẫu bản xứ
                 </span>
-                <span className="text-[11px] text-slate-400 block">Phát âm Tokyo chuẩn</span>
+                <span className="text-3xs sm:text-[11px] text-slate-400 block truncate">Phát âm Tokyo chuẩn</span>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => onPlayNative?.(nativeSentence || evaluation.targetSentence)}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all shrink-0 cursor-pointer"
             >
               <Volume2 className="w-3.5 h-3.5" /> Nghe mẫu
             </button>
@@ -311,24 +315,24 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
 
       {/* AI Advice & Suggestions */}
       {(feedback?.generalAdvice || (feedback?.grammarSuggestions && feedback.grammarSuggestions.length > 0)) && (
-        <div className="p-4 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800 rounded-2xl space-y-2">
+        <div className="p-3.5 sm:p-4 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800 rounded-2xl space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
-            <Lightbulb className="w-4 h-4 text-amber-500 animate-spin-slow" />
+            <Lightbulb className="w-4 h-4 text-amber-500 animate-spin-slow shrink-0" />
             <span>Lời khuyên của gia sư AI</span>
           </div>
 
           {feedback.generalAdvice && (
-            <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
+            <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium break-words">
               {feedback.generalAdvice}
             </p>
           )}
 
           {feedback.grammarSuggestions && feedback.grammarSuggestions.length > 0 && (
             <div className="space-y-1 pt-1">
-              <span className="text-sm font-semibold text-amber-900 dark:text-amber-200">Mẫu câu nói tự nhiên hơn:</span>
-              <ul className="list-disc list-inside text-sm text-amber-800 dark:text-amber-300 space-y-1 pl-1">
+              <span className="text-xs sm:text-sm font-semibold text-amber-900 dark:text-amber-200">Mẫu câu nói tự nhiên hơn:</span>
+              <ul className="list-disc list-inside text-xs sm:text-sm text-amber-800 dark:text-amber-300 space-y-1 pl-1 break-words">
                 {feedback.grammarSuggestions.map((sug, i) => (
-                  <li key={i}>{sug}</li>
+                  <li key={i} className="break-words">{sug}</li>
                 ))}
               </ul>
             </div>
