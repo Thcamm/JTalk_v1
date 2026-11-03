@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-black text-white font-mono">
-              {kpi.totalUsers.toLocaleString()}
+              {(kpi.totalLearners || kpi.totalUsers).toLocaleString()}
             </span>
             <span className="text-xs text-indigo-400 font-bold">học viên</span>
           </div>

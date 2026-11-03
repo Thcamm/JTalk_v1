@@ -4,8 +4,10 @@ import type { User, Lesson, Course, Topic, VideoSubtitle } from "@/types";
 export interface AdminStatsResponse {
   kpi: {
     totalUsers: number;
+    totalLearners?: number;
     totalAdmins: number;
     totalPremiumUsers: number;
+    activeUsers?: number;
     totalCourses: number;
     totalTopics: number;
     totalLessons: number;
@@ -70,12 +72,7 @@ export interface AdminOrder {
       targetLevel?: string;
     };
   };
-  callbackData?: {
-    gateway?: string;
-    transferContent?: string;
-    bankCode?: string;
-    accountReceiver?: string;
-  };
+  callbackData?: Record<string, any>;
 }
 
 export interface AdminOrdersResponse {

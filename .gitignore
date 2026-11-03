@@ -19,3 +19,4 @@ next-env.d.ts
 
 # Local seeding scripts
 backend/src/scripts/seedPractices.js
+backend/src/scripts/resetTransactionsAndPremium.js
