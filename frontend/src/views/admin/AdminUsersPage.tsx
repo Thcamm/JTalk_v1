@@ -463,10 +463,6 @@ export default function AdminUsersPage() {
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border border-indigo-800/60 p-6 sm:p-7 shadow-2xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-extrabold uppercase tracking-wider mb-2">
-              <CheckCircle2 size={13} className="text-emerald-400" />
-              <span>Bằng Chứng KPI 1.4: Kết Quả Bán Hàng & Active Users</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Quản Lý Học Viên & Báo Cáo Doanh Thu
             </h1>
