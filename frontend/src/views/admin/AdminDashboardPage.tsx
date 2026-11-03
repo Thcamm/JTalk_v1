@@ -9,6 +9,7 @@ import {
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { YouTubeIcon } from "@/components/common/YouTubeIcon";
 import { SocialCommunityCard } from "@/components/common/SocialIcons";
+import { toast } from "sonner";
 import {
   Users,
   Video,
@@ -22,6 +23,8 @@ import {
   Award,
   TrendingUp,
   BookMarked,
+  CreditCard,
+  DollarSign,
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -79,12 +82,7 @@ export default function AdminDashboardPage() {
   }
 
   const { kpi, recentUsers, recentLessons } = stats;
-
-  // Buff số lượt luyện phản xạ để số liệu cân xứng và tự nhiên với 164 học viên (trung bình ~10 lượt/học viên)
-  const displayedPractices =
-    kpi.totalPractices > 500
-      ? kpi.totalPractices
-      : (kpi.totalUsers * 8) + (kpi.totalPractices * 5) + 168;
+  const displayedPractices = kpi.totalPractices || 0;
 
   return (
     <div className="space-y-8 pb-12">
@@ -130,7 +128,7 @@ export default function AdminDashboardPage() {
       <SocialCommunityCard variant="admin" />
 
       {/* KPI Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* KPI 1: Total Users */}
         <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-lg relative overflow-hidden group hover:border-indigo-600/50 transition-all">
           <div className="flex items-center justify-between">
@@ -153,7 +151,61 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* KPI 2: Total Lessons & Video */}
+        {/* KPI 2: Sales & Revenue (KPI 1.4) */}
+        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-lg relative overflow-hidden group hover:border-emerald-500/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Doanh Thu Bán Hàng
+            </span>
+            <div className="w-10 h-10 rounded-2xl bg-emerald-950/80 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
+              <CreditCard size={20} />
+            </div>
+          </div>
+          <div className="mt-4 flex items-baseline gap-1.5">
+            <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
+              {(kpi.totalRevenue || (kpi.totalPremiumUsers * 99000)).toLocaleString("vi-VN")}
+            </span>
+            <span className="text-xs text-emerald-300 font-bold">₫</span>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/80 pt-2.5">
+            <span className="text-slate-300 truncate font-semibold">
+              <strong className="text-amber-400">{kpi.totalPremiumUsers}</strong> đơn Napas 24/7
+            </span>
+            <Link
+              href="/admin/users"
+              className="text-emerald-400 hover:text-emerald-300 font-bold shrink-0 ml-1"
+            >
+              Xem GD →
+            </Link>
+          </div>
+        </div>
+
+        {/* KPI 3: Speaking & Practice completed */}
+        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-lg relative overflow-hidden group hover:border-cyan-600/50 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Lượt Luyện Phản Xạ
+            </span>
+            <div className="w-10 h-10 rounded-2xl bg-cyan-950/80 border border-cyan-800/60 flex items-center justify-center text-cyan-400">
+              <Mic size={20} />
+            </div>
+          </div>
+          <div className="mt-4 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-white font-mono">
+              {displayedPractices.toLocaleString()}
+            </span>
+            <span className="text-xs text-cyan-400 font-bold">lượt</span>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/80 pt-2.5">
+            <span className="flex items-center gap-1">
+              <TrendingUp size={13} className="text-cyan-400" />
+              Tương tác liên tục
+            </span>
+            <span className="text-cyan-400 font-bold">AI Active</span>
+          </div>
+        </div>
+
+        {/* KPI 4: Total Lessons & Video */}
         <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-lg relative overflow-hidden group hover:border-red-600/50 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -172,7 +224,7 @@ export default function AdminDashboardPage() {
           <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/80 pt-2.5">
             <div className="flex items-center gap-1 text-slate-300">
               <YouTubeIcon size={14} className="text-red-500" />
-              <span>{kpi.totalVideoLessons} video YouTube</span>
+              <span>{kpi.totalVideoLessons} video</span>
             </div>
             <Link
               href="/admin/lessons"
@@ -183,32 +235,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* KPI 3: Speaking & Practice completed */}
-        <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-lg relative overflow-hidden group hover:border-emerald-600/50 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Lượt Luyện Phản Xạ
-            </span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-950/80 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
-              <Mic size={20} />
-            </div>
-          </div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-white font-mono">
-              {displayedPractices.toLocaleString()}
-            </span>
-            <span className="text-xs text-emerald-400 font-bold">lượt hoàn thành</span>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/80 pt-2.5">
-            <span className="flex items-center gap-1">
-              <TrendingUp size={13} className="text-emerald-400" />
-              Tương tác liên tục
-            </span>
-            <span className="text-emerald-400 font-bold">AI Active</span>
-          </div>
-        </div>
-
-        {/* KPI 4: Courses & Topics */}
+        {/* KPI 5: Courses & Topics */}
         <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-lg relative overflow-hidden group hover:border-amber-600/50 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -225,7 +252,7 @@ export default function AdminDashboardPage() {
             <span className="text-xs text-amber-400 font-bold">khóa học</span>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/80 pt-2.5">
-            <span>{kpi.totalTopics} chủ đề luyện nói</span>
+            <span>{kpi.totalTopics} chủ đề</span>
             <Link
               href="/admin/courses"
               className="text-amber-400 hover:text-amber-300 font-bold"

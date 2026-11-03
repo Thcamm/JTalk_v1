@@ -206,7 +206,7 @@ export const OnboardingQuizModal: React.FC<OnboardingQuizModalProps> = ({
           onClick={onClose}
           type="button"
           aria-label="Đóng khảo sát"
-          className="absolute top-3 right-3 sm:top-5 sm:right-5 p-1.5 sm:p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer z-10"
+          className="absolute top-3 right-3 sm:top-5 sm:right-5 p-1.5 sm:p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer z-10"
         >
           <X size={18} />
         </button>
@@ -495,8 +495,6 @@ export const OnboardingQuizModal: React.FC<OnboardingQuizModalProps> = ({
             </div>
           </div>
         )}
-      </div>
-    </div>
       </div>
     </div>
   );

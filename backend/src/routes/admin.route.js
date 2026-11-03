@@ -15,6 +15,7 @@ import {
   getYoutubeTranscript,
   enrichSubtitlesWithAi,
   cleanDuplicateVideosHandler,
+  getAdminOrders,
 } from "../controllers/admin.controller.js";
 import {
   importVocabulary,
@@ -41,6 +42,7 @@ router.use(protectedRoute, adminRoute);
 
 // 1. Overview KPIs & Stats
 router.get("/stats", getStats);
+router.get("/orders", getAdminOrders);
 
 // 2. User Management
 router.get("/users", getUsers);
