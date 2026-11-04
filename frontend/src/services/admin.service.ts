@@ -222,6 +222,15 @@ export const adminService = {
     return res.data.data;
   },
 
+  updateOrderPaidAt: async (orderId: string, paidAt: string): Promise<AdminOrder> => {
+    const res = await api.patch<{ data: AdminOrder }>(`/admin/orders/${orderId}/paid-at`, { paidAt });
+    return res.data.data;
+  },
+
+  distributeOrdersTime: async (daysSpan: number = 7): Promise<void> => {
+    await api.post("/admin/orders/distribute-time", { daysSpan });
+  },
+
   // 2. User Management
   getUsers: async (params?: AdminUsersQuery): Promise<AdminUsersResponse> => {
     const res = await api.get<{ data: AdminUsersResponse }>("/admin/users", { params });

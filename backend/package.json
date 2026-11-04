@@ -9,6 +9,7 @@
     "seed:admin": "node src/scripts/seedAdmin.js",
     "seed:streak": "node src/scripts/seedStreakDemo.js",
     "seed:practices": "node src/scripts/seedPractices.js",
+    "seed:users": "node src/scripts/seedVietnameseUsers.js",
     "reset:transactions": "node src/scripts/resetTransactionsAndPremium.js",
     "migrate:lessons": "node src/scripts/migrateLessonCourseId.js",
     "migrate:sourceType": "node src/scripts/migrateSourceType.js"

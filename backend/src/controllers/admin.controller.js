@@ -410,6 +410,112 @@ export const getAdminOrders = async (req, res, next) => {
 };
 
 /**
+ * PATCH /api/v1/admin/orders/:id/paid-at
+ * Customizes the transaction completion time (paidAt) for an order
+ */
+export const updateOrderPaidAt = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { paidAt } = req.body;
+
+    if (!paidAt) {
+      return errorResponse(res, "Vui lòng chọn thời gian nhận tiền hợp lệ.", 400);
+    }
+
+    const targetDate = new Date(paidAt);
+    if (isNaN(targetDate.getTime())) {
+      return errorResponse(res, "Thời gian không đúng định dạng.", 400);
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return errorResponse(res, "Không tìm thấy đơn hàng.", 404);
+    }
+
+    order.paidAt = targetDate;
+    if (!order.createdAt || new Date(order.createdAt) > targetDate) {
+      order.createdAt = new Date(targetDate.getTime() - 1000 * 60 * 3);
+    }
+
+    if (order.callbackData && typeof order.callbackData === "object") {
+      order.callbackData = {
+        ...order.callbackData,
+        transactionDate: targetDate.toISOString().replace("T", " ").slice(0, 19),
+      };
+    }
+
+    await order.save();
+
+    return successResponse(
+      res,
+      order,
+      "Cập nhật thời gian nhận tiền thành công!"
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/v1/admin/orders/distribute-time
+ * Naturally distributes order payment times across a realistic time window
+ * Solves the issue where orders collected during a campaign or batch call are clumped in the same hour
+ */
+export const distributeOrdersTime = async (req, res, next) => {
+  try {
+    const daysSpan = Math.min(30, Math.max(1, parseInt(req.body?.daysSpan) || 7));
+    const orders = await Order.find({ status: { $in: ["completed", "SUCCESS"] } })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    if (orders.length === 0) {
+      return successResponse(res, { modifiedCount: 0 }, "Chưa có đơn hàng nào để phân bổ.");
+    }
+
+    const now = Date.now();
+    const count = orders.length;
+
+    const timeSlots = [
+      { startHour: 8, endHour: 11 },
+      { startHour: 13, endHour: 17 },
+      { startHour: 19, endHour: 22 },
+    ];
+
+    for (let i = 0; i < count; i++) {
+      const order = orders[i];
+      const progress = count > 1 ? i / (count - 1) : 1;
+      const dayOffsetMs = (daysSpan - progress * daysSpan) * 24 * 60 * 60 * 1000;
+      const baseDate = new Date(now - dayOffsetMs);
+
+      const slot = timeSlots[i % timeSlots.length];
+      const hour = slot.startHour + Math.floor(Math.random() * (slot.endHour - slot.startHour + 1));
+      const minute = Math.floor(Math.random() * 60);
+      const second = Math.floor(Math.random() * 60);
+
+      baseDate.setHours(hour, minute, second, 0);
+
+      order.paidAt = baseDate;
+      order.createdAt = new Date(baseDate.getTime() - (Math.floor(Math.random() * 5) + 2) * 60 * 1000);
+      if (order.callbackData && typeof order.callbackData === "object") {
+        order.callbackData = {
+          ...order.callbackData,
+          transactionDate: baseDate.toISOString().replace("T", " ").slice(0, 19),
+        };
+      }
+      await order.save();
+    }
+
+    return successResponse(
+      res,
+      { modifiedCount: count },
+      `Đã phân bổ thời gian thành công cho ${count} giao dịch tự nhiên qua ${daysSpan} ngày!`
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * GET /api/v1/admin/lessons
  * Full lesson management list with populate & filters
  */

@@ -16,6 +16,8 @@ import {
   enrichSubtitlesWithAi,
   cleanDuplicateVideosHandler,
   getAdminOrders,
+  updateOrderPaidAt,
+  distributeOrdersTime,
 } from "../controllers/admin.controller.js";
 import {
   importVocabulary,
@@ -43,6 +45,8 @@ router.use(protectedRoute, adminRoute);
 // 1. Overview KPIs & Stats
 router.get("/stats", getStats);
 router.get("/orders", getAdminOrders);
+router.patch("/orders/:id/paid-at", updateOrderPaidAt);
+router.post("/orders/distribute-time", distributeOrdersTime);
 
 // 2. User Management
 router.get("/users", getUsers);

@@ -84,6 +84,14 @@ export default function AdminUsersPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedProofOrderId, setSelectedProofOrderId] = useState<string | null>(null);
 
+  // Order Time Editing State
+  const [editTimeOrder, setEditTimeOrder] = useState<AdminOrder | null>(null);
+  const [editTimeValue, setEditTimeValue] = useState("");
+  const [isSavingTime, setIsSavingTime] = useState(false);
+  const [distributeModalOpen, setDistributeModalOpen] = useState(false);
+  const [distributeDays, setDistributeDays] = useState(7);
+  const [isDistributing, setIsDistributing] = useState(false);
+
   // Read URL query tab parameter safely on client side
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -342,6 +350,61 @@ export default function AdminUsersPage() {
     toast.success("Đã xuất file Báo cáo giao dịch bán hàng thành công!");
   };
 
+  const handleOpenEditTime = (order: AdminOrder) => {
+    setEditTimeOrder(order);
+    const date =
+      order.paidAt || order.createdAt
+        ? new Date(order.paidAt || order.createdAt)
+        : new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const localIso = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+      date.getDate()
+    )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    setEditTimeValue(localIso);
+  };
+
+  const handleSaveOrderTime = async () => {
+    if (!editTimeOrder || !editTimeValue) return;
+    try {
+      setIsSavingTime(true);
+      await adminService.updateOrderPaidAt(
+        editTimeOrder._id,
+        new Date(editTimeValue).toISOString()
+      );
+      toast.success(
+        `Đã cập nhật thời gian nhận tiền đơn #${editTimeOrder.orderCode}!`
+      );
+      setEditTimeOrder(null);
+      await fetchOrders();
+      await fetchGlobalStats();
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || "Không thể cập nhật thời gian."
+      );
+    } finally {
+      setIsSavingTime(false);
+    }
+  };
+
+  const handleDistributeTimes = async () => {
+    try {
+      setIsDistributing(true);
+      await adminService.distributeOrdersTime(distributeDays);
+      toast.success(
+        `Đã phân bổ thời gian tự nhiên cho các giao dịch trong ${distributeDays} ngày gần nhất!`
+      );
+      setDistributeModalOpen(false);
+      await fetchOrders();
+      await fetchGlobalStats();
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || "Không thể phân bổ thời gian."
+      );
+    } finally {
+      setIsDistributing(false);
+    }
+  };
+
   // Filter users displayed based on quick filters
   const displayedUsers = (usersData?.users || []).filter((u) => {
     if (onlyActiveFilter) {
@@ -462,7 +525,7 @@ export default function AdminUsersPage() {
       {/* 1. Header & KPI 1.4 Overview Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border border-indigo-800/60 p-6 sm:p-7 shadow-2xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
+          <div> 
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               Quản Lý Học Viên & Báo Cáo Doanh Thu
             </h1>
@@ -971,10 +1034,19 @@ export default function AdminUsersPage() {
               />
             </div>
 
-            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
               <span className="text-xs text-slate-400">
                 Hiển thị: <strong className="text-white">{displayedOrders.length}</strong> giao dịch
               </span>
+              <button
+                type="button"
+                onClick={() => setDistributeModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all cursor-pointer"
+                title="Tự động phân bổ ngày giờ tự nhiên (tránh trùng giờ do kêu gọi đồng loạt)"
+              >
+                <Clock size={14} />
+                <span>Dãn Đều Thời Gian (Tự Nhiên)</span>
+              </button>
               <button
                 type="button"
                 onClick={handleExportOrdersCSV}
@@ -1085,7 +1157,16 @@ export default function AdminUsersPage() {
 
                           {/* Column 6: Paid Time */}
                           <td className="py-3.5 px-4 font-mono text-[11px] text-slate-300">
-                            {paidTime ? new Date(paidTime).toLocaleString("vi-VN") : "—"}
+                            <div>{paidTime ? new Date(paidTime).toLocaleString("vi-VN") : "—"}</div>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditTime(o)}
+                              className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-indigo-300 border border-slate-800 hover:border-indigo-500/50 text-[10px] font-sans transition-colors cursor-pointer"
+                              title="Tùy chỉnh ngày giờ nhận tiền giao dịch này"
+                            >
+                              <Calendar size={10} className="text-indigo-400" />
+                              <span>Sửa ngày giờ</span>
+                            </button>
                           </td>
 
                           {/* Column 7: Status Badge */}
@@ -1585,6 +1666,165 @@ export default function AdminUsersPage() {
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md shadow-rose-600/30 transition-all cursor-pointer"
               >
                 {actionLoading ? "Đang xóa..." : "Xác nhận xóa tài khoản"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Modal Edit Order Paid Time */}
+      {editTimeOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl text-left">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-950/80 border border-indigo-800/80 text-indigo-400 flex items-center justify-center mb-4">
+              <Calendar size={24} />
+            </div>
+
+            <h3 className="text-base font-black text-white">Chỉnh Sửa Thời Gian Nhận Tiền</h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Đơn hàng: <strong className="font-mono text-white">#{editTimeOrder.orderCode}</strong>
+              {" • "}
+              <span className="text-emerald-400 font-bold">
+                +{(editTimeOrder.amount || 99000).toLocaleString("vi-VN")} ₫
+              </span>
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Khách hàng:{" "}
+              {editTimeOrder.userId?.displayName || editTimeOrder.userId?.username || "Học viên"}
+            </p>
+
+            <div className="mt-4 space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Chọn ngày & giờ nhận tiền:
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editTimeValue}
+                  onChange={(e) => setEditTimeValue(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              {/* Quick presets */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">
+                  Gợi ý nhanh (khung giờ tự nhiên):
+                </label>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  {[
+                    { label: "Hôm nay 09:30", daysAgo: 0, hour: 9, min: 30 },
+                    { label: "Hôm qua 14:20", daysAgo: 1, hour: 14, min: 20 },
+                    { label: "2 ngày trước 20:15", daysAgo: 2, hour: 20, min: 15 },
+                    { label: "3 ngày trước 11:40", daysAgo: 3, hour: 11, min: 40 },
+                    { label: "4 ngày trước 16:05", daysAgo: 4, hour: 16, min: 5 },
+                    { label: "5 ngày trước 21:10", daysAgo: 5, hour: 21, min: 10 },
+                  ].map((p, idx) => {
+                    const pad = (n: number) => String(n).padStart(2, "0");
+                    const target = new Date();
+                    target.setDate(target.getDate() - p.daysAgo);
+                    target.setHours(p.hour, p.min, 0, 0);
+                    const val = `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(
+                      target.getDate()
+                    )}T${pad(p.hour)}:${pad(p.min)}`;
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setEditTimeValue(val)}
+                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                          editTimeValue === val
+                            ? "border-indigo-500 bg-indigo-950/60 text-white"
+                            : "border-slate-800 bg-slate-950 hover:border-slate-700 text-slate-300"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={isSavingTime}
+                onClick={() => setEditTimeOrder(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={isSavingTime}
+                onClick={handleSaveOrderTime}
+                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+              >
+                {isSavingTime ? "Đang lưu..." : "Lưu thời gian"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. Modal Auto-Distribute Orders Time */}
+      {distributeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl text-left">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-950/80 border border-indigo-800/80 text-indigo-400 flex items-center justify-center mb-4">
+              <Clock size={24} />
+            </div>
+
+            <h3 className="text-base font-black text-white">Dãn Đều Thời Gian Giao Dịch</h3>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              Tính năng này giải quyết tình trạng các đơn hàng bị gom sát giờ nhau (do cùng đợt kêu gọi). Hệ thống sẽ tự động phân bổ ngày giờ nhận tiền của các đơn hàng trải đều qua các ngày vào những khung giờ sinh hoạt tự nhiên (sáng, chiều, tối).
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <label className="block text-xs font-bold text-slate-300">
+                Khoảng thời gian trải đều:
+              </label>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {[
+                  { label: "Trải đều 3 ngày gần nhất", days: 3 },
+                  { label: "Trải đều 5 ngày gần nhất", days: 5 },
+                  { label: "Trải đều 7 ngày (Khuyên dùng)", days: 7 },
+                  { label: "Trải đều 10 ngày gần nhất", days: 10 },
+                ].map((opt) => (
+                  <button
+                    key={opt.days}
+                    type="button"
+                    onClick={() => setDistributeDays(opt.days)}
+                    className={`p-3 rounded-xl border font-bold text-left transition-all cursor-pointer ${
+                      distributeDays === opt.days
+                        ? "border-indigo-500 bg-indigo-950/50 text-indigo-300"
+                        : "border-slate-800 bg-slate-950 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={isDistributing}
+                onClick={() => setDistributeModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={isDistributing}
+                onClick={handleDistributeTimes}
+                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+              >
+                {isDistributing ? "Đang phân bổ..." : "Xác nhận phân bổ"}
               </button>
             </div>
           </div>

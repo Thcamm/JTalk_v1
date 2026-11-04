@@ -9,6 +9,8 @@ import {
   Lightbulb,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   VolumeX,
   CheckCircle2,
   Loader2,
@@ -1570,9 +1572,9 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] max-h-[820px] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xs overflow-hidden transition-colors">
+    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[580px] max-h-[860px] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xs overflow-hidden transition-colors relative">
       {/* 1. Header Toolbar */}
-      <div className="p-3.5 sm:p-4 bg-slate-50/80 dark:bg-slate-950/60 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 transition-colors">
+      <div className="p-3 sm:p-4 bg-slate-50/80 dark:bg-slate-950/60 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 transition-colors shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-800 flex items-center justify-center text-rose-700 dark:text-rose-300 font-bold text-xs">
             AI
@@ -1682,6 +1684,21 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
             Bản dịch
           </button>
 
+          {/* Suggestions Panel Toggle Button */}
+          <button
+            onClick={() => setShowSuggestions((prev) => !prev)}
+            type="button"
+            className={`px-2.5 py-1 rounded-xl border text-2xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              showSuggestions
+                ? "bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200"
+                : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60"
+            }`}
+            title={showSuggestions ? "Ẩn bảng gợi ý câu đối đáp" : "Mở bảng gợi ý câu đối đáp"}
+          >
+            <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+            <span>Gợi ý ({suggestedReplies.length})</span>
+          </button>
+
           {/* Reset button */}
           <button
             onClick={initConversation}
@@ -1694,8 +1711,12 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
         </div>
       </div>
 
-      {/* 2. Messages Chat Stream */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/50 dark:bg-[#0c121e]/80 transition-colors">
+      {/* 2. Main Workspace: Chat Stream on Left, Suggestions on Right */}
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative">
+        {/* Left Column: Messages Chat Stream + Bottom Input */}
+        <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+          {/* Messages Chat Stream */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/50 dark:bg-[#0c121e]/80 transition-colors">
         {messages.map((msg) => {
           const isAi = msg.sender === "ai";
           const isPlaying = playingMessageId === msg.id;
@@ -1847,71 +1868,156 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 3. Bottom Control & Interactive Recording Zone */}
-      <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 space-y-3 transition-colors">
-        {/* Trạng thái tải gợi ý: Thay vì để 1 câu lẻ thì hiển thị "Bạn cần trợ giúp chứ..." kèm 3 dấu chấm nảy lên và vòng tròn xoay */}
-        {(isLoadingSuggestions || isRefreshingSuggestions) && !isLoading && (
-          <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 shadow-2xs animate-in fade-in duration-150">
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/80 text-amber-600 dark:text-amber-400 shrink-0">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              </div>
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100">
-                <span>Bạn cần trợ giúp chứ</span>
-                <span className="inline-flex items-center gap-1 ml-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.3s]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce [animation-delay:-0.15s]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-bounce" />
-                </span>
-              </div>
-            </div>
-            <span className="text-2xs font-medium text-amber-700/80 dark:text-amber-400/80 hidden sm:inline">
-              Gia sư AI đang chuẩn bị các câu đối đáp gợi ý...
-            </span>
-          </div>
-        )}
-
-        {/* Suggested Quick Replies (Gợi ý câu đối đáp nhanh - hiển thị khi đã sẵn sàng bộ gợi ý) */}
-        {!isLoadingSuggestions && !isRefreshingSuggestions && suggestedReplies.length > 0 && !isLoading && (
-          <div className="space-y-1.5 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          {/* Bottom Control & Input Zone */}
+          <div className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 space-y-2.5 transition-colors shrink-0">
+            {/* Live speech feedback when recording */}
+            {isRecording && (
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center justify-between animate-pulse">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
+                  <span className="text-xs font-bold text-rose-800 dark:text-rose-300">
+                    Đang lắng nghe giọng nói tiếng Nhật của bạn:
+                  </span>
+                  <span className="text-xs font-bold text-rose-950 dark:text-rose-100 font-sans">
+                    {liveTranscript || "..."}
+                  </span>
+                </div>
                 <button
+                  onClick={stopRecording}
                   type="button"
-                  onClick={() => setShowSuggestions((prev) => !prev)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100/80 dark:hover:bg-amber-900/60 border border-amber-200/90 dark:border-amber-900 rounded-full text-2xs font-bold text-amber-800 dark:text-amber-300 transition-colors cursor-pointer"
+                  className="text-xs font-bold text-rose-700 dark:text-rose-400 hover:underline cursor-pointer"
                 >
-                  <Lightbulb className="w-3 h-3 text-amber-500 animate-spin-slow" />
-                  <span>Gợi ý câu đối đáp ({suggestedReplies.length})</span>
-                  {showSuggestions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  Xong
                 </button>
+              </div>
+            )}
 
+            {/* Input & Record Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
+              className="flex items-center gap-1.5 sm:gap-2"
+            >
+              {/* Big Mic Button */}
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                type="button"
+                className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl font-bold flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0 ${
+                  isRecording
+                    ? "bg-rose-500 hover:bg-rose-600 text-white animate-pulse"
+                    : "bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 text-white hover:shadow-md"
+                }`}
+                title={isRecording ? "Bấm để dừng ghi âm" : "Bấm để nói tiếng Nhật với AI"}
+              >
+                {isRecording ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />}
+              </button>
+
+              {/* Text input with transcript preview */}
+              <div className="relative flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  placeholder={
+                    isRecording
+                      ? "Đang nhận diện giọng nói..."
+                      : "Nói hoặc gõ câu trả lời..."
+                  }
+                  className="w-full pl-3.5 sm:pl-4 pr-8 sm:pr-10 py-2.5 sm:py-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 focus:border-rose-500 dark:focus:border-rose-400 focus:bg-white dark:focus:bg-slate-800 rounded-xl sm:rounded-2xl text-xs sm:text-base font-sans font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden transition-all truncate"
+                />
+                {inputVal && (
+                  <button
+                    type="button"
+                    onClick={() => speakText(inputVal)}
+                    className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    title="Nghe phát âm câu này"
+                  >
+                    <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Send Button */}
+              <button
+                type="submit"
+                disabled={!inputVal.trim() || isLoading}
+                className="p-2.5 sm:p-3.5 bg-gradient-to-r from-rose-600 to-rose-500 hover:brightness-105 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl sm:rounded-2xl font-bold transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
+                title="Gửi câu trả lời"
+              >
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Right Column: Suggestions Sidebar (Side-by-side on desktop lg:, collapsible underneath on mobile < lg) */}
+        {showSuggestions && (
+          <aside className="w-full lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/70 flex flex-col shrink-0 max-h-60 sm:max-h-72 lg:max-h-none overflow-hidden transition-all duration-200">
+            {/* Sidebar Header */}
+            <div className="px-3.5 py-2.5 sm:py-3 bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Lightbulb className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                      Gợi ý đối đáp
+                    </span>
+                    <span className="px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 rounded text-3xs font-bold">
+                      {suggestedReplies.length}
+                    </span>
+                  </div>
+                  <p className="text-3xs text-slate-500 dark:text-slate-400 truncate">
+                    Chọn câu để điền nhanh & luyện nói
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={handleRefreshSuggestions}
-                  disabled={isRefreshingSuggestions}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-2xs font-bold text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                  disabled={isRefreshingSuggestions || isLoading}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-2xs font-bold text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer disabled:opacity-50"
                   title="Tạo gợi ý mới chuẩn ngữ cảnh bằng AI"
                 >
-                  <Sparkles
-                    className={`w-3 h-3 text-amber-500 ${isRefreshingSuggestions ? "animate-spin" : ""}`}
-                  />
-                  <span>
-                    {isRefreshingSuggestions ? "Đang tạo..." : "Đổi gợi ý AI"}
+                  <Sparkles className={`w-3 h-3 text-amber-500 ${isRefreshingSuggestions ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">
+                    {isRefreshingSuggestions ? "Đang tạo..." : "Đổi câu"}
                   </span>
                 </button>
-              </div>
 
-              {showSuggestions && (
-                <span className="text-3xs text-slate-400 dark:text-slate-500 hidden sm:inline">
-                  Bấm câu để điền nhanh & nghe giọng đọc
-                </span>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setShowSuggestions(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Thu gọn bảng gợi ý"
+                >
+                  <ChevronRight className="w-4 h-4 hidden lg:inline" />
+                  <ChevronUp className="w-4 h-4 lg:hidden" />
+                </button>
+              </div>
             </div>
 
-            {showSuggestions && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1 pb-1 pt-0.5 scrollbar-thin">
-                {suggestedReplies.map((item, idx) => {
+            {/* Sidebar Cards Body */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-3.5 space-y-2.5 scrollbar-thin">
+              {(isLoadingSuggestions || isRefreshingSuggestions) && !isLoading ? (
+                <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 text-center space-y-2 animate-in fade-in">
+                  <div className="w-8 h-8 mx-auto rounded-full bg-amber-100 dark:bg-amber-900/80 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Đang chuẩn bị câu đối đáp...
+                  </p>
+                  <p className="text-2xs text-slate-500 dark:text-slate-400">
+                    Gia sư AI đang tạo câu trả lời tự nhiên theo ngữ cảnh
+                  </p>
+                </div>
+              ) : suggestedReplies.length > 0 ? (
+                suggestedReplies.map((item, idx) => {
                   const jap = typeof item === "string" ? item : item.japanese;
                   const furi = typeof item === "object" ? item.furigana : undefined;
                   const rom = typeof item === "object" ? item.romaji : undefined;
@@ -1926,10 +2032,9 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                         speakText(jap);
                         toast.success("Đã chọn câu gợi ý! Bạn có thể luyện nói hoặc bấm gửi.");
                       }}
-                      className="group relative flex flex-col justify-between p-3.5 rounded-2xl bg-gradient-to-b from-white to-slate-50/70 dark:from-slate-800/90 dark:to-slate-800/60 border border-slate-200/90 dark:border-slate-700 hover:border-rose-400 dark:hover:border-rose-500 shadow-2xs hover:shadow-md transition-all cursor-pointer text-left"
+                      className="group relative flex flex-col justify-between p-3 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500 shadow-2xs hover:shadow-md transition-all cursor-pointer text-left"
                     >
                       <div className="space-y-1">
-                        {/* Tầng 1: Furigana / Hiragana & Speaker Icon Button */}
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-2xs font-bold text-rose-600 dark:text-rose-400 font-sans tracking-wide truncate">
                             {furi || "ひらがな"}
@@ -1947,117 +2052,59 @@ export const FreeRoleplayChat: React.FC<FreeRoleplayChatProps> = ({
                           </button>
                         </div>
 
-                        {/* Tầng 2: Kanji / Tiếng Nhật chính */}
-                        <p className="text-sm font-bold text-slate-900 dark:text-white font-sans group-hover:text-rose-600 dark:group-hover:text-rose-300 leading-snug transition-colors">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white font-sans group-hover:text-rose-600 dark:group-hover:text-rose-300 leading-snug transition-colors break-words [overflow-wrap:anywhere]">
                           {jap}
                         </p>
 
-                        {/* Tầng 3: Romaji */}
                         {rom && (
-                          <p className="text-3xs font-mono italic text-slate-500 dark:text-slate-400">
+                          <p className="text-3xs font-mono italic text-slate-500 dark:text-slate-400 break-words">
                             {rom}
                           </p>
                         )}
                       </div>
 
-                      {/* Tầng 4: Bản dịch tiếng Việt */}
                       {trans && (
-                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                           <p className="text-xs text-slate-600 dark:text-slate-300 font-medium line-clamp-2">
                             {trans}
                           </p>
                           <span className="text-3xs text-rose-500 dark:text-rose-400 font-semibold shrink-0 ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            Chọn câu →
+                            Chọn →
                           </span>
                         </div>
                       )}
                     </div>
                   );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Live speech feedback when recording */}
-        {isRecording && (
-          <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center justify-between animate-pulse">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
-              <span className="text-xs font-bold text-rose-800 dark:text-rose-300">
-                Đang lắng nghe giọng nói tiếng Nhật của bạn:
-              </span>
-              <span className="text-xs font-bold text-rose-950 dark:text-rose-100 font-sans">
-                {liveTranscript || "..."}
-              </span>
+                })
+              ) : (
+                <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1.5">
+                  <Sparkles className="w-5 h-5 mx-auto text-amber-500" />
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    Đang lắng nghe hội thoại
+                  </p>
+                  <p className="text-2xs text-slate-400 dark:text-slate-500">
+                    Gợi ý đối đáp sẽ xuất hiện khi Sensei đặt câu hỏi tiếp theo.
+                  </p>
+                </div>
+              )}
             </div>
-            <button
-              onClick={stopRecording}
-              type="button"
-              className="text-xs font-bold text-rose-700 dark:text-rose-400 hover:underline cursor-pointer"
-            >
-              Xong
-            </button>
-          </div>
+          </aside>
         )}
 
-        {/* Input & Record Form */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendMessage();
-          }}
-          className="flex items-center gap-1.5 sm:gap-2"
-        >
-          {/* Big Mic Button */}
+        {/* Docked pill button to re-open suggestions on desktop if collapsed */}
+        {!showSuggestions && (
           <button
-            onClick={isRecording ? stopRecording : startRecording}
             type="button"
-            className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl font-bold flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0 ${
-              isRecording
-                ? "bg-rose-500 hover:bg-rose-600 text-white animate-pulse"
-                : "bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:brightness-105 text-white hover:shadow-md"
-            }`}
-            title={isRecording ? "Bấm để dừng ghi âm" : "Bấm để nói tiếng Nhật với AI"}
+            onClick={() => setShowSuggestions(true)}
+            className="hidden lg:flex items-center gap-1.5 absolute right-0 top-1/2 -translate-y-1/2 z-20 px-2 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-l-2xl shadow-md transition-all cursor-pointer font-bold text-xs"
+            title="Mở bảng gợi ý câu đối đáp"
           >
-            {isRecording ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />}
+            <ChevronLeft className="w-4 h-4" />
+            <span className="[writing-mode:vertical-rl] tracking-wider text-2xs uppercase">
+              Gợi ý ({suggestedReplies.length})
+            </span>
           </button>
-
-          {/* Text input with transcript preview */}
-          <div className="relative flex-1 min-w-0">
-            <input
-              type="text"
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              placeholder={
-                isRecording
-                  ? "Đang nhận diện giọng nói..."
-                  : "Nói hoặc gõ câu trả lời..."
-              }
-              className="w-full pl-3.5 sm:pl-4 pr-8 sm:pr-10 py-2.5 sm:py-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 focus:border-rose-500 dark:focus:border-rose-400 focus:bg-white dark:focus:bg-slate-800 rounded-xl sm:rounded-2xl text-xs sm:text-base font-sans font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden transition-all truncate"
-            />
-            {inputVal && (
-              <button
-                type="button"
-                onClick={() => speakText(inputVal)}
-                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-                title="Nghe phát âm câu này"
-              >
-                <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Send Button */}
-          <button
-            type="submit"
-            disabled={!inputVal.trim() || isLoading}
-            className="p-2.5 sm:p-3.5 bg-gradient-to-r from-rose-600 to-rose-500 hover:brightness-105 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl sm:rounded-2xl font-bold transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
-            title="Gửi câu trả lời"
-          >
-            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-        </form>
+        )}
       </div>
 
       {/* 4. Roleplay Completion & Pedagogical Summary Modal */}

@@ -921,7 +921,11 @@ export const PracticeRoomPage = () => {
       </div>
 
       {/* 2. Main Practice Workspace */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6 md:p-8 flex flex-col gap-4 sm:gap-6 justify-between relative z-10">
+      <main
+        className={`flex-1 w-full mx-auto p-3 sm:p-6 md:p-8 flex flex-col gap-4 sm:gap-6 justify-between relative z-10 transition-all duration-200 ${
+          practiceMode === "roleplay" ? "max-w-6xl xl:max-w-7xl" : "max-w-4xl"
+        }`}
+      >
         {practiceMode === "roleplay" ? (
           <FreeRoleplayChat
             lessonId={lessonId}
